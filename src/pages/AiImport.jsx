@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useQuestionBanks } from '../contexts/QuestionBankContext';
 import api from '../api';
+import { countFillBlanks } from '../lib/fillBlank';
 
 // 模式切换标签
 const MODE_TABS = [
@@ -35,6 +36,50 @@ const TYPE_COLORS = {
   boolean: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   fill: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
   short: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400'
+};
+
+const normalizeBooleanAnswer = (answer) => {
+  if (answer === true) return '正确';
+  if (answer === false) return '错误';
+
+  const raw = String(answer ?? '').trim();
+  const lower = raw.toLowerCase();
+  const trueValues = ['正确', '对', '是', '√', 'true', 't', 'yes', 'y', '1'];
+  const falseValues = ['错误', '错', '否', '×', 'false', 'f', 'no', 'n', '0'];
+
+  if (trueValues.includes(raw) || trueValues.includes(lower)) return '正确';
+  if (falseValues.includes(raw) || falseValues.includes(lower)) return '错误';
+  return raw;
+};
+
+const normalizeChoiceAnswer = (answer, multiple = false) => {
+  if (Array.isArray(answer)) {
+    return answer.map(a => normalizeChoiceAnswer(a, false)).filter(Boolean).join('|');
+  }
+
+  const raw = String(answer ?? '').trim().toUpperCase();
+  if (!raw) return raw;
+
+  const parts = raw
+    .replace(/[，,、;；\s]+/g, '|')
+    .split('|')
+    .map(part => part.trim())
+    .filter(Boolean);
+
+  const letters = [];
+  for (const part of parts) {
+    if (/^[A-Z]+$/.test(part)) {
+      letters.push(...part.split(''));
+      continue;
+    }
+
+    const match = part.match(/^([A-Z])(?:\s*[.、．:：)]|\s|$)/) || part.match(/[A-Z]/);
+    if (match) letters.push(match[1] || match[0]);
+  }
+
+  const uniqueLetters = [...new Set(letters)];
+  if (multiple) return uniqueLetters.join('|');
+  return uniqueLetters[0] || raw;
 };
 
 const AiImport = () => {
@@ -231,38 +276,22 @@ const AiImport = () => {
         }
 
         // 处理答案格式
-        let normalizedAnswer = String(answer);
+        let normalizedAnswer = String(answer ?? '');
         
         // 多选题答案处理：支持多种分隔符格式
         if (normalizedType === 'multiple') {
-          if (Array.isArray(answer)) {
-            // 数组格式：["A", "B", "C"] -> "A|B|C"
-            normalizedAnswer = answer.join('|');
-          } else if (typeof answer === 'string') {
-            // 字符串格式：支持 "A,B,C" "A、B、C" "ABC" "A B C" 等格式转换为 "A|B|C"
-            normalizedAnswer = answer
-              .replace(/[,，、\s]+/g, '|')  // 替换各种分隔符为 |
-              .split('')
-              .filter(c => /[A-Za-z|]/.test(c))  // 只保留字母和 |
-              .join('')
-              .toUpperCase()
-              .split('|')
-              .filter(Boolean)
-              .join('|');
-            
-            // 如果没有分隔符，可能是连续字母如 "ABC"
-            if (!normalizedAnswer.includes('|') && normalizedAnswer.length > 1) {
-              normalizedAnswer = normalizedAnswer.split('').join('|');
-            }
-          }
+          normalizedAnswer = normalizeChoiceAnswer(answer, true);
+        }
+
+        if (normalizedType === 'single') {
+          normalizedAnswer = normalizeChoiceAnswer(answer, false);
         }
         
         // 填空题答案处理：支持多种分隔符格式
         if (normalizedType === 'fill') {
-          // 检查题干是否包含空栏标记（连续下划线算一个空）
-          const blankCount = (content.match(/_{2,}/g) || []).length;
+          const blankCount = countFillBlanks(content);
           if (blankCount === 0) {
-            throw new Error(`第 ${index + 1} 道填空题题干必须包含空栏标记（__或更多下划线）`);
+            throw new Error(`第 ${index + 1} 道填空题题干必须包含空栏标记（_、___、＿＿、（ ）或( )）`);
           }
 
           if (Array.isArray(answer)) {
@@ -285,15 +314,7 @@ const AiImport = () => {
         
         // 判断题答案处理
         if (normalizedType === 'boolean') {
-          const trueValues = ['正确', '对', 'true', 'True', 'TRUE', '是', 'yes', 'Yes', 'YES', '√', '1'];
-          const falseValues = ['错误', '错', 'false', 'False', 'FALSE', '否', 'no', 'No', 'NO', '×', '0'];
-          
-          // 支持布尔值类型
-          if (answer === true || trueValues.includes(String(answer).trim())) {
-            normalizedAnswer = '正确';
-          } else if (answer === false || falseValues.includes(String(answer).trim())) {
-            normalizedAnswer = '错误';
-          }
+          normalizedAnswer = normalizeBooleanAnswer(answer);
         }
 
         return {
@@ -423,8 +444,8 @@ D. Function
 {"题型": "判断题", "题目": "...", "答案": "正确"}
 
 填空题（多个空用|分隔或数组）：
-{"题型": "填空题", "题目": "___是中国首都", "答案": "北京"}
-{"题型": "填空题", "题目": "___和___是直辖市", "答案": "北京|上海"}
+{"题型": "填空题", "题目": "（ ）是中国首都", "答案": "北京"}
+{"题型": "填空题", "题目": "___和＿＿是直辖市", "答案": "北京|上海"}
 {"题型": "填空题", "题目": "...", "答案": ["答案1", "答案2"]}
 
 简答题：
@@ -575,16 +596,33 @@ D. Function
 
           {/* 导入结果 */}
           {importResult && (
-            <div className={`flex items-center gap-2 p-3 rounded-lg ${
+            <div className={`p-3 rounded-lg ${
               importResult.failed === 0
                 ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
                 : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400'
             }`}>
-              <CheckCircle size={18} />
-              <span className="text-sm">
-                成功导入 {importResult.success} 道题目
-                {importResult.failed > 0 && `，${importResult.failed} 道失败`}
-              </span>
+              <div className="flex items-center gap-2">
+                {importResult.failed === 0 ? <CheckCircle size={18} /> : <XCircle size={18} />}
+                <span className="text-sm font-medium">
+                  成功导入 {importResult.success} 道题目
+                  {importResult.failed > 0 && `，${importResult.failed} 道失败`}
+                </span>
+              </div>
+              {importResult.failed > 0 && importResult.errors?.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {importResult.errors.map((item, index) => (
+                    <div
+                      key={`${item.index ?? index}-${index}`}
+                      className="rounded-md bg-white/60 dark:bg-gray-900/30 px-3 py-2 text-sm"
+                    >
+                      <span className="font-medium">
+                        第 {(item.index ?? index) + 1} 道：
+                      </span>
+                      {item.message || '导入失败'}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

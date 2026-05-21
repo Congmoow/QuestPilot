@@ -4,6 +4,7 @@
  */
 
 const Papa = require('papaparse')
+const { countFillBlanks } = require('../fillBlank.cjs')
 
 // CSV列头定义
 const CSV_HEADERS = ['题型', '题干', '选项A', '选项B', '选项C', '选项D', '选项E', '选项F', '答案', '解析']
@@ -206,10 +207,9 @@ function parseRow(row, rowNumber) {
   }
 
   if (type === 'fill') {
-    // 连续下划线算一个空
-    const blankCount = (content.match(/_{2,}/g) || []).length;
+    const blankCount = countFillBlanks(content)
     if (blankCount === 0) {
-      errors.push({ row: rowNumber, field: '题干', message: '填空题题干必须包含空栏标记（__或更多下划线）' })
+      errors.push({ row: rowNumber, field: '题干', message: '填空题题干必须包含空栏标记（_、___、＿＿、（ ）或( )）' })
       return { valid: false, errors }
     }
 

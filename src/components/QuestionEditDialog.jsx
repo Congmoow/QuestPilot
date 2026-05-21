@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import Dialog from './Dialog';
+import { countFillBlanks } from '../lib/fillBlank';
 
 /**
  * @typedef {import('../api').Question} Question
@@ -39,7 +40,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
 
   const blankCount = useMemo(() => {
     if (type !== 'fill') return 0;
-    return (content.match(/_{2,}/g) || []).length;
+    return countFillBlanks(content);
   }, [type, content]);
 
   // 当 question 变化时重置表单
@@ -50,7 +51,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
       setOptions(question.options || []);
       setAnswer(question.answer || '');
       if (question.type === 'fill') {
-        const bc = (String(question.content || '').match(/_{2,}/g) || []).length;
+        const bc = countFillBlanks(question.content);
         const parsed = String(question.answer || '').split('|');
         const next = parsed.map(v => String(v ?? ''));
         while (next.length < bc) next.push('');
@@ -101,11 +102,10 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
     }
 
     if (type === 'fill') {
-      // 连续下划线算一个空
-      const blankCount = (content.match(/_{2,}/g) || []).length;
+      const blankCount = countFillBlanks(content);
       const answerCount = answer.split('|').filter(a => a.trim()).length;
       if (blankCount === 0) {
-        newErrors.content = '填空题题干中需要包含空栏标记（___）';
+        newErrors.content = '填空题题干中需要包含空栏标记（_、___、＿＿、（ ）或( )）';
       } else if (blankCount !== answerCount) {
         newErrors.answer = `答案数量(${answerCount})与空栏数量(${blankCount})不匹配`;
       }
@@ -268,7 +268,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={4}
-            placeholder={type === 'fill' ? '请输入题干，使用 ___ 表示空栏' : '请输入题干内容'}
+            placeholder={type === 'fill' ? '请输入题干，使用 _、___、＿＿、（ ）或( ) 表示空栏' : '请输入题干内容'}
             className={cn(
               "w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border rounded-lg text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none",
               errors.content ? "border-danger" : "border-gray-200 dark:border-gray-600"
@@ -386,7 +386,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
 
             {blankCount === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                请先在题干中插入空栏标记（___）
+                请先在题干中插入空栏标记（_、___、＿＿、（ ）或( )）
               </p>
             ) : (
               <div className="space-y-3">

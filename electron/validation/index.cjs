@@ -1,3 +1,5 @@
+const { countFillBlanks } = require('../fillBlank.cjs')
+
 /**
  * 验证服务模块
  * 提供题库名称和题目数据的验证功能
@@ -205,13 +207,10 @@ function validateFillBlank(data) {
   const errors = []
   const { content, answer } = data
 
-  // 连续下划线算一个空（2个或更多）
-  const blankPattern = /_{2,}/g
-  const blanks = content.match(blankPattern)
-  const blankCount = blanks ? blanks.length : 0
+  const blankCount = countFillBlanks(content)
 
   if (blankCount === 0) {
-    errors.push('填空题题干中必须包含至少一个空栏标记（__或更多下划线）')
+    errors.push('填空题题干中必须包含至少一个空栏标记（_、___、＿＿、（ ）或( )）')
     return { valid: false, errors }
   }
 

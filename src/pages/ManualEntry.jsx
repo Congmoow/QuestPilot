@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuestionBanks } from '../contexts/QuestionBankContext';
 import { useQuestions } from '../contexts/QuestionContext';
 import { saveDraft, loadDraft, clearDraft } from '../api';
+import { countFillBlanks } from '../lib/fillBlank';
 
 const ManualEntry = () => {
   const navigate = useNavigate();
@@ -84,10 +85,9 @@ const ManualEntry = () => {
     restoreDraft();
   }, []);
 
-  // 计算填空题中的空栏数量（连续下划线算一个空）
+  // 计算填空题中的空栏数量
   const blankCount = useMemo(() => {
-    const matches = formData.content.match(/_{2,}/g);
-    return matches ? matches.length : 0;
+    return countFillBlanks(formData.content);
   }, [formData.content]);
 
   // 当空栏数量变化时，调整答案数组
@@ -234,7 +234,7 @@ const ManualEntry = () => {
         
       case 'fill':
         if (blankCount === 0) {
-          newErrors.push('填空题题干中必须包含至少一个空栏标记（___）');
+          newErrors.push('填空题题干中必须包含至少一个空栏标记（_、___、＿＿、（ ）或( )）');
         }
         // 验证每个空的答案
         const emptyFillAnswers = formData.fillAnswers.filter((a, i) => i < blankCount && (!a || a.trim() === ''));

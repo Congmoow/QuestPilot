@@ -5,9 +5,8 @@ const database = require('./database/index.cjs')
 const validation = require('./validation/index.cjs')
 const csv = require('./csv/index.cjs')
 const ai = require('./ai/index.cjs')
-
-// 判断是否为开发环境
-const isDev = !app.isPackaged
+const { normalizeAiParseResult } = require('./ai-normalize.cjs')
+const { resolveWindowEntry } = require('./window-entry.cjs')
 
 let mainWindow = null
 
@@ -38,13 +37,19 @@ function createWindow() {
     mainWindow.show()
   })
 
-  // 加载应用
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:5173')
-    // 开发环境打开开发者工具
-    mainWindow.webContents.openDevTools()
+  const windowEntry = resolveWindowEntry({
+    isPackaged: app.isPackaged,
+    env: process.env,
+    dirname: __dirname,
+  })
+
+  if (windowEntry.type === 'url') {
+    mainWindow.loadURL(windowEntry.value)
+    if (windowEntry.openDevTools) {
+      mainWindow.webContents.openDevTools()
+    }
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
+    mainWindow.loadFile(windowEntry.value)
   }
 
   mainWindow.on('closed', () => {
@@ -709,123 +714,6 @@ ipcMain.handle('ai:parseQuestions', async (event, content) => {
     throw error
   }
 })
-
-function normalizeAiParseResult(result) {
-  const questions = Array.isArray(result?.questions) ? result.questions : []
-  return {
-    ...result,
-    questions: questions.map(normalizeAiQuestion).filter(Boolean)
-  }
-}
-
-function normalizeAiQuestion(q) {
-  if (!q || typeof q !== 'object') return null
-
-  const type = typeof q.type === 'string' ? q.type.trim() : q.type
-  const normalizedType = normalizeAiType(type)
-
-  const normalized = {
-    ...q,
-    type: normalizedType
-  }
-
-  if (normalizedType === 'single' || normalizedType === 'multiple') {
-    normalized.options = normalizeAiOptions(q.options)
-  }
-
-  normalized.answer = normalizeAiAnswer(normalizedType, q.answer)
-
-  return normalized
-}
-
-function normalizeAiType(type) {
-  const typeMap = {
-    '单选题': 'single',
-    '单选': 'single',
-    single: 'single',
-    '多选题': 'multiple',
-    '多选': 'multiple',
-    multiple: 'multiple',
-    '判断题': 'boolean',
-    '判断': 'boolean',
-    boolean: 'boolean',
-    '填空题': 'fill',
-    '填空': 'fill',
-    fill: 'fill',
-    '简答题': 'short',
-    '简答': 'short',
-    short: 'short'
-  }
-  return typeMap[type] || type
-}
-
-function normalizeAiOptions(options) {
-  if (!Array.isArray(options)) return options
-  return options
-    .map((opt, i) => {
-      if (!opt || typeof opt !== 'object') return null
-      const rawId = opt.id ?? String.fromCharCode(65 + i)
-      const id = String(rawId).trim().toUpperCase()
-      const text = opt.text == null ? '' : String(opt.text)
-      return { ...opt, id, text }
-    })
-    .filter(Boolean)
-}
-
-function normalizeAiAnswer(type, answer) {
-  if (type === 'multiple') {
-    return normalizeMultipleAnswer(answer)
-  }
-  if (type === 'single') {
-    if (answer == null) return answer
-    return String(answer).trim().toUpperCase()
-  }
-  if (type === 'boolean') {
-    if (answer == null) return answer
-    const s = String(answer).trim()
-    if (s === '√' || s.toLowerCase() === 'true') return '正确'
-    if (s === '×' || s.toLowerCase() === 'false') return '错误'
-    return s
-  }
-  return answer
-}
-
-function normalizeMultipleAnswer(answer) {
-  if (Array.isArray(answer)) {
-    return answer.map(a => String(a).trim().toUpperCase()).filter(Boolean).join('|')
-  }
-
-  if (answer == null) return answer
-
-  let s = String(answer).trim().toUpperCase()
-  if (!s) return s
-
-  s = s.replace(/[，,、\s]+/g, '|')
-  if (!s.includes('|') && /^[A-Z]+$/.test(s) && s.length > 1) {
-    s = s.split('').join('|')
-  }
-
-  const parts = s.split('|').map(p => p.trim()).filter(Boolean)
-  const letters = []
-  for (const p of parts) {
-    if (/^[A-Z]$/.test(p)) {
-      letters.push(p)
-      continue
-    }
-    if (/^[A-Z]+$/.test(p)) {
-      letters.push(...p.split(''))
-    }
-  }
-
-  const seen = new Set()
-  const uniq = letters.filter(x => {
-    if (seen.has(x)) return false
-    seen.add(x)
-    return true
-  })
-
-  return uniq.join('|')
-}
 
 // AI 问答对话
 ipcMain.handle('ai:chat', async (event, messages, promptId) => {

@@ -84,14 +84,14 @@ async function parseQuestionsWithAI(apiKey, baseUrl, model, content) {
 - single: 单选题，answer 为单个选项如 "A"
 - multiple: 多选题，answer 为多个选项用|分隔如 "A|B|C"
 - boolean: 判断题，answer 为 "正确" 或 "错误"，不需要 options
-- fill: 填空题，题干中用 ___ 表示空，answer 为答案用|分隔（多个空时），不需要 options
+- fill: 填空题，题干中用 ___、_、＿＿、（ ）或( ) 表示空，answer 为答案用|分隔（多个空时），不需要 options
 - short: 简答题，answer 为参考答案，不需要 options
 
 注意事项：
 1. 仔细识别题型，根据题目特征判断
 2. 选择题必须有 options 数组
 3. 判断题、填空题、简答题不需要 options
-4. 如果无法识别某道题，跳过该题
+4. 不要静默跳过题目；不确定题型时优先保留题干并按 short 输出，answer 可为空字符串
 5. 只输出JSON，不要有任何解释文字`
 
   const requestBody = {
@@ -294,12 +294,11 @@ async function chatWithAI(apiKey, baseUrl, model, messages, customPrompt = null)
   const modelName = model || 'minimax-m2'
   
   // 如果有自定义 prompt，使用自定义的；否则使用默认的
-  const systemPrompt = customPrompt || `你是 MiniMax 公司开发的 ${modelName} 大语言模型，是一个智能学习助手，专门帮助用户解答学习相关的问题。
+  const systemPrompt = customPrompt || `你是 ${modelName} 大语言模型，是一个智能学习助手，专门帮助用户解答学习相关的问题。
 
 关于你的身份：
-- 你是由 MiniMax（稀宇科技）开发的 AI 助手
 - 你的模型名称是 ${modelName}
-- 你不是 GPT、ChatGPT、Claude 或其他公司的模型
+- 如果用户询问模型提供方，请基于当前配置如实说明，无法确认时直接说明无法从本地配置判断
 
 你可以：
 1. 解答各学科的知识问题

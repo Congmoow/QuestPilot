@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuestionBanks } from '../contexts/QuestionBankContext';
 import api from '../api';
 import CodeAwareText from '../components/CodeAwareText';
+import { countFillBlanks } from '../lib/fillBlank';
 
 // 题型标签
 const TYPE_LABELS = {
@@ -80,8 +81,6 @@ const Practice = () => {
     return { ...question, options: remappedOptions, answer: remappedAnswer };
   };
 
-  const getBlankCount = (text) => (String(text || '').match(/_{2,}/g) || []).length;
-
   const normalizeFillAnswer = (value, blankCount) => {
     const n = Math.max(0, Number(blankCount) || 0);
     const arr = Array.isArray(value)
@@ -95,7 +94,7 @@ const Practice = () => {
   };
 
   const isFillAnswerCorrect = (question, userValue) => {
-    const blankCount = getBlankCount(question?.content);
+    const blankCount = countFillBlanks(question?.content);
     const correctArr = normalizeFillAnswer(question?.answer, blankCount).map((a) => a.trim());
     const userArr = normalizeFillAnswer(userValue, blankCount).map((a) => a.trim());
     if (blankCount <= 0) return false;
@@ -324,7 +323,7 @@ const Practice = () => {
 
   // 练习中页面
   if (practicing && currentQuestion) {
-    const blankCount = currentQuestion.type === 'fill' ? getBlankCount(currentQuestion.content) : 0;
+    const blankCount = currentQuestion.type === 'fill' ? countFillBlanks(currentQuestion.content) : 0;
     const fillValues = currentQuestion.type === 'fill'
       ? normalizeFillAnswer(userAnswers[currentQuestion.id], blankCount)
       : [];
