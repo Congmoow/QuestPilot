@@ -7,6 +7,9 @@ const https = require('https')
 const http = require('http')
 const { URL } = require('url')
 
+const MAX_OUTPUT_TOKENS = 8192
+const JSON_ERROR_PREVIEW_LENGTH = 500
+
 // 提供商配置
 const PROVIDER_CONFIG = {
   anthropic: {
@@ -14,7 +17,7 @@ const PROVIDER_CONFIG = {
     authHeader: 'x-api-key',
     formatRequest: (model, messages, options = {}) => ({
       model,
-      max_tokens: options.max_tokens || 4096,
+      max_tokens: options.max_tokens || MAX_OUTPUT_TOKENS,
       messages: messages.filter(m => m.role !== 'system').map(m => ({
         role: m.role === 'assistant' ? 'assistant' : 'user',
         content: m.content
@@ -40,7 +43,7 @@ const PROVIDER_CONFIG = {
         parts: [{ text: messages.find(m => m.role === 'system').content }]
       } : undefined,
       generationConfig: {
-        maxOutputTokens: options.max_tokens || 4096,
+        maxOutputTokens: options.max_tokens || MAX_OUTPUT_TOKENS,
         temperature: options.temperature || 0.7
       }
     }),
@@ -61,7 +64,9 @@ const PROVIDER_CONFIG = {
  * @param {string} content - 用户输入的题目文本
  * @returns {Promise<object>} 解析结果
  */
-async function parseQuestionsWithAI(apiKey, baseUrl, model, content) {
+async function parseQuestionsWithAI(apiKey, baseUrl, model, content, options = {}) {
+  const maxOutputTokens = options.maxOutputTokens || MAX_OUTPUT_TOKENS
+  const chunkHint = options.chunkHint ? `\n\n当前输入分块：${options.chunkHint}。请只解析本块中的题目，不要编造其他分块内容。` : ''
   const systemPrompt = `你是一个专业的题目解析助手。用户会给你一段包含多道题目的文本，你需要将其解析为结构化的JSON格式。
 
 请严格按照以下JSON格式输出，不要输出任何其他内容：
@@ -92,7 +97,14 @@ async function parseQuestionsWithAI(apiKey, baseUrl, model, content) {
 2. 选择题必须有 options 数组
 3. 判断题、填空题、简答题不需要 options
 4. 不要静默跳过题目；不确定题型时优先保留题干并按 short 输出，answer 可为空字符串
-5. 只输出JSON，不要有任何解释文字`
+5. 忽略所有 Markdown 排版字符：#、>、*、_、\`、---、|（表格分隔符）等在解析时仅作为结构提示，最终输出的 content/options/answer 字段必须是纯文本，不保留 markdown 标记
+6. 题号识别支持：1.、1、、(1)、【1】、第1题、Q1、## 1 等格式
+7. 答案识别支持：答案：、Answer:、参考答案：、正确答案：、> 答案 等格式
+8. 解析识别支持：解析：、分析：、Explanation:、> 解析 等格式
+9. 围栏代码块如果出现在题干里，输出 content 时保留为纯文本，去掉 \`\`\` 并保持换行；如果出现在选项里，作为选项文本的一部分
+10. 表格当作选项时，表头行可以忽略，每行第一列若是 A/B/C/D 则视为选项 id
+11. 不要静默跳过题目；解析不出题型时按 short 输出，answer 留空字符串
+12. 只输出JSON，不要有任何解释文字`
 
   const requestBody = {
     model: model || 'minimax-m2',
@@ -103,14 +115,17 @@ async function parseQuestionsWithAI(apiKey, baseUrl, model, content) {
       },
       {
         role: 'user',
-        content: `请解析以下题目：\n\n${content}`
+        content: `请解析以下题目：${chunkHint}\n\n${content}`
       }
     ],
     temperature: 0.1,
-    max_tokens: 4096
+    max_tokens: maxOutputTokens
   }
 
-  return makeApiRequest(apiKey, baseUrl, requestBody)
+  return makeApiRequest(apiKey, baseUrl, requestBody, null, {
+    expectJson: true,
+    transport: options.transport
+  })
 }
 
 /**
@@ -132,7 +147,7 @@ async function testConnection(apiKey, baseUrl, model) {
     max_tokens: 10
   }
 
-  return makeApiRequest(apiKey, baseUrl, requestBody)
+  return makeApiRequest(apiKey, baseUrl, requestBody, null, { expectJson: false })
 }
 
 /**
@@ -152,7 +167,10 @@ function detectProvider(baseUrl) {
  * @param {string} providerHint - 提供商提示
  * @returns {Promise<object>} 响应结果
  */
-function makeApiRequest(apiKey, baseUrl, requestBody, providerHint = null) {
+function makeApiRequest(apiKey, baseUrl, requestBody, providerHint = null, options = {}) {
+  const expectJson = options.expectJson !== false
+  const transport = options.transport
+
   return new Promise((resolve, reject) => {
     const provider = providerHint || detectProvider(baseUrl)
     const config = PROVIDER_CONFIG[provider]
@@ -191,26 +209,25 @@ function makeApiRequest(apiKey, baseUrl, requestBody, providerHint = null) {
       return
     }
 
+    if (typeof transport === 'function') {
+      Promise.resolve()
+        .then(() => transport(finalBody, { provider, url: url.toString(), headers: buildHeaders(authHeader, authValue, provider, finalBody) }))
+        .then(response => {
+          try {
+            resolve(parseApiResponse(response, config, { expectJson }))
+          } catch (error) {
+            reject(error)
+          }
+        })
+        .catch(reject)
+      return
+    }
+
     const postData = JSON.stringify(finalBody)
     
-    const headers = {
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(postData)
-    }
+    const headers = buildHeaders(authHeader, authValue, provider, finalBody, postData)
     
-    // 设置认证头
-    if (authHeader === 'Authorization') {
-      headers['Authorization'] = authValue
-    } else {
-      headers[authHeader] = authValue
-    }
-    
-    // Claude 需要额外的版本头
-    if (provider === 'anthropic') {
-      headers['anthropic-version'] = '2023-06-01'
-    }
-    
-    const options = {
+    const requestOptions = {
       hostname: url.hostname,
       port: url.port || (url.protocol === 'https:' ? 443 : 80),
       path: url.pathname + url.search,
@@ -220,7 +237,7 @@ function makeApiRequest(apiKey, baseUrl, requestBody, providerHint = null) {
 
     const protocol = url.protocol === 'https:' ? https : http
 
-    const req = protocol.request(options, (res) => {
+    const req = protocol.request(requestOptions, (res) => {
       let data = ''
       
       res.on('data', (chunk) => {
@@ -228,46 +245,18 @@ function makeApiRequest(apiKey, baseUrl, requestBody, providerHint = null) {
       })
       
       res.on('end', () => {
+        let response
         try {
-          const response = JSON.parse(data)
-          
-          // 检查错误响应
-          if (response.error) {
-            reject(new Error(response.error.message || 'API 调用失败'))
-            return
-          }
-          
-          let content
-          
-          if (config && config.parseResponse) {
-            // 使用特定提供商的解析器
-            content = config.parseResponse(response)
-          } else if (response.choices && response.choices[0] && response.choices[0].message) {
-            // OpenAI 兼容格式
-            content = response.choices[0].message.content
-          } else {
-            reject(new Error('API 返回格式异常'))
-            return
-          }
-          
-          // 尝试从返回内容中提取 JSON
-          let jsonContent = content
-          
-          // 如果内容被 markdown 代码块包裹，提取其中的 JSON
-          const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/)
-          if (jsonMatch) {
-            jsonContent = jsonMatch[1].trim()
-          }
-          
-          try {
-            const parsed = JSON.parse(jsonContent)
-            resolve(parsed)
-          } catch (parseError) {
-            // 如果不是 JSON，可能是测试连接或聊天，直接返回成功
-            resolve({ success: true, message: content })
-          }
+          response = JSON.parse(data)
         } catch (error) {
           reject(new Error(`解析响应失败: ${error.message}, 原始响应: ${data.substring(0, 200)}`))
+          return
+        }
+
+        try {
+          resolve(parseApiResponse(response, config, { expectJson }))
+        } catch (error) {
+          reject(error)
         }
       })
     })
@@ -279,6 +268,157 @@ function makeApiRequest(apiKey, baseUrl, requestBody, providerHint = null) {
     req.write(postData)
     req.end()
   })
+}
+
+function buildHeaders(authHeader, authValue, provider, finalBody, postData = null) {
+  const bodyText = postData || JSON.stringify(finalBody)
+  const headers = {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(bodyText)
+  }
+
+  if (authHeader === 'Authorization') {
+    headers.Authorization = authValue
+  } else {
+    headers[authHeader] = authValue
+  }
+
+  if (provider === 'anthropic') {
+    headers['anthropic-version'] = '2023-06-01'
+  }
+
+  return headers
+}
+
+function parseApiResponse(response, config, options = {}) {
+  if (typeof response === 'string') {
+    if (options.expectJson === false) {
+      return { success: true, message: response, content: response }
+    }
+    return parseJsonFromAiContent(response)
+  }
+
+  if (response.error) {
+    throw new Error(response.error.message || 'API 调用失败')
+  }
+
+  const content = extractResponseContent(response, config)
+
+  if (options.expectJson === false) {
+    return { success: true, message: content, content }
+  }
+
+  return parseJsonFromAiContent(content)
+}
+
+function extractResponseContent(response, config) {
+  if (config && config.parseResponse) {
+    return config.parseResponse(response)
+  }
+
+  if (response.choices && response.choices[0] && response.choices[0].message) {
+    return response.choices[0].message.content
+  }
+
+  throw new Error('API 返回格式异常')
+}
+
+function parseJsonFromAiContent(content) {
+  const rawContent = String(content || '')
+  const candidates = extractJsonCandidates(rawContent)
+  let lastError = null
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate)
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  if (isLikelyTruncatedJson(rawContent) || candidates.some(isLikelyTruncatedJson)) {
+    throw new Error(`AI 输出疑似被截断，请减少单次粘贴内容或提高 max_tokens。原始返回内容：${previewContent(rawContent)}`)
+  }
+
+  if (lastError) {
+    throw new Error(`AI 返回非合法 JSON: ${lastError.message}。原始返回内容：${previewContent(rawContent)}`)
+  }
+
+  throw new Error(`AI 返回非合法 JSON，未找到可解析的 JSON 内容。原始返回内容：${previewContent(rawContent)}`)
+}
+
+function extractJsonCandidates(content) {
+  const candidates = []
+  const fenced = extractJsonFence(content)
+  if (fenced) candidates.push(fenced)
+
+  const firstBrace = content.indexOf('{')
+  const lastBrace = content.lastIndexOf('}')
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    const braced = content.slice(firstBrace, lastBrace + 1).trim()
+    if (braced && !candidates.includes(braced)) {
+      candidates.push(braced)
+    }
+  }
+
+  const trimmed = content.trim()
+  if (trimmed && !candidates.includes(trimmed)) {
+    candidates.push(trimmed)
+  }
+
+  return candidates
+}
+
+function extractJsonFence(content) {
+  const fenceStart = /```json[^\n\r]*(?:\r?\n)?/i.exec(content)
+  if (!fenceStart) return ''
+
+  const bodyStart = fenceStart.index + fenceStart[0].length
+  const body = content.slice(bodyStart)
+  const closingFence = /^```\s*$/gm
+  const positions = []
+  let match
+
+  while ((match = closingFence.exec(body)) !== null) {
+    positions.push(match.index)
+  }
+
+  if (positions.length === 0) return ''
+  return body.slice(0, positions[positions.length - 1]).trim()
+}
+
+function isLikelyTruncatedJson(content) {
+  const value = String(content || '').trim()
+  if (!value) return false
+  if (value.endsWith(',')) return true
+  return hasUnclosedJsonString(value)
+}
+
+function hasUnclosedJsonString(value) {
+  let inString = false
+  let escaped = false
+
+  for (const char of value) {
+    if (escaped) {
+      escaped = false
+      continue
+    }
+
+    if (char === '\\') {
+      escaped = true
+      continue
+    }
+
+    if (char === '"') {
+      inString = !inString
+    }
+  }
+
+  return inString
+}
+
+function previewContent(content) {
+  return String(content || '').trim().slice(0, JSON_ERROR_PREVIEW_LENGTH)
 }
 
 /**
@@ -321,10 +461,13 @@ async function chatWithAI(apiKey, baseUrl, model, messages, customPrompt = null)
     max_tokens: 2048
   }
 
-  return makeApiRequest(apiKey, baseUrl, requestBody)
+  return makeApiRequest(apiKey, baseUrl, requestBody, null, { expectJson: false })
 }
 
 module.exports = {
+  MAX_OUTPUT_TOKENS,
+  makeApiRequest,
+  parseJsonFromAiContent,
   parseQuestionsWithAI,
   testConnection,
   chatWithAI

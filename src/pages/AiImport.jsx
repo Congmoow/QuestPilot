@@ -82,6 +82,11 @@ const normalizeChoiceAnswer = (answer, multiple = false) => {
   return uniqueLetters[0] || raw;
 };
 
+const getChunkIndex = (item, fallbackIndex) => {
+  const parsed = Number(item?.chunkIndex);
+  return Number.isFinite(parsed) ? parsed : fallbackIndex;
+};
+
 const AiImport = () => {
   const { banks, fetchBanks } = useQuestionBanks();
   const [selectedBankId, setSelectedBankId] = useState(null);
@@ -95,6 +100,8 @@ const AiImport = () => {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [hasApiKey, setHasApiKey] = useState(false);
+  const [parseWarnings, setParseWarnings] = useState(null);
+  const [showParseWarnings, setShowParseWarnings] = useState(false);
 
   // 检查是否配置了 API Key
   useEffect(() => {
@@ -125,13 +132,30 @@ const AiImport = () => {
     setError(null);
     setParsedQuestions([]);
     setImportResult(null);
+    setParseWarnings(null);
+    setShowParseWarnings(false);
 
     try {
       const result = await api.ai.parseQuestions(inputText);
+      const chunkErrors = Array.isArray(result.chunkErrors) ? result.chunkErrors : [];
       if (result.questions && result.questions.length > 0) {
         setParsedQuestions(result.questions);
+        if (chunkErrors.length > 0) {
+          setParseWarnings({
+            questionCount: result.questions.length,
+            chunkErrors,
+            chunks: result.chunks
+          });
+        }
       } else {
-        setError('未能识别出有效的题目，请检查输入内容格式');
+        if (chunkErrors.length > 0) {
+          const messages = chunkErrors
+            .map(item => `第 ${Number(item.chunkIndex) + 1} 个片段：${item.message || '解析失败'}`)
+            .join('\n');
+          setError(`未能识别出有效的题目。\n${messages}`);
+        } else {
+          setError('未能识别出有效的题目，请检查输入内容格式');
+        }
       }
     } catch (error) {
       setError(error.message || 'AI 解析失败，请稍后重试');
@@ -211,6 +235,8 @@ const AiImport = () => {
     setParsedQuestions([]);
     setError(null);
     setImportResult(null);
+    setParseWarnings(null);
+    setShowParseWarnings(false);
   };
 
   // JSON 解析
@@ -223,6 +249,8 @@ const AiImport = () => {
     setError(null);
     setParsedQuestions([]);
     setImportResult(null);
+    setParseWarnings(null);
+    setShowParseWarnings(false);
 
     try {
       let data = JSON.parse(jsonInput.trim());
@@ -347,6 +375,8 @@ const AiImport = () => {
     setError(null);
     setImportResult(null);
     setParsedQuestions([]);
+    setParseWarnings(null);
+    setShowParseWarnings(false);
   };
 
   // 未配置 API Key 时，自动切换到 JSON 模式
@@ -496,9 +526,9 @@ D. Function
 
           {/* 错误提示 */}
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400">
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400">
               <XCircle size={18} />
-              <span className="text-sm">{error}</span>
+              <span className="whitespace-pre-line text-sm">{error}</span>
             </div>
           )}
         </div>
@@ -525,6 +555,41 @@ D. Function
               </div>
             )}
           </div>
+
+          {parseWarnings && (
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
+              <button
+                type="button"
+                onClick={() => setShowParseWarnings(prev => !prev)}
+                className="flex w-full items-center justify-between gap-3 text-left"
+              >
+                <span className="text-sm font-medium">
+                  已解析 {parseWarnings.questionCount} 道题目，有 {parseWarnings.chunkErrors.length} 个片段未能识别
+                </span>
+                <span className="text-xs">
+                  {showParseWarnings ? '收起' : '展开'}
+                </span>
+              </button>
+              {showParseWarnings && (
+                <div className="mt-3 space-y-2">
+                  {parseWarnings.chunkErrors.map((item, index) => {
+                    const chunkIndex = getChunkIndex(item, index);
+                    return (
+                    <div
+                      key={`${chunkIndex}-${index}`}
+                      className="rounded-md bg-white/70 px-3 py-2 text-sm dark:bg-gray-900/30"
+                    >
+                      <span className="font-medium">
+                        第 {chunkIndex + 1} 个片段：
+                      </span>
+                      {item.message || '解析失败'}
+                    </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="h-80 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
             {parsedQuestions.length === 0 ? (

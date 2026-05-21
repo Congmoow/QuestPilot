@@ -6,6 +6,7 @@ const validation = require('./validation/index.cjs')
 const csv = require('./csv/index.cjs')
 const ai = require('./ai/index.cjs')
 const { normalizeAiParseResult } = require('./ai-normalize.cjs')
+const { splitMarkdownIntoChunks } = require('./ai-import-chunker.cjs')
 const { resolveWindowEntry } = require('./window-entry.cjs')
 
 let mainWindow = null
@@ -705,8 +706,37 @@ ipcMain.handle('ai:parseQuestions', async (event, content) => {
       throw new Error('请输入要解析的题目内容')
     }
     
-    const result = await ai.parseQuestionsWithAI(apiKey, apiUrl, modelId, content)
-    const normalized = normalizeAiParseResult(result)
+    const chunks = splitMarkdownIntoChunks(content)
+    const questions = []
+    const chunkErrors = []
+    let successChunks = 0
+
+    for (let i = 0; i < chunks.length; i++) {
+      try {
+        const result = await ai.parseQuestionsWithAI(apiKey, apiUrl, modelId, chunks[i], {
+          chunkHint: `第 ${i + 1}/${chunks.length} 块`
+        })
+
+        if (Array.isArray(result?.questions)) {
+          questions.push(...result.questions)
+        }
+        successChunks++
+      } catch (error) {
+        chunkErrors.push({
+          chunkIndex: i,
+          message: error.message || '片段解析失败'
+        })
+      }
+    }
+
+    const normalized = normalizeAiParseResult({
+      questions,
+      chunkErrors,
+      chunks: {
+        total: chunks.length,
+        success: successChunks
+      }
+    })
     database.addOperationLog('AI解析', `AI 解析了 ${normalized.questions?.length || 0} 道题目`)
     return normalized
   } catch (error) {
