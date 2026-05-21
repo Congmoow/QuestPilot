@@ -26,6 +26,8 @@ function createWindow() {
     show: false,
     frame: false, // 无边框窗口，使用自定义标题栏
     titleBarStyle: 'hidden',
+    transparent: true,
+    backgroundColor: '#00000000',
     icon: path.join(__dirname, '../public/icon.png'),
     autoHideMenuBar: true,
   })

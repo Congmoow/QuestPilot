@@ -45,7 +45,7 @@ const TitleBar = () => {
   };
 
   return (
-    <div className="h-10 bg-white dark:bg-[#1F1F1F] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between select-none app-drag">
+    <div className="h-10 bg-white dark:bg-[#1F1F1F] rounded-tl-xl overflow-hidden flex items-center justify-between select-none app-drag">
       {/* 左侧图标和标题 */}
       <div className="flex items-center gap-3 px-4">
         <img src={iconPath} alt="logo" className="w-8 h-8" />

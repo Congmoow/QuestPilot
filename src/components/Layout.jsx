@@ -1,22 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  List,
-  Settings,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   Sun,
   Moon,
   Monitor,
-  Play,
-  MessageCircle,
-  BookOpen,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
 import { getTheme, setTheme as setThemeApi } from '../api';
+import {
+  SidebarAiChatIcon,
+  SidebarAiImportIcon,
+  SidebarDashboardIcon,
+  SidebarPracticeIcon,
+  SidebarQuestionBankIcon,
+  SidebarSettingsIcon,
+  SidebarWrongBookIcon,
+} from './SidebarIcons';
 
 export const ThemeContext = React.createContext({
   theme: 'system',
@@ -113,13 +115,13 @@ const Layout = () => {
   const [showThemeMenu, setShowThemeMenu] = useState(false);
 
   const navItems = [
-    { path: '/dashboard', label: '首页', icon: LayoutDashboard },
-    { path: '/question-preview', label: '题库预览', icon: List },
-    { path: '/practice', label: '随机练题', icon: Play },
-    { path: '/wrong-book', label: '错题本', icon: BookOpen },
-    { path: '/ai-import', label: 'AI智能录入', icon: Sparkles },
-    { path: '/ai-chat', label: 'AI问答', icon: MessageCircle },
-    { path: '/settings', label: '系统设置', icon: Settings },
+    { path: '/dashboard', label: '首页', icon: SidebarDashboardIcon },
+    { path: '/question-preview', label: '题库预览', icon: SidebarQuestionBankIcon },
+    { path: '/practice', label: '随机练题', icon: SidebarPracticeIcon },
+    { path: '/wrong-book', label: '错题本', icon: SidebarWrongBookIcon },
+    { path: '/ai-import', label: 'AI智能录入', icon: SidebarAiImportIcon },
+    { path: '/ai-chat', label: 'AI问答', icon: SidebarAiChatIcon },
+    { path: '/settings', label: '系统设置', icon: SidebarSettingsIcon },
   ];
 
   const themeOptions = [
@@ -132,12 +134,12 @@ const Layout = () => {
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
-      <div className="flex h-full bg-gray-50 dark:bg-gray-900 overflow-hidden">
+      <div className="flex h-full bg-slate-50 dark:bg-gray-900 overflow-hidden">
       {/* Sidebar */}
       <motion.aside 
         initial={false}
         animate={{ width: isSidebarOpen ? 240 : 64 }}
-        className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col z-20 shadow-sm relative transition-all duration-300"
+        className="bg-white dark:bg-gray-800 rounded-tr-2xl rounded-bl-xl overflow-hidden flex flex-col z-20 shadow-sm relative transition-all duration-300"
       >
         <nav className="flex-1 py-4 px-2 space-y-1">
           {navItems.map((item) => (
@@ -230,7 +232,7 @@ const Layout = () => {
       </motion.aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50 dark:bg-gray-900">
 
 
         {/* Page Content */}
