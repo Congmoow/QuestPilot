@@ -5,6 +5,10 @@ node_modules/
 dist/
 release/
 
+# Local Dev
+.codex/
+.playwright-mcp/
+
 # Kiro IDE
 .kiro/
 

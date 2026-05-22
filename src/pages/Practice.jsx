@@ -7,9 +7,9 @@ import {
   ChevronRight, 
   RotateCcw,
   Trophy,
-  Target,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  LibraryBig
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuestionBanks } from '../contexts/QuestionBankContext';
@@ -582,25 +582,34 @@ const Practice = () => {
           {banks.map((bank) => (
             <motion.button
               key={bank.id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ y: -8, scale: 1.015 }}
+              whileTap={{ scale: 0.99 }}
+              transition={{
+                y: { type: 'spring', stiffness: 260, damping: 24 },
+                scale: { type: 'spring', stiffness: 260, damping: 24 },
+              }}
               onClick={() => setSelectedBankId(bank.id)}
-              className={`text-left p-6 rounded-2xl border-2 transition-all ${
+              className={`group relative overflow-hidden text-left p-6 rounded-2xl transition-colors duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                 selectedBankId === bank.id
-                  ? 'border-primary bg-primary/5 dark:bg-primary/10'
-                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary/50'
+                  ? 'border border-white bg-white shadow-[0_28px_70px_-34px_rgba(56,105,150,0.62)] ring-1 ring-sky-200/70 dark:border-white/20 dark:bg-gray-800 dark:ring-sky-200/20'
+                  : 'border border-white/80 bg-white shadow-[0_18px_45px_-32px_rgba(56,105,150,0.48)] hover:border-white hover:shadow-[0_28px_70px_-34px_rgba(56,105,150,0.58)] dark:border-white/10 dark:bg-gray-800 dark:hover:border-white/20'
               }`}
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Target className="w-6 h-6 text-primary" />
+              <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent dark:via-white/20" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.92),transparent_34%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100 dark:bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.08),transparent_34%)]" />
+
+              <div className="relative flex items-start justify-between mb-3">
+                <div className="w-12 h-12 rounded-2xl border border-sky-100 bg-[#eef7ff] text-[#2f6faa] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_14px_30px_-22px_rgba(56,105,150,0.62)] flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-0.5 group-hover:border-sky-200 group-hover:bg-[#e2f1ff] group-hover:text-[#165dff] group-hover:shadow-[0_18px_38px_-24px_rgba(56,105,150,0.72)] dark:border-sky-200/10 dark:bg-sky-200/10 dark:text-sky-100 dark:group-hover:bg-sky-100 dark:group-hover:text-primary">
+                  <LibraryBig className="w-6 h-6" strokeWidth={1.8} />
                 </div>
                 {selectedBankId === bank.id && (
-                  <CheckCircle className="text-primary" size={24} />
+                  <span className="rounded-full bg-[#eef7ff] p-1 text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] dark:bg-sky-100">
+                    <CheckCircle size={18} />
+                  </span>
                 )}
               </div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{bank.name}</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <h3 className="relative font-semibold text-gray-900 dark:text-white mb-1">{bank.name}</h3>
+              <p className="relative text-sm text-gray-500 dark:text-gray-400">
                 {bank.questionCount || 0} 道题目
               </p>
             </motion.button>

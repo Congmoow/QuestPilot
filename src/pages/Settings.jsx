@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Key, TestTube, Loader2, CheckCircle, XCircle, Eye, EyeOff, Globe, Cpu, MessageSquare, Plus, Pencil, Trash2, ChevronDown, BookOpen } from 'lucide-react';
 import api from '../api';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 // 预设的 AI 提供商配置
 const AI_PROVIDERS = [
@@ -43,6 +44,9 @@ const Settings = () => {
   const [promptContent, setPromptContent] = useState('');
   const [showPromptForm, setShowPromptForm] = useState(false);
   const [savingPrompt, setSavingPrompt] = useState(false);
+  const [deletePromptDialogOpen, setDeletePromptDialogOpen] = useState(false);
+  const [deletingPrompt, setDeletingPrompt] = useState(null);
+  const [deletingPromptLoading, setDeletingPromptLoading] = useState(false);
 
   // 加载 API 配置
   useEffect(() => {
@@ -152,14 +156,31 @@ const Settings = () => {
     setShowPromptForm(true);
   };
 
-  const handleDeletePrompt = async (id) => {
-    if (!confirm('确定要删除这个 Prompt 吗？')) return;
-    
+  const handleOpenDeletePromptDialog = (prompt) => {
+    setDeletingPrompt(prompt);
+    setDeletePromptDialogOpen(true);
+  };
+
+  const handleCloseDeletePromptDialog = () => {
+    setDeletePromptDialogOpen(false);
+    setDeletingPrompt(null);
+  };
+
+  const handleDeletePrompt = async () => {
+    if (!deletingPrompt) return;
+
+    setDeletingPromptLoading(true);
     try {
-      await window.electronAPI.prompt.delete(id);
+      await window.electronAPI.prompt.delete(deletingPrompt.id);
       await loadPrompts();
+      if (editingPrompt?.id === deletingPrompt.id) {
+        resetPromptForm();
+      }
     } catch (error) {
       alert(error.message || '删除失败');
+      throw error;
+    } finally {
+      setDeletingPromptLoading(false);
     }
   };
 
@@ -508,7 +529,7 @@ const Settings = () => {
                   </button>
                   {!prompt.isDefault && (
                     <button
-                      onClick={() => handleDeletePrompt(prompt.id)}
+                      onClick={() => handleOpenDeletePromptDialog(prompt)}
                       className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                       title="删除"
                     >
@@ -521,6 +542,17 @@ const Settings = () => {
           ))}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deletePromptDialogOpen}
+        onClose={handleCloseDeletePromptDialog}
+        onConfirm={handleDeletePrompt}
+        title="删除 Prompt"
+        message={`确定要删除 Prompt「${deletingPrompt?.name || ''}」吗？删除后将无法恢复。`}
+        confirmText="删除"
+        type="danger"
+        loading={deletingPromptLoading}
+      />
 
       <p className="text-xs text-gray-400 dark:text-gray-500">
         说明：API Key 将安全存储在本地数据库中，不会上传到任何服务器。

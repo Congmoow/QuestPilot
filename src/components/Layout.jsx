@@ -134,7 +134,7 @@ const Layout = () => {
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
-      <div className="flex h-full bg-slate-50 dark:bg-gray-900 overflow-hidden">
+      <div className="flex h-full bg-[#e9eef4] dark:bg-gray-900 overflow-hidden">
       {/* Sidebar */}
       <motion.aside 
         initial={false}
@@ -232,12 +232,12 @@ const Layout = () => {
       </motion.aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50 dark:bg-gray-900">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#e9eef4] dark:bg-gray-900">
 
 
         {/* Page Content */}
-        <main className="flex-1 flex flex-col overflow-hidden p-6 bg-slate-50 dark:bg-gray-900">
-          <div className="flex-1 overflow-auto">
+        <main className="flex-1 flex flex-col overflow-hidden bg-[#e9eef4] dark:bg-gray-900">
+          <div className="flex-1 min-h-0 overflow-auto p-6 [scrollbar-gutter:stable]">
             <Outlet />
           </div>
         </main>

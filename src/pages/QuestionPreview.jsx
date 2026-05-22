@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   BookOpen,
   FolderOpen,
+  LibraryBig,
   Search,
   X
 } from 'lucide-react';
@@ -25,21 +26,6 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import QuestionEditDialog from '../components/QuestionEditDialog';
 import { exportQuestionBank } from '../api';
 import CodeAwareText from '../components/CodeAwareText';
-
-// 题库卡片颜色列表
-const BANK_COLORS = [
-  'from-blue-500 to-blue-600',
-  'from-green-500 to-green-600',
-  'from-orange-500 to-orange-600',
-  'from-purple-500 to-purple-600',
-  'from-red-500 to-red-600',
-  'from-cyan-500 to-cyan-600',
-  'from-pink-500 to-pink-600',
-  'from-indigo-500 to-indigo-600',
-];
-
-// 根据ID获取颜色
-const getBankColor = (id) => BANK_COLORS[id % BANK_COLORS.length];
 
 const QuestionPreview = () => {
   const { banks, loading: banksLoading, error: banksError, addBank, editBank, removeBank, fetchBanks } = useQuestionBanks();
@@ -358,21 +344,27 @@ const QuestionPreview = () => {
                 key={bank.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
+                whileHover={{ y: -8, scale: 1.015 }}
+                whileTap={{ scale: 0.99 }}
+                transition={{
+                  opacity: { duration: 0.36, delay: index * 0.05 },
+                  y: { type: 'spring', stiffness: 260, damping: 24 },
+                  scale: { type: 'spring', stiffness: 260, damping: 24 },
+                }}
                 onClick={() => handleEnterBank(bank)}
-                className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-lg hover:border-primary/30 transition-all duration-300 cursor-pointer overflow-hidden"
+                className="group relative cursor-pointer overflow-hidden rounded-2xl border border-white/80 bg-white shadow-[0_18px_45px_-32px_rgba(56,105,150,0.48)] transition-colors duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-white hover:shadow-[0_28px_70px_-34px_rgba(56,105,150,0.58)] dark:border-white/10 dark:bg-gray-800 dark:hover:border-white/20"
               >
-                {/* 顶部渐变条 */}
-                <div className={`h-2 bg-gradient-to-r ${getBankColor(bank.id)}`}></div>
-                
-                <div className="p-6">
+                <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent dark:via-white/20" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.92),transparent_34%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100 dark:bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.08),transparent_34%)]" />
+
+                <div className="relative p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${getBankColor(bank.id)} flex items-center justify-center text-white shadow-lg`}>
-                        <BookOpen size={24} />
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-sky-100 bg-[#eef7ff] text-[#2f6faa] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_14px_30px_-22px_rgba(56,105,150,0.62)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-0.5 group-hover:border-sky-200 group-hover:bg-[#e2f1ff] group-hover:text-[#165dff] group-hover:shadow-[0_18px_38px_-24px_rgba(56,105,150,0.72)] dark:border-sky-200/10 dark:bg-sky-200/10 dark:text-sky-100 dark:group-hover:bg-sky-100 dark:group-hover:text-primary">
+                        <LibraryBig size={23} strokeWidth={1.8} />
                       </div>
                       <div>
-                        <h3 className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-primary transition-colors">
+                        <h3 className="font-bold text-gray-900 transition-colors duration-300 dark:text-gray-100">
                           {bank.name}
                         </h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
