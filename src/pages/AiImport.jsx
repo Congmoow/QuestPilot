@@ -1,42 +1,88 @@
-import { useState, useEffect } from 'react';
-import { 
-  Sparkles, 
-  Loader2, 
-  CheckCircle, 
-  XCircle, 
-  Trash2,
-  Save,
-  FileText,
+import { useEffect, useState } from 'react';
+import {
+  CheckCircle,
   Code,
-  Wand2
+  Loader2,
+  Save,
+  Sparkles,
+  Trash2,
+  Wand2,
+  XCircle,
 } from 'lucide-react';
 import { useQuestionBanks } from '../contexts/QuestionBankContext';
 import api from '../api';
 import { countFillBlanks } from '../lib/fillBlank';
+import {
+  ActionButton,
+  AlertBanner,
+  JsonEditorPanel,
+  PageHeader,
+  ParsedQuestionItem,
+  ParseEmptyState,
+  SelectInput,
+  SegmentedTabs,
+  SurfaceCard,
+} from '../components/ui';
 
-// 模式切换标签
 const MODE_TABS = [
   { id: 'ai', label: 'AI 智能解析', icon: Wand2 },
-  { id: 'json', label: 'JSON 批量导入', icon: Code }
+  { id: 'json', label: 'JSON 批量导入', icon: Code },
 ];
 
-// 题型标签
 const TYPE_LABELS = {
   single: '单选题',
   multiple: '多选题',
   boolean: '判断题',
   fill: '填空题',
-  short: '简答题'
+  short: '简答题',
 };
 
-// 题型颜色
-const TYPE_COLORS = {
-  single: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  multiple: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  boolean: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  fill: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-  short: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400'
-};
+const AI_PLACEHOLDER = `请粘贴题目内容，例如：
+
+1. 以下哪个是JavaScript的基本数据类型？
+A. String
+B. Array
+C. Object
+D. Function
+答案：A
+解析：String是JavaScript的基本数据类型
+
+2. React是一个前端框架。（判断题）
+答案：正确
+
+3. HTML的全称是___。
+答案：HyperText Markup Language`;
+
+const JSON_PLACEHOLDER = `[
+  {
+    "题型": "单选题",
+    "题目": "以下哪个是基本数据类型？",
+    "选项": ["A. String", "B. Array", "C. Object"],
+    "答案": "A",
+    "解析": "String 是基本数据类型"
+  },
+  {
+    "题型": "多选题",
+    "题目": "请选择正确选项",
+    "选项": ["A. xxx", "B. xxx", "C. xxx"],
+    "答案": "A|B"
+  },
+  {
+    "题型": "判断题",
+    "题目": "React 是前端框架。",
+    "答案": "正确"
+  },
+  {
+    "题型": "填空题",
+    "题目": "___ 是中国首都",
+    "答案": "北京"
+  },
+  {
+    "题型": "简答题",
+    "题目": "请简述 MVC。",
+    "答案": "..."
+  }
+]`;
 
 const normalizeBooleanAnswer = (answer) => {
   if (answer === true) return '正确';
@@ -90,8 +136,8 @@ const getChunkIndex = (item, fallbackIndex) => {
 const AiImport = () => {
   const { banks, fetchBanks } = useQuestionBanks();
   const [selectedBankId, setSelectedBankId] = useState(null);
-  
-  const [mode, setMode] = useState('ai'); // 'ai' | 'json'
+
+  const [mode, setMode] = useState('ai');
   const [inputText, setInputText] = useState('');
   const [jsonInput, setJsonInput] = useState('');
   const [parsing, setParsing] = useState(false);
@@ -103,7 +149,6 @@ const AiImport = () => {
   const [parseWarnings, setParseWarnings] = useState(null);
   const [showParseWarnings, setShowParseWarnings] = useState(false);
 
-  // 检查是否配置了 API Key
   useEffect(() => {
     const checkApiConfig = async () => {
       try {
@@ -116,12 +161,10 @@ const AiImport = () => {
     checkApiConfig();
   }, []);
 
-  // 加载题库列表
   useEffect(() => {
     fetchBanks();
   }, [fetchBanks]);
 
-  // AI 解析题目
   const handleParse = async () => {
     if (!inputText.trim()) {
       setError('请输入要解析的题目内容');
@@ -144,7 +187,7 @@ const AiImport = () => {
           setParseWarnings({
             questionCount: result.questions.length,
             chunkErrors,
-            chunks: result.chunks
+            chunks: result.chunks,
           });
         }
       } else {
@@ -164,12 +207,10 @@ const AiImport = () => {
     }
   };
 
-  // 删除单个解析结果
   const handleRemoveQuestion = (index) => {
     setParsedQuestions(prev => prev.filter((_, i) => i !== index));
   };
 
-  // 导入题目到题库
   const handleImport = async () => {
     if (!selectedBankId) {
       setError('请先选择目标题库');
@@ -194,7 +235,7 @@ const AiImport = () => {
         try {
           await api.question.create({
             bankId: selectedBankId,
-            ...parsedQuestions[i]
+            ...parsedQuestions[i],
           });
           successCount++;
         } catch (err) {
@@ -206,16 +247,14 @@ const AiImport = () => {
       setImportResult({
         success: successCount,
         failed: failCount,
-        errors
+        errors,
       });
 
       if (successCount > 0) {
-        // 清空已成功导入的题目
         if (failCount === 0) {
           setParsedQuestions([]);
           setInputText('');
         } else {
-          // 只保留失败的题目
           const failedIndices = errors.map(e => e.index);
           setParsedQuestions(prev => prev.filter((_, i) => failedIndices.includes(i)));
         }
@@ -228,7 +267,6 @@ const AiImport = () => {
     }
   };
 
-  // 清空所有
   const handleClear = () => {
     setInputText('');
     setJsonInput('');
@@ -239,7 +277,6 @@ const AiImport = () => {
     setShowParseWarnings(false);
   };
 
-  // JSON 解析
   const handleJsonParse = () => {
     if (!jsonInput.trim()) {
       setError('请输入 JSON 格式的题目数据');
@@ -254,29 +291,24 @@ const AiImport = () => {
 
     try {
       let data = JSON.parse(jsonInput.trim());
-      
-      // 支持单个对象或数组
+
       if (!Array.isArray(data)) {
         data = [data];
       }
 
-      // 转换并验证数据格式
       const questions = data.map((item, index) => {
-        // 支持中文字段名映射
         const type = item.type || item.题型 || 'short';
         const content = item.content || item.题目 || item.question || '';
-        // 使用 ?? 运算符处理布尔值 false 的情况
         const answer = item.answer ?? item.答案 ?? '';
         const analysis = item.analysis || item.解析 || '';
         const options = item.options || item.选项 || null;
 
-        // 题型映射
         const typeMap = {
           '单选题': 'single', '单选': 'single', 'single': 'single',
           '多选题': 'multiple', '多选': 'multiple', 'multiple': 'multiple',
           '判断题': 'boolean', '判断': 'boolean', 'boolean': 'boolean',
           '填空题': 'fill', '填空': 'fill', 'fill': 'fill',
-          '简答题': 'short', '简答': 'short', 'short': 'short'
+          '简答题': 'short', '简答': 'short', 'short': 'short',
         };
 
         const normalizedType = typeMap[type] || 'short';
@@ -285,13 +317,11 @@ const AiImport = () => {
           throw new Error(`第 ${index + 1} 道题目缺少题目内容`);
         }
 
-        // 处理选项格式
         let normalizedOptions = null;
         if (options && (normalizedType === 'single' || normalizedType === 'multiple')) {
           if (Array.isArray(options)) {
             normalizedOptions = options.map((opt, i) => {
               if (typeof opt === 'string') {
-                // "A. xxx" 格式或纯文本
                 const match = opt.match(/^([A-Z])[.、．]\s*(.+)$/);
                 if (match) {
                   return { id: match[1], text: match[2] };
@@ -303,10 +333,8 @@ const AiImport = () => {
           }
         }
 
-        // 处理答案格式
         let normalizedAnswer = String(answer ?? '');
-        
-        // 多选题答案处理：支持多种分隔符格式
+
         if (normalizedType === 'multiple') {
           normalizedAnswer = normalizeChoiceAnswer(answer, true);
         }
@@ -314,8 +342,7 @@ const AiImport = () => {
         if (normalizedType === 'single') {
           normalizedAnswer = normalizeChoiceAnswer(answer, false);
         }
-        
-        // 填空题答案处理：支持多种分隔符格式
+
         if (normalizedType === 'fill') {
           const blankCount = countFillBlanks(content);
           if (blankCount === 0) {
@@ -323,24 +350,19 @@ const AiImport = () => {
           }
 
           if (Array.isArray(answer)) {
-            // 数组格式：["答案1", "答案2"] -> "答案1|答案2"
             normalizedAnswer = answer.join('|');
           } else if (typeof answer === 'string') {
-            // 只有多个空栏时才尝试分割答案
-            // 单个空栏时保持原答案不变，避免误分割含逗号的答案
             if (blankCount > 1 && !answer.includes('|')) {
               normalizedAnswer = answer.replace(/[,，、;；]+/g, '|');
             }
           }
 
-          // 验证答案数量与空栏数量是否匹配
           const answerCount = normalizedAnswer.split('|').length;
           if (answerCount !== blankCount) {
             throw new Error(`第 ${index + 1} 道填空题答案数量(${answerCount})与空栏数量(${blankCount})不匹配`);
           }
         }
-        
-        // 判断题答案处理
+
         if (normalizedType === 'boolean') {
           normalizedAnswer = normalizeBooleanAnswer(answer);
         }
@@ -350,7 +372,7 @@ const AiImport = () => {
           content,
           answer: normalizedAnswer,
           analysis,
-          ...(normalizedOptions && { options: normalizedOptions })
+          ...(normalizedOptions && { options: normalizedOptions }),
         };
       });
 
@@ -369,7 +391,6 @@ const AiImport = () => {
     }
   };
 
-  // 切换模式时清空
   const handleModeChange = (newMode) => {
     setMode(newMode);
     setError(null);
@@ -379,296 +400,168 @@ const AiImport = () => {
     setShowParseWarnings(false);
   };
 
-  // 未配置 API Key 时，自动切换到 JSON 模式
   useEffect(() => {
     if (!hasApiKey && mode === 'ai') {
       setMode('json');
     }
   }, [hasApiKey, mode]);
 
+  const currentInput = mode === 'ai' ? inputText : jsonInput;
+  const currentPlaceholder = mode === 'ai' ? AI_PLACEHOLDER : JSON_PLACEHOLDER;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI 智能录入</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">
-          {mode === 'ai' 
-            ? '粘贴题目文本，AI 将自动识别题型并解析为结构化数据'
-            : '粘贴 JSON 格式的题目数据，直接批量导入'}
-        </p>
-      </div>
+      <PageHeader
+        title="AI 智能录入"
+        subtitle="粘贴 JSON 格式的题目数据，直接批量导入"
+      />
 
-      {/* 模式切换标签 */}
-      <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
-        {MODE_TABS.map(tab => {
-          const isDisabled = tab.id === 'ai' && !hasApiKey;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => !isDisabled && handleModeChange(tab.id)}
-              disabled={isDisabled}
-              title={isDisabled ? '请先在设置中配置 API Key' : ''}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                mode === tab.id
-                  ? 'bg-white dark:bg-gray-700 text-primary shadow-sm'
-                  : isDisabled
-                    ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              <tab.icon size={16} />
-              {tab.label}
-              {isDisabled && <span className="text-xs">(需配置API)</span>}
-            </button>
-          );
-        })}
-      </div>
+      <SegmentedTabs
+        tabs={MODE_TABS.map(tab => ({
+          ...tab,
+          disabled: tab.id === 'ai' && !hasApiKey,
+          title: tab.id === 'ai' && !hasApiKey ? '请先在设置中配置 API Key' : '',
+        }))}
+        value={mode}
+        onChange={handleModeChange}
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 左侧：输入区域 */}
+      {!hasApiKey && (
+        <AlertBanner type="warning" title="AI 智能解析暂不可用">
+          请先在系统设置中配置 API Key；当前可使用 JSON 批量导入。
+        </AlertBanner>
+      )}
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {mode === 'ai' ? '输入题目文本' : '输入 JSON 数据'}
-            </label>
-            <span className="text-xs text-gray-400">
-              支持单选、多选、判断、填空、简答题
-            </span>
-          </div>
-          
-          {mode === 'ai' ? (
-            <textarea
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder={`请粘贴题目内容，例如：
+          <JsonEditorPanel
+            title={mode === 'ai' ? '输入题目文本' : '输入 JSON 数据'}
+            supportText="支持单选、多选、判断、填空、简答题"
+            value={currentInput}
+            onChange={(e) => (mode === 'ai' ? setInputText(e.target.value) : setJsonInput(e.target.value))}
+            placeholder={currentPlaceholder}
+          />
 
-1. 以下哪个是JavaScript的基本数据类型？
-A. String
-B. Array
-C. Object
-D. Function
-答案：A
-解析：String是JavaScript的基本数据类型
-
-2. React是一个前端框架。（判断题）
-答案：正确
-
-3. HTML的全称是___。
-答案：HyperText Markup Language`}
-              className="w-full h-80 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none font-mono text-sm"
-            />
-          ) : (
-            <textarea
-              value={jsonInput}
-              onChange={(e) => setJsonInput(e.target.value)}
-              placeholder={`请粘贴 JSON 格式的题目数据，支持以下格式：
-
-单选题：
-{"题型": "单选题", "题目": "...", "选项": ["A. xxx", "B. xxx"], "答案": "A"}
-
-多选题（答案支持多种格式）：
-{"题型": "多选题", "题目": "...", "选项": ["A. xxx", "B. xxx", "C. xxx"], "答案": "A|B"}
-{"题型": "多选题", "题目": "...", "选项": [...], "答案": ["A", "B"]}
-{"题型": "多选题", "题目": "...", "选项": [...], "答案": "AB"}
-
-判断题：
-{"题型": "判断题", "题目": "...", "答案": "正确"}
-
-填空题（多个空用|分隔或数组）：
-{"题型": "填空题", "题目": "（ ）是中国首都", "答案": "北京"}
-{"题型": "填空题", "题目": "___和＿＿是直辖市", "答案": "北京|上海"}
-{"题型": "填空题", "题目": "...", "答案": ["答案1", "答案2"]}
-
-简答题：
-{"题型": "简答题", "题目": "...", "答案": "..."}
-
-也支持英文字段名：type, content/question, options, answer, analysis`}
-              className="w-full h-80 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none font-mono text-sm"
-            />
-          )}
-
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             {mode === 'ai' ? (
-              <button
+              <ActionButton
+                icon={Sparkles}
                 onClick={handleParse}
                 disabled={parsing || !inputText.trim()}
-                className="flex-1 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                loading={parsing}
+                className="min-w-52 flex-1"
               >
-                {parsing ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    AI 解析中...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={18} />
-                    AI 智能解析
-                  </>
-                )}
-              </button>
+                {parsing ? 'AI 解析中...' : 'AI 智能解析'}
+              </ActionButton>
             ) : (
-              <button
+              <ActionButton
+                icon={Code}
                 onClick={handleJsonParse}
                 disabled={!jsonInput.trim()}
-                className="flex-1 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="min-w-52 flex-1"
               >
-                <Code size={18} />
                 解析 JSON
-              </button>
+              </ActionButton>
             )}
-            <button
-              onClick={handleClear}
-              disabled={parsing}
-              className="px-4 py-2.5 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-            >
+            <ActionButton variant="secondary" icon={Trash2} onClick={handleClear} disabled={parsing}>
               清空
-            </button>
+            </ActionButton>
           </div>
 
-          {/* 错误提示 */}
           {error && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400">
-              <XCircle size={18} />
-              <span className="whitespace-pre-line text-sm">{error}</span>
-            </div>
+            <AlertBanner type="danger" title="解析失败">
+              <span className="whitespace-pre-line">{error}</span>
+            </AlertBanner>
           )}
         </div>
 
-        {/* 右侧：解析结果 */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              解析结果 {parsedQuestions.length > 0 && `(${parsedQuestions.length} 道题目)`}
-            </label>
-            
-            {parsedQuestions.length > 0 && (
-              <div className="flex items-center gap-2">
-                <select
+          <SurfaceCard className="min-h-[520px]" padding="p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-base font-bold text-gray-900 dark:text-white">
+                解析结果 {parsedQuestions.length > 0 && `(${parsedQuestions.length} 道题目)`}
+              </h2>
+              {parsedQuestions.length > 0 && (
+                <SelectInput
                   value={selectedBankId || ''}
                   onChange={(e) => setSelectedBankId(Number(e.target.value) || null)}
-                  className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="h-10 min-h-10 w-full sm:w-52"
                 >
                   <option value="">选择题库</option>
                   {banks.map(bank => (
                     <option key={bank.id} value={bank.id}>{bank.name}</option>
                   ))}
-                </select>
-              </div>
-            )}
-          </div>
-
-          {parseWarnings && (
-            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
-              <button
-                type="button"
-                onClick={() => setShowParseWarnings(prev => !prev)}
-                className="flex w-full items-center justify-between gap-3 text-left"
-              >
-                <span className="text-sm font-medium">
-                  已解析 {parseWarnings.questionCount} 道题目，有 {parseWarnings.chunkErrors.length} 个片段未能识别
-                </span>
-                <span className="text-xs">
-                  {showParseWarnings ? '收起' : '展开'}
-                </span>
-              </button>
-              {showParseWarnings && (
-                <div className="mt-3 space-y-2">
-                  {parseWarnings.chunkErrors.map((item, index) => {
-                    const chunkIndex = getChunkIndex(item, index);
-                    return (
-                    <div
-                      key={`${chunkIndex}-${index}`}
-                      className="rounded-md bg-white/70 px-3 py-2 text-sm dark:bg-gray-900/30"
-                    >
-                      <span className="font-medium">
-                        第 {chunkIndex + 1} 个片段：
-                      </span>
-                      {item.message || '解析失败'}
-                    </div>
-                    );
-                  })}
-                </div>
+                </SelectInput>
               )}
             </div>
-          )}
 
-          <div className="h-80 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
-            {parsedQuestions.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                <FileText size={48} className="mb-3 opacity-50" />
-                <p>解析结果将显示在这里</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                {parsedQuestions.map((question, index) => (
-                  <div key={index} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${TYPE_COLORS[question.type]}`}>
-                            {TYPE_LABELS[question.type] || question.type}
-                          </span>
-                          <span className="text-xs text-gray-400">#{index + 1}</span>
+            {parseWarnings && (
+              <AlertBanner type="warning" className="mb-4">
+                <button
+                  type="button"
+                  onClick={() => setShowParseWarnings(prev => !prev)}
+                  className="flex w-full items-center justify-between gap-3 text-left"
+                >
+                  <span>
+                    已解析 {parseWarnings.questionCount} 道题目，有 {parseWarnings.chunkErrors.length} 个片段未能识别
+                  </span>
+                  <span className="text-xs">{showParseWarnings ? '收起' : '展开'}</span>
+                </button>
+                {showParseWarnings && (
+                  <div className="mt-3 space-y-2">
+                    {parseWarnings.chunkErrors.map((item, index) => {
+                      const chunkIndex = getChunkIndex(item, index);
+                      return (
+                        <div key={`${chunkIndex}-${index}`} className="rounded-xl bg-white/70 px-3 py-2 text-sm dark:bg-gray-900/30">
+                          <span className="font-semibold">第 {chunkIndex + 1} 个片段：</span>
+                          {item.message || '解析失败'}
                         </div>
-                        <p className="text-sm text-gray-900 dark:text-white line-clamp-2">
-                          {question.content}
-                        </p>
-                        {question.options && (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {question.options.map(opt => (
-                              <span key={opt.id} className="text-xs text-gray-500 dark:text-gray-400">
-                                {opt.id}. {opt.text.substring(0, 15)}{opt.text.length > 15 ? '...' : ''}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        <p className="mt-1 text-xs text-green-600 dark:text-green-400">
-                          答案：{question.answer}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveQuestion(index)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
+                      );
+                    })}
                   </div>
+                )}
+              </AlertBanner>
+            )}
+
+            {parsedQuestions.length === 0 ? (
+              <ParseEmptyState />
+            ) : (
+              <div className="max-h-[442px] space-y-3 overflow-y-auto pr-1">
+                {parsedQuestions.map((question, index) => (
+                  <ParsedQuestionItem
+                    key={index}
+                    question={question}
+                    index={index}
+                    typeLabel={TYPE_LABELS[question.type] || question.type}
+                    onRemove={() => handleRemoveQuestion(index)}
+                    removeIcon={Trash2}
+                  />
                 ))}
               </div>
             )}
-          </div>
+          </SurfaceCard>
 
-          {/* 导入按钮 */}
           {parsedQuestions.length > 0 && (
-            <button
+            <ActionButton
+              variant="success"
+              icon={Save}
               onClick={handleImport}
               disabled={importing || !selectedBankId}
-              className="w-full px-4 py-2.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              loading={importing}
+              className="w-full"
             >
-              {importing ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  导入中...
-                </>
-              ) : (
-                <>
-                  <Save size={18} />
-                  导入到题库 ({parsedQuestions.length} 道)
-                </>
-              )}
-            </button>
+              {importing ? '导入中...' : `导入到题库 (${parsedQuestions.length} 道)`}
+            </ActionButton>
           )}
 
-          {/* 导入结果 */}
           {importResult && (
-            <div className={`p-3 rounded-lg ${
-              importResult.failed === 0
-                ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
-                : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400'
-            }`}>
+            <AlertBanner
+              type={importResult.failed === 0 ? 'success' : 'warning'}
+              title={importResult.failed === 0 ? '导入成功' : '部分导入失败'}
+            >
               <div className="flex items-center gap-2">
                 {importResult.failed === 0 ? <CheckCircle size={18} /> : <XCircle size={18} />}
-                <span className="text-sm font-medium">
+                <span>
                   成功导入 {importResult.success} 道题目
                   {importResult.failed > 0 && `，${importResult.failed} 道失败`}
                 </span>
@@ -676,19 +569,14 @@ D. Function
               {importResult.failed > 0 && importResult.errors?.length > 0 && (
                 <div className="mt-3 space-y-2">
                   {importResult.errors.map((item, index) => (
-                    <div
-                      key={`${item.index ?? index}-${index}`}
-                      className="rounded-md bg-white/60 dark:bg-gray-900/30 px-3 py-2 text-sm"
-                    >
-                      <span className="font-medium">
-                        第 {(item.index ?? index) + 1} 道：
-                      </span>
+                    <div key={`${item.index ?? index}-${index}`} className="rounded-xl bg-white/60 px-3 py-2 text-sm dark:bg-gray-900/30">
+                      <span className="font-semibold">第 {(item.index ?? index) + 1} 道：</span>
                       {item.message || '导入失败'}
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </AlertBanner>
           )}
         </div>
       </div>

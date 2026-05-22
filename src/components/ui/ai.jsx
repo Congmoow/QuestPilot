@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, FileSearch, Send, Sparkles } from 'lucide-react';
+import { Bot, Camera, FileSearch, Paperclip, Send, Sparkles } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ActionButton, EmptyState, SurfaceCard } from './base';
 
@@ -102,10 +102,11 @@ export function ChatMessageBubble({ role, children, avatar, className }) {
   );
 }
 
-export function ChatComposer({ value, onChange, onKeyDown, onSend, loading, disabled, placeholder = '输入你的问题...' }) {
+export function ChatComposer({ value, onChange, onKeyDown, onSend, loading, disabled, inputRef, placeholder = '输入你的问题...' }) {
   return (
     <div className="rounded-card border border-blue-200 bg-white p-4 shadow-soft dark:border-gray-700 dark:bg-gray-800">
       <textarea
+        ref={inputRef}
         value={value}
         onChange={onChange}
         onKeyDown={onKeyDown}
@@ -115,8 +116,8 @@ export function ChatComposer({ value, onChange, onKeyDown, onSend, loading, disa
       />
       <div className="mt-3 flex items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <ActionButton variant="secondary" size="sm" type="button">上传文件</ActionButton>
-          <ActionButton variant="secondary" size="sm" type="button">拍照/截图</ActionButton>
+          <ActionButton variant="secondary" size="sm" type="button" icon={Paperclip}>上传文件</ActionButton>
+          <ActionButton variant="secondary" size="sm" type="button" icon={Camera}>拍照/截图</ActionButton>
         </div>
         <button
           type="button"

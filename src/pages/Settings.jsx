@@ -1,9 +1,33 @@
-import { useState, useEffect } from 'react';
-import { Key, TestTube, Loader2, CheckCircle, XCircle, Eye, EyeOff, Globe, Cpu, MessageSquare, Plus, Pencil, Trash2, ChevronDown, BookOpen } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+  BookOpen,
+  CheckCircle,
+  Cpu,
+  Globe,
+  Key,
+  Loader2,
+  MessageSquare,
+  Pencil,
+  Plus,
+  TestTube,
+  Trash2,
+  XCircle,
+} from 'lucide-react';
 import api from '../api';
 import ConfirmDialog from '../components/ConfirmDialog';
+import {
+  ActionButton,
+  AlertBanner,
+  Field,
+  IconButton,
+  PageHeader,
+  PasswordInput,
+  SelectInput,
+  SurfaceCard,
+  TextareaInput,
+  TextInput,
+} from '../components/ui';
 
-// 预设的 AI 提供商配置
 const AI_PROVIDERS = [
   { id: 'custom', name: '自定义', url: '', models: [], placeholder: '请输入 API 地址' },
   { id: 'openai', name: 'OpenAI', url: 'https://api.openai.com', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'], placeholder: 'sk-...' },
@@ -37,7 +61,6 @@ const Settings = () => {
   const [savingWrongBook, setSavingWrongBook] = useState(false);
   const [savedWrongBook, setSavedWrongBook] = useState(false);
 
-  // Prompt 管理状态
   const [prompts, setPrompts] = useState([]);
   const [editingPrompt, setEditingPrompt] = useState(null);
   const [promptName, setPromptName] = useState('');
@@ -48,7 +71,6 @@ const Settings = () => {
   const [deletingPrompt, setDeletingPrompt] = useState(null);
   const [deletingPromptLoading, setDeletingPromptLoading] = useState(false);
 
-  // 加载 API 配置
   useEffect(() => {
     const loadConfig = async () => {
       try {
@@ -76,7 +98,6 @@ const Settings = () => {
     loadWrongBookThreshold();
   }, []);
 
-  // 切换提供商时更新 URL 和模型
   const handleProviderChange = (providerId) => {
     setProvider(providerId);
     const selected = AI_PROVIDERS.find(p => p.id === providerId);
@@ -91,7 +112,6 @@ const Settings = () => {
 
   const currentProvider = AI_PROVIDERS.find(p => p.id === provider) || AI_PROVIDERS[0];
 
-  // 加载 Prompt 列表
   useEffect(() => {
     loadPrompts();
   }, []);
@@ -126,18 +146,18 @@ const Settings = () => {
 
   const handleSavePrompt = async () => {
     if (!promptName.trim() || !promptContent.trim()) return;
-    
+
     setSavingPrompt(true);
     try {
       if (editingPrompt) {
         await window.electronAPI.prompt.update(editingPrompt.id, {
           name: promptName,
-          content: promptContent
+          content: promptContent,
         });
       } else {
         await window.electronAPI.prompt.create({
           name: promptName,
-          content: promptContent
+          content: promptContent,
         });
       }
       await loadPrompts();
@@ -211,13 +231,11 @@ const Settings = () => {
       setTestResult({ success: false, message: '请先输入 API Key' });
       return;
     }
-    
+
     setTesting(true);
     setTestResult(null);
     try {
-      // 先保存配置
       await api.settings.setApiConfig({ apiKey, apiUrl, modelId, provider });
-      // 再测试连接
       const result = await api.settings.testApiConnection();
       setTestResult({ success: true, message: result.message || 'API 连接成功' });
     } catch (error) {
@@ -228,139 +246,90 @@ const Settings = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">系统设置</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">配置 AI 功能。</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="系统设置" subtitle="配置 AI 功能与练习偏好" />
 
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">错题本设置</h2>
-        </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          错题本会记录练习中答错的题目。答对次数达到阈值后，该题会自动从错题本移除。
-        </p>
-
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-6 space-y-4">
+      <SurfaceCard padding="p-6">
+        <div className="mb-6 flex items-start gap-4">
+          <div className="ui-icon-tile size-14 bg-primary-soft text-primary">
+            <BookOpen size={28} />
+          </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              自动移除阈值（答对次数）
-            </label>
-            <input
+            <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">错题本设置</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-7 text-gray-500 dark:text-gray-400">
+              错题本会记录练习中答错的题目。答对次数达到阈值后，该题会自动从错题本移除。
+            </p>
+          </div>
+        </div>
+
+        <div className="max-w-xl space-y-4">
+          <Field label="自动移除阈值（答对次数）">
+            <TextInput
               type="number"
               min={1}
               max={999}
               value={wrongBookThreshold}
               onChange={(e) => setWrongBookThreshold(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
             />
-          </div>
+          </Field>
 
           {savedWrongBook && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">
-              <CheckCircle size={18} />
-              <span className="text-sm">阈值已保存</span>
-            </div>
+            <AlertBanner type="success">阈值已保存</AlertBanner>
           )}
 
-          <div className="flex gap-3">
-            <button
-              onClick={handleSaveWrongBookThreshold}
-              disabled={savingWrongBook}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              {savingWrongBook && <Loader2 size={16} className="animate-spin" />}
-              保存设置
-            </button>
+          <ActionButton onClick={handleSaveWrongBookThreshold} disabled={savingWrongBook} loading={savingWrongBook}>
+            保存设置
+          </ActionButton>
+        </div>
+      </SurfaceCard>
+
+      <SurfaceCard padding="p-6">
+        <div className="mb-6 flex items-start gap-4">
+          <div className="ui-icon-tile size-14 bg-violet-50 text-violet-600">
+            <Key size={28} />
+          </div>
+          <div>
+            <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">AI API 配置</h2>
+            <p className="mt-2 max-w-4xl text-sm leading-7 text-gray-500 dark:text-gray-400">
+              支持 OpenAI、Claude、Gemini、DeepSeek、通义千问、智谱等主流 AI 服务，配置后可使用 AI 智能识别和问答功能。
+            </p>
           </div>
         </div>
-      </div>
 
-      {/* AI API 配置 */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Key className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">AI API 配置</h2>
-        </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          支持 OpenAI、Claude、Gemini、DeepSeek、通义千问、智谱等主流 AI 服务，配置后可使用 AI 智能识别和问答功能。
-        </p>
-        
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-6 space-y-4">
-          {/* AI 提供商选择 */}
-          <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              <Globe size={16} />
-              AI 服务提供商
-            </label>
-            <select
-              value={provider}
-              onChange={(e) => handleProviderChange(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-            >
+        <div className="grid gap-4">
+          <Field label={<span className="inline-flex items-center gap-2"><Globe size={16} />AI 服务提供商</span>}>
+            <SelectInput value={provider} onChange={(e) => handleProviderChange(e.target.value)}>
               {AI_PROVIDERS.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
-            </select>
-          </div>
+            </SelectInput>
+          </Field>
 
-          {/* API 地址 */}
-          <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              <Globe size={16} />
-              API 地址
-            </label>
-            <input
-              type="text"
+          <Field label={<span className="inline-flex items-center gap-2"><Globe size={16} />API 地址</span>} hint={provider === 'custom' ? '支持 OpenAI 兼容的 API 地址' : undefined}>
+            <TextInput
               value={apiUrl}
               onChange={(e) => setApiUrl(e.target.value)}
               placeholder={currentProvider.placeholder || 'https://api.openai.com'}
               disabled={provider !== 'custom'}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             />
-            {provider === 'custom' && (
-              <p className="text-xs text-gray-400 mt-1">支持 OpenAI 兼容的 API 地址</p>
-            )}
-          </div>
+          </Field>
 
-          {/* API Key */}
-          <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              <Key size={16} />
-              API Key
-            </label>
-            <div className="relative">
-              <input
-                type={showApiKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder={currentProvider.placeholder || 'sk-xxxxxxxxxxxxxxxx'}
-                className="w-full px-4 py-2.5 pr-10 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-              />
-              <button
-                type="button"
-                onClick={() => setShowApiKey(!showApiKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                {showApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </div>
+          <Field label={<span className="inline-flex items-center gap-2"><Key size={16} />API Key</span>}>
+            <PasswordInput
+              show={showApiKey}
+              onToggleShow={() => setShowApiKey(!showApiKey)}
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder={currentProvider.placeholder || 'sk-xxxxxxxxxxxxxxxx'}
+            />
+          </Field>
 
-          {/* 模型选择 */}
-          <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              <Cpu size={16} />
-              模型
-            </label>
+          <Field label={<span className="inline-flex items-center gap-2"><Cpu size={16} />模型名称（可选）</span>}>
             {currentProvider.models.length > 0 ? (
-              <div className="space-y-2">
-                <select
+              <div className="grid gap-3 md:grid-cols-2">
+                <SelectInput
                   value={currentProvider.models.includes(modelId) ? modelId : ''}
                   onChange={(e) => setModelId(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                 >
                   {currentProvider.models.map(m => (
                     <option key={m} value={m}>{m}</option>
@@ -368,180 +337,144 @@ const Settings = () => {
                   {!currentProvider.models.includes(modelId) && modelId && (
                     <option value={modelId}>{modelId} (自定义)</option>
                   )}
-                </select>
-                <input
-                  type="text"
+                </SelectInput>
+                <TextInput
                   value={modelId}
                   onChange={(e) => setModelId(e.target.value)}
                   placeholder="或输入自定义模型 ID"
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-sm"
                 />
               </div>
             ) : (
-              <input
-                type="text"
+              <TextInput
                 value={modelId}
                 onChange={(e) => setModelId(e.target.value)}
                 placeholder="gpt-3.5-turbo"
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
               />
             )}
-          </div>
+          </Field>
+        </div>
 
-          {/* 测试结果 */}
+        <div className="mt-5 space-y-3">
           {testResult && (
-            <div className={`flex items-center gap-2 p-3 rounded-lg ${
-              testResult.success 
-                ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' 
-                : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
-            }`}>
-              {testResult.success ? <CheckCircle size={18} /> : <XCircle size={18} />}
-              <span className="text-sm">{testResult.message}</span>
-            </div>
+            <AlertBanner type={testResult.success ? 'success' : 'danger'}>
+              <span className="inline-flex items-center gap-2">
+                {testResult.success ? <CheckCircle size={18} /> : <XCircle size={18} />}
+                {testResult.message}
+              </span>
+            </AlertBanner>
           )}
 
-          {/* 保存成功提示 */}
-          {saved && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">
-              <CheckCircle size={18} />
-              <span className="text-sm">配置已保存</span>
-            </div>
-          )}
+          {saved && <AlertBanner type="success">配置已保存</AlertBanner>}
 
-          <div className="flex gap-3 pt-2">
-            <button
-              onClick={handleSaveApiConfig}
-              disabled={saving}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              {saving && <Loader2 size={16} className="animate-spin" />}
+          <div className="flex flex-wrap gap-3">
+            <ActionButton onClick={handleSaveApiConfig} disabled={saving} loading={saving}>
               保存配置
-            </button>
-            <button
+            </ActionButton>
+            <ActionButton
+              variant="secondary"
+              icon={TestTube}
               onClick={handleTestConnection}
               disabled={testing || !apiKey}
-              className="px-4 py-2 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              loading={testing}
             >
-              {testing ? <Loader2 size={16} className="animate-spin" /> : <TestTube size={16} />}
               测试连接
-            </button>
+            </ActionButton>
           </div>
         </div>
-      </div>
+      </SurfaceCard>
 
-      {/* AI Prompt 管理 */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">AI Prompt 管理</h2>
+      <SurfaceCard padding="p-6">
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="ui-icon-tile size-14 bg-blue-50 text-primary">
+              <MessageSquare size={28} />
+            </div>
+            <div>
+              <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">AI Prompt 管理</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-7 text-gray-500 dark:text-gray-400">
+                自定义 AI 问答的系统提示词，可以让 AI 扮演不同角色或专注于特定领域。
+              </p>
+            </div>
           </div>
-          <button
+          <ActionButton
+            icon={Plus}
             onClick={() => {
               resetPromptForm();
               setShowPromptForm(true);
             }}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
           >
-            <Plus size={16} />
             新建 Prompt
-          </button>
+          </ActionButton>
         </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          自定义 AI 问答的系统提示词，可以让 AI 扮演不同角色或专注于特定领域。
-        </p>
 
-        {/* Prompt 表单 */}
         {showPromptForm && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-6 space-y-4">
-            <h3 className="font-medium text-gray-900 dark:text-white">
+          <div className="mb-5 rounded-2xl border border-blue-100 bg-blue-50/50 p-5 dark:border-gray-700 dark:bg-gray-800/80">
+            <h3 className="mb-4 font-bold text-gray-900 dark:text-white">
               {editingPrompt ? '编辑 Prompt' : '新建 Prompt'}
             </h3>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                名称
-              </label>
-              <input
-                type="text"
-                value={promptName}
-                onChange={(e) => setPromptName(e.target.value)}
-                placeholder="如：英语老师、数学助手"
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                提示词内容
-              </label>
-              <textarea
-                value={promptContent}
-                onChange={(e) => setPromptContent(e.target.value)}
-                placeholder="描述 AI 的角色、能力和回答风格..."
-                rows={6}
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none"
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleSavePrompt}
-                disabled={savingPrompt || !promptName.trim() || !promptContent.trim()}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                {savingPrompt && <Loader2 size={16} className="animate-spin" />}
-                保存
-              </button>
-              <button
-                onClick={resetPromptForm}
-                className="px-4 py-2 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                取消
-              </button>
+            <div className="space-y-4">
+              <Field label="名称">
+                <TextInput
+                  value={promptName}
+                  onChange={(e) => setPromptName(e.target.value)}
+                  placeholder="如：英语老师、数学助手"
+                />
+              </Field>
+              <Field label="提示词内容">
+                <TextareaInput
+                  value={promptContent}
+                  onChange={(e) => setPromptContent(e.target.value)}
+                  placeholder="描述 AI 的角色、能力和回答风格..."
+                  rows={6}
+                />
+              </Field>
+              <div className="flex flex-wrap gap-3">
+                <ActionButton
+                  onClick={handleSavePrompt}
+                  disabled={savingPrompt || !promptName.trim() || !promptContent.trim()}
+                  loading={savingPrompt}
+                >
+                  保存
+                </ActionButton>
+                <ActionButton variant="secondary" onClick={resetPromptForm}>
+                  取消
+                </ActionButton>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Prompt 列表 */}
-        <div className="space-y-3">
+        <div className="grid gap-3">
           {prompts.map((prompt) => (
-            <div
-              key={prompt.id}
-              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-4"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-medium text-gray-900 dark:text-white">{prompt.name}</h4>
+            <div key={prompt.id} className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="font-bold text-gray-900 dark:text-white">{prompt.name}</h4>
                     {prompt.isDefault && (
-                      <span className="px-2 py-0.5 text-xs bg-primary/10 text-primary rounded">默认</span>
+                      <span className="rounded-lg bg-primary-soft px-2 py-0.5 text-xs font-bold text-primary">默认</span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
                     {prompt.content}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 ml-4">
-                  <button
-                    onClick={() => handleEditPrompt(prompt)}
-                    className="p-2 text-gray-400 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                    title="编辑"
-                  >
-                    <Pencil size={16} />
-                  </button>
+                <div className="flex items-center gap-2">
+                  <IconButton label="编辑 Prompt" icon={Pencil} onClick={() => handleEditPrompt(prompt)} />
                   {!prompt.isDefault && (
-                    <button
+                    <IconButton
+                      label="删除 Prompt"
+                      icon={Trash2}
                       onClick={() => handleOpenDeletePromptDialog(prompt)}
-                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                      title="删除"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                      className="hover:bg-red-50 hover:text-danger dark:hover:bg-red-900/20"
+                    />
                   )}
                 </div>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      </SurfaceCard>
 
       <ConfirmDialog
         open={deletePromptDialogOpen}
