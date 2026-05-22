@@ -51,9 +51,9 @@ export function PageHeader({ title, subtitle, actions, className }) {
   );
 }
 
-export function SurfaceCard({ children, className, hover = false, padding = 'p-6', as: Component = 'section' }) {
+export function SurfaceCard({ children, className, hover = false, padding = 'p-6', as: Component = 'section', ...props }) {
   return (
-    <Component className={cn('ui-card', hover && 'ui-card-hover', padding, className)}>
+    <Component className={cn('ui-card', hover && 'ui-card-hover', padding, className)} {...props}>
       {children}
     </Component>
   );
