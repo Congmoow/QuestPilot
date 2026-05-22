@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
+import { IconButton } from './ui';
 
 /**
  * 通用对话框组件
@@ -49,7 +50,7 @@ export function Dialog({ open, onClose, title, children, className, size = 'md' 
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={handleOverlayClick}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-sm"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -57,23 +58,16 @@ export function Dialog({ open, onClose, title, children, className, size = 'md' 
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              "bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-h-[90vh] overflow-y-auto",
+              "w-full max-h-[90vh] overflow-hidden rounded-card border border-gray-200 bg-white shadow-popover dark:border-gray-700 dark:bg-gray-800",
               sizeClasses[size] || sizeClasses.md,
               className
             )}
           >
-            {/* 标题栏 */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-gray-700">
               <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">{title}</h2>
-              <button
-                onClick={onClose}
-                className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <X size={20} />
-              </button>
+              <IconButton label="关闭弹窗" icon={X} variant="ghost" onClick={onClose} />
             </div>
-            {/* 内容区 */}
-            <div className="p-6">
+            <div className="max-h-[calc(90vh-73px)] overflow-y-auto p-6">
               {children}
             </div>
           </motion.div>

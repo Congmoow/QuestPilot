@@ -15,7 +15,7 @@ import AiChat from './pages/AiChat';
 
 function App() {
   return (
-    <div className="h-screen overflow-hidden rounded-xl bg-gray-50 dark:bg-gray-900 flex flex-col">
+    <div className="h-dvh overflow-hidden rounded-xl bg-canvas dark:bg-gray-900 flex flex-col">
       <TitleBar />
       <div className="flex-1 overflow-hidden">
         <QuestionBankProvider>
