@@ -12,10 +12,10 @@ const toneMap = {
 };
 
 const DASHBOARD_ICONS = [
-  '/dashboard-icons/iocn-1.png',
-  '/dashboard-icons/icon-2.png',
-  '/dashboard-icons/icon-3.png',
-  '/dashboard-icons/icon-4.png',
+  '/dashboard-icons/iocn-1.webp',
+  '/dashboard-icons/icon-2.webp',
+  '/dashboard-icons/icon-3.webp',
+  '/dashboard-icons/icon-4.webp',
 ];
 
 export function StatCard({ title, value, trend, iconIndex = 0, tone = 'blue' }) {

@@ -118,10 +118,10 @@ const markdownComponents = {
 };
 
 const features = [
-  { title: '上传题目解析', description: '上传题目图片\n获取详细解析', iconSrc: '/aichat-icon/icon-1.png', iconClass: 'bg-blue-50 text-blue-600' },
-  { title: '知识点总结', description: '梳理知识要点\n构建知识体系', iconSrc: '/aichat-icon/icon-2.png', iconClass: 'bg-emerald-50 text-emerald-600' },
-  { title: '错题分析', description: '智能分析错因\n提供改进建议', iconSrc: '/aichat-icon/icon-3.png', iconClass: 'bg-orange-50 text-orange-600' },
-  { title: '生成练习题', description: '生成相似题目\n巩固知识掌握', iconSrc: '/aichat-icon/icon-4.png', iconClass: 'bg-violet-50 text-violet-600' },
+  { title: '上传题目解析', description: '上传题目图片\n获取详细解析', iconSrc: '/aichat-icon/icon-1.webp', iconClass: 'bg-blue-50 text-blue-600' },
+  { title: '知识点总结', description: '梳理知识要点\n构建知识体系', iconSrc: '/aichat-icon/icon-2.webp', iconClass: 'bg-emerald-50 text-emerald-600' },
+  { title: '错题分析', description: '智能分析错因\n提供改进建议', iconSrc: '/aichat-icon/icon-3.webp', iconClass: 'bg-orange-50 text-orange-600' },
+  { title: '生成练习题', description: '生成相似题目\n巩固知识掌握', iconSrc: '/aichat-icon/icon-4.webp', iconClass: 'bg-violet-50 text-violet-600' },
 ];
 
 const AiChat = () => {

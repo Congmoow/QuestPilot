@@ -75,7 +75,7 @@ export function AIChatWelcome({ features }) {
       <div className="relative mb-2">
         {/* AI 助手主图 */}
         <img
-          src={getPublicAssetPath('/ai-bot.png')}
+          src={getPublicAssetPath('/ai-bot.webp')}
           alt="AI 助手"
           className="relative h-56 w-auto object-contain"
         />
@@ -170,7 +170,7 @@ export function ChatComposer({ value, onChange, onKeyDown, onSend, loading, disa
 }
 
 const JiexiIcon = ({ size = 44, ...props }) => (
-  <img src={getPublicAssetPath('/jiexi-icon.png')} alt="解析" width={size} height={size} {...props} />
+  <img src={getPublicAssetPath('/jiexi-icon.webp')} alt="解析" width={size} height={size} {...props} />
 );
 
 export function ParseEmptyState() {

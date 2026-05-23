@@ -36,7 +36,7 @@ import {
 } from '../components/ui';
 
 const CuotiIcon = ({ size = 44, ...props }) => (
-  <img src={getPublicAssetPath('/cuoti-icon.png')} alt="错题本" width={size} height={size} {...props} />
+  <img src={getPublicAssetPath('/cuoti-icon.webp')} alt="错题本" width={size} height={size} {...props} />
 );
 
 const TYPE_LABELS = {
