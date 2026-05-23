@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Save, Send, Plus, Trash2, ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
+import { Save, Send, Plus, Trash2, ArrowLeft, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -7,6 +7,20 @@ import { useQuestionBanks } from '../contexts/QuestionBankContext';
 import { useQuestions } from '../contexts/QuestionContext';
 import { saveDraft, loadDraft, clearDraft } from '../api';
 import { countFillBlanks } from '../lib/fillBlank';
+import {
+  ActionButton,
+  AlertBanner,
+  Field,
+  IconButton,
+  PageHeader,
+  SegmentedTabs,
+  SelectInput,
+  StatusBadge,
+  SurfaceCard,
+  TextareaInput,
+  TextInput,
+  ToolbarCard
+} from '../components/ui';
 
 const ManualEntry = () => {
   const navigate = useNavigate();
@@ -358,20 +372,20 @@ const ManualEntry = () => {
     navigate('/question-preview');
   };
 
+  const selectedBank = banks.find(bank => bank.id === selectedBankId);
+  const currentQuestionType = questionTypes.find(type => type.id === activeTab);
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={handleBack}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition-colors"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">手动录入</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">创建新题目到题库中</p>
-        </div>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-6">
+      <PageHeader
+        title="手动录入"
+        subtitle="创建新题目到题库中"
+        actions={(
+          <ActionButton variant="secondary" icon={ArrowLeft} onClick={handleBack}>
+            返回题库
+          </ActionButton>
+        )}
+      />
 
       {/* 草稿恢复提示 */}
       {draftLoaded && (
@@ -379,10 +393,8 @@ const ManualEntry = () => {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }}
-          className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-3"
         >
-          <CheckCircle size={20} className="text-blue-500" />
-          <span className="text-sm text-blue-700 dark:text-blue-300">已恢复上次保存的草稿</span>
+          <AlertBanner type="info">已恢复上次保存的草稿</AlertBanner>
         </motion.div>
       )}
 
@@ -392,10 +404,8 @@ const ManualEntry = () => {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }}
-          className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-3"
         >
-          <CheckCircle size={20} className="text-green-500" />
-          <span className="text-sm text-green-700 dark:text-green-300">题目提交成功！</span>
+          <AlertBanner type="success" title="题目提交成功">已清除草稿，可以继续录入下一题。</AlertBanner>
         </motion.div>
       )}
 
@@ -404,267 +414,268 @@ const ManualEntry = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
         >
-          <div className="flex items-start gap-3">
-            <AlertCircle size={20} className="text-red-500 mt-0.5" />
+          <AlertBanner type="danger" title="请检查以下内容">
             <div className="space-y-1">
               {errors.map((error, index) => (
-                <p key={index} className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                <p key={index}>{error}</p>
               ))}
             </div>
-          </div>
+          </AlertBanner>
         </motion.div>
       )}
 
       {/* 题库选择 */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
-        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-          <span className="text-danger mr-1">*</span>选择题库
-        </label>
-        <select
-          value={selectedBankId || ''}
-          onChange={(e) => setSelectedBankId(e.target.value ? parseInt(e.target.value, 10) : null)}
-          className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 transition-all"
-        >
-          <option value="">请选择题库</option>
-          {banks.map(bank => (
-            <option key={bank.id} value={bank.id}>{bank.name}</option>
-          ))}
-        </select>
-      </div>
+      <ToolbarCard className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-end">
+        <Field label="选择题库" required hint="题目会保存到当前选择的题库中">
+          <SelectInput
+            value={selectedBankId || ''}
+            onChange={(e) => setSelectedBankId(e.target.value ? parseInt(e.target.value, 10) : null)}
+          >
+            <option value="">请选择题库</option>
+            {banks.map(bank => (
+              <option key={bank.id} value={bank.id}>{bank.name}</option>
+            ))}
+          </SelectInput>
+        </Field>
+        <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm text-gray-500 dark:bg-gray-700 dark:text-gray-300">
+          <p className="font-semibold text-gray-900 dark:text-white">{selectedBank ? selectedBank.name : '尚未选择题库'}</p>
+          <p className="mt-1">当前题型：{currentQuestionType?.label || '单选题'}</p>
+        </div>
+      </ToolbarCard>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+      <SurfaceCard className="overflow-hidden" padding="p-0">
         {/* Type Tabs */}
-        <div className="flex border-b border-gray-100 dark:border-gray-700 overflow-x-auto">
-          {questionTypes.map((type) => (
-            <button
-              key={type.id}
-              onClick={() => handleTabChange(type.id)}
-              className={cn(
-                "px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap",
-                activeTab === type.id
-                  ? "text-primary border-b-2 border-primary bg-primary/5"
-                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
-              )}
-            >
-              {type.label}
-            </button>
-          ))}
+        <div className="flex flex-col gap-4 border-b border-gray-100 p-5 dark:border-gray-700 sm:flex-row sm:items-center sm:justify-between">
+          <SegmentedTabs tabs={questionTypes} value={activeTab} onChange={handleTabChange} className="max-w-full overflow-x-auto" />
+          <StatusBadge variant={activeTab === 'fill' && blankCount > 0 ? 'success' : 'primary'}>
+            {activeTab === 'fill' ? `空栏 ${blankCount} 个` : currentQuestionType?.label}
+          </StatusBadge>
         </div>
 
-        <div className="p-8 space-y-8">
-          {/* Question Content */}
-          <div className="space-y-2">
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">
-              <span className="text-danger mr-1">*</span>题目内容
-            </label>
-            <div className="relative">
-              <textarea
-                value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                className="w-full min-h-[120px] p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg transition-all resize-y text-gray-900 dark:text-gray-100"
-                placeholder="在此输入题干内容..."
-              />
-              {activeTab === 'fill' && (
-                <button 
-                  onClick={insertBlank}
-                  className="absolute bottom-4 right-4 text-xs bg-white dark:bg-gray-600 border border-gray-200 dark:border-gray-500 px-2 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-500 text-gray-600 dark:text-gray-300"
-                >
-                  插入空栏
-                </button>
-              )}
-            </div>
-            {activeTab === 'fill' && blankCount > 0 && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                已插入 {blankCount} 个空栏
-              </p>
-            )}
-          </div>
-
-          {/* Options Area */}
-          {(activeTab === 'single' || activeTab === 'multiple') && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">
-                  <span className="text-danger mr-1">*</span>选项设置
-                </label>
-                <button 
-                  onClick={addOption}
-                  disabled={formData.options.length >= 8}
-                  className="text-sm text-primary flex items-center gap-1 hover:text-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Plus size={16} /> 添加选项
-                </button>
-              </div>
-              <div className="space-y-3">
-                {formData.options.map((option, index) => (
-                  <motion.div 
-                    layout
-                    key={index} 
-                    className="flex items-center gap-3 group"
+        <div className="grid gap-6 p-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="space-y-7">
+            {/* Question Content */}
+            <Field label="题目内容" required hint={activeTab === 'fill' && blankCount > 0 ? `已插入 ${blankCount} 个空栏` : undefined}>
+              <div className="relative">
+                <TextareaInput
+                  rows={5}
+                  value={formData.content}
+                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                  className="min-h-[150px] pr-28"
+                  placeholder="在此输入题干内容..."
+                />
+                {activeTab === 'fill' && (
+                  <ActionButton
+                    size="sm"
+                    variant="secondary"
+                    onClick={insertBlank}
+                    className="absolute bottom-4 right-4 h-9 px-3"
                   >
-                    <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center text-sm font-bold text-gray-600 dark:text-gray-300">
-                      {option.id}
-                    </div>
-                    <input
-                      type="text"
-                      value={option.text}
-                      onChange={(e) => updateOption(index, e.target.value)}
-                      className="flex-1 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg transition-all text-gray-900 dark:text-gray-100"
-                      placeholder={`选项 ${option.id}`}
-                    />
-                    
-                    {/* Answer Selection Check/Radio */}
-                    {activeTab === 'single' ? (
-                      <div 
-                        onClick={() => setFormData({ ...formData, answer: option.id })}
-                        className={cn(
-                          "cursor-pointer px-3 py-2 rounded-lg text-sm transition-colors border",
-                          formData.answer === option.id 
-                            ? "bg-success/10 text-success border-success/20" 
-                            : "bg-gray-50 dark:bg-gray-700 text-gray-400 border-transparent hover:bg-gray-100 dark:hover:bg-gray-600"
-                        )}
-                      >
-                        {formData.answer === option.id ? '正确答案' : '设为答案'}
-                      </div>
-                    ) : (
-                      <div 
-                        onClick={() => toggleMultipleAnswer(option.id)}
-                        className={cn(
-                          "cursor-pointer px-3 py-2 rounded-lg text-sm transition-colors border",
-                          formData.answers.includes(option.id)
-                            ? "bg-success/10 text-success border-success/20" 
-                            : "bg-gray-50 dark:bg-gray-700 text-gray-400 border-transparent hover:bg-gray-100 dark:hover:bg-gray-600"
-                        )}
-                      >
-                        {formData.answers.includes(option.id) ? '正确答案' : '设为答案'}
-                      </div>
-                    )}
-
-                    <button 
-                      onClick={() => removeOption(index)}
-                      disabled={formData.options.length <= 2}
-                      className="p-2 text-gray-400 hover:text-danger hover:bg-danger/5 rounded-lg transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-0"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </motion.div>
-                ))}
+                    插入空栏
+                  </ActionButton>
+                )}
               </div>
-            </div>
-          )}
+            </Field>
 
-          {/* True/False Specific */}
-          {activeTab === 'boolean' && (
-            <div className="space-y-4">
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">
-                <span className="text-danger mr-1">*</span>正确答案
-              </label>
-              <div className="flex gap-4">
-                {['正确', '错误'].map((val) => (
-                  <label key={val} className="flex items-center gap-2 cursor-pointer group">
-                    <div className={cn(
-                      "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
-                      formData.answer === val 
-                        ? "border-primary bg-primary" 
-                        : "border-gray-300 dark:border-gray-500 group-hover:border-primary"
-                    )}>
-                      {formData.answer === val && <div className="w-2 h-2 rounded-full bg-white" />}
-                    </div>
-                    <input 
-                      type="radio" 
-                      className="hidden"
-                      checked={formData.answer === val}
-                      onChange={() => setFormData({ ...formData, answer: val })}
-                    />
-                    <span className="text-gray-700 dark:text-gray-300">{val}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Fill In Blank Specific - 动态答案输入框 */}
-          {activeTab === 'fill' && (
-            <div className="space-y-4">
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">
-                <span className="text-danger mr-1">*</span>答案设置
-              </label>
-              {blankCount === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  请在题干中插入空栏标记（点击"插入空栏"按钮）
-                </p>
-              ) : (
+            {/* Options Area */}
+            {(activeTab === 'single' || activeTab === 'multiple') && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <Field label="选项设置" required className="space-y-0" />
+                  <ActionButton
+                    variant="ghost"
+                    size="sm"
+                    icon={Plus}
+                    onClick={addOption}
+                    disabled={formData.options.length >= 8}
+                  >
+                    添加选项
+                  </ActionButton>
+                </div>
                 <div className="space-y-3">
-                  {Array.from({ length: blankCount }).map((_, index) => (
-                    <div key={index} className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400 w-16">
-                        第 {index + 1} 空
+                  {formData.options.map((option, index) => (
+                    <motion.div
+                      layout
+                      key={index}
+                      className="group grid grid-cols-[36px_minmax(0,1fr)] gap-3 rounded-2xl border border-gray-100 bg-gray-50/70 p-3 transition-colors hover:border-blue-100 hover:bg-blue-50/50 dark:border-gray-700 dark:bg-gray-700/40 sm:grid-cols-[36px_minmax(0,1fr)_110px_40px]"
+                    >
+                      <div className="flex size-9 items-center justify-center rounded-xl bg-white text-sm font-bold text-primary shadow-sm dark:bg-gray-800">
+                        {option.id}
+                      </div>
+                      <TextInput
+                        value={option.text}
+                        onChange={(e) => updateOption(index, e.target.value)}
+                        placeholder={`选项 ${option.id}`}
+                      />
+
+                      {/* Answer Selection Check/Radio */}
+                      <button
+                        type="button"
+                        onClick={() => activeTab === 'single' ? setFormData({ ...formData, answer: option.id }) : toggleMultipleAnswer(option.id)}
+                        className={cn(
+                          "col-start-2 rounded-control border px-3 py-2 text-sm font-semibold transition-colors sm:col-start-auto",
+                          (activeTab === 'single' ? formData.answer === option.id : formData.answers.includes(option.id))
+                            ? "border-green-200 bg-green-50 text-success dark:border-green-800 dark:bg-green-900/20 dark:text-green-300"
+                            : "border-transparent bg-white text-gray-400 hover:bg-blue-50 hover:text-primary dark:bg-gray-800 dark:hover:bg-gray-700"
+                        )}
+                      >
+                        {(activeTab === 'single' ? formData.answer === option.id : formData.answers.includes(option.id)) ? '正确答案' : '设为答案'}
+                      </button>
+
+                      <IconButton
+                        label="删除选项"
+                        icon={Trash2}
+                        onClick={() => removeOption(index)}
+                        disabled={formData.options.length <= 2}
+                        className="col-start-1 row-start-2 text-gray-400 hover:bg-red-50 hover:text-danger disabled:opacity-30 sm:col-start-auto sm:row-start-auto"
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* True/False Specific */}
+            {activeTab === 'boolean' && (
+              <Field label="正确答案" required>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {['正确', '错误'].map((val) => (
+                    <label
+                      key={val}
+                      className={cn(
+                        "flex cursor-pointer items-center gap-3 rounded-2xl border p-4 text-sm font-semibold transition-all",
+                        formData.answer === val
+                          ? "border-primary bg-primary-soft text-primary"
+                          : "border-gray-200 bg-white text-gray-600 hover:border-blue-200 hover:bg-blue-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                      )}
+                    >
+                      <span className={cn(
+                        "flex size-5 items-center justify-center rounded-full border-2 transition-colors",
+                        formData.answer === val ? "border-primary bg-primary" : "border-gray-300"
+                      )}>
+                        {formData.answer === val && <span className="size-2 rounded-full bg-white" />}
                       </span>
                       <input
-                        type="text"
-                        value={formData.fillAnswers[index] || ''}
-                        onChange={(e) => updateFillAnswer(index, e.target.value)}
-                        className="flex-1 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg transition-all text-gray-900 dark:text-gray-100"
-                        placeholder={`请输入第 ${index + 1} 空的答案`}
+                        type="radio"
+                        className="sr-only"
+                        checked={formData.answer === val}
+                        onChange={() => setFormData({ ...formData, answer: val })}
                       />
-                    </div>
+                      {val}
+                    </label>
                   ))}
+                </div>
+              </Field>
+            )}
+
+            {/* Fill In Blank Specific - 动态答案输入框 */}
+            {activeTab === 'fill' && (
+              <Field label="答案设置" required>
+                {blankCount === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-blue-200 bg-blue-50/70 px-4 py-5 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-700/40 dark:text-gray-300">
+                    请在题干中插入空栏标记（点击“插入空栏”按钮）
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {Array.from({ length: blankCount }).map((_, index) => (
+                      <div key={index} className="grid gap-3 sm:grid-cols-[80px_minmax(0,1fr)] sm:items-center">
+                        <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                          第 {index + 1} 空
+                        </span>
+                        <TextInput
+                          value={formData.fillAnswers[index] || ''}
+                          onChange={(e) => updateFillAnswer(index, e.target.value)}
+                          placeholder={`请输入第 ${index + 1} 空的答案`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Field>
+            )}
+
+            {/* Short Answer Specific */}
+            {activeTab === 'short' && (
+              <Field label="参考答案" hint="简答题答案可选，可在这里写入参考要点">
+                <TextareaInput
+                  rows={4}
+                  value={formData.answer}
+                  onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
+                  className="min-h-[120px]"
+                  placeholder="输入参考答案（可选）..."
+                />
+              </Field>
+            )}
+
+            {/* Analysis */}
+            <Field label="解析说明" hint="可补充解题思路、易错点或知识点说明">
+              <TextareaInput
+                rows={4}
+                value={formData.analysis}
+                onChange={(e) => setFormData({ ...formData, analysis: e.target.value })}
+                className="min-h-[120px]"
+                placeholder="输入答案解析..."
+              />
+            </Field>
+          </div>
+
+          <aside className="space-y-4 rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-5 dark:border-gray-700 dark:from-gray-800 dark:to-gray-800">
+            <div className="ui-icon-tile size-12 bg-white text-primary shadow-sm dark:bg-gray-700">
+              <BookOpen size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-extrabold text-gray-900 dark:text-white">录入检查</h3>
+              <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                保存前请确认题库、题干和答案信息，系统会按当前题型自动校验必填项。
+              </p>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 dark:bg-gray-700">
+                <span className="text-gray-500 dark:text-gray-300">题库</span>
+                <span className="max-w-[140px] truncate font-semibold text-gray-900 dark:text-white">{selectedBank?.name || '未选择'}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 dark:bg-gray-700">
+                <span className="text-gray-500 dark:text-gray-300">题型</span>
+                <span className="font-semibold text-primary">{currentQuestionType?.label}</span>
+              </div>
+              {(activeTab === 'single' || activeTab === 'multiple') && (
+                <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 dark:bg-gray-700">
+                  <span className="text-gray-500 dark:text-gray-300">选项</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">{formData.options.length} 个</span>
+                </div>
+              )}
+              {activeTab === 'fill' && (
+                <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 dark:bg-gray-700">
+                  <span className="text-gray-500 dark:text-gray-300">空栏</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">{blankCount} 个</span>
                 </div>
               )}
             </div>
-          )}
-
-          {/* Short Answer Specific */}
-          {activeTab === 'short' && (
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">
-                参考答案
-              </label>
-              <textarea
-                value={formData.answer}
-                onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
-                className="w-full min-h-[100px] p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg transition-all resize-y text-gray-900 dark:text-gray-100"
-                placeholder="输入参考答案（可选）..."
-              />
-            </div>
-          )}
-
-          {/* Analysis */}
-          <div className="space-y-2">
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">
-              解析说明
-            </label>
-            <textarea
-              value={formData.analysis}
-              onChange={(e) => setFormData({ ...formData, analysis: e.target.value })}
-              className="w-full min-h-[100px] p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg transition-all resize-y text-gray-900 dark:text-gray-100"
-              placeholder="输入答案解析..."
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="pt-6 border-t border-gray-100 dark:border-gray-700 flex items-center justify-end gap-4">
-            <button 
-              onClick={handleSaveDraft}
-              disabled={savingDraft}
-              className="px-6 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 font-medium transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
-            >
-              <Save size={18} />
-              {savingDraft ? '保存中...' : '保存草稿'}
-            </button>
-            <button 
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="px-6 py-2.5 bg-primary text-white rounded-lg hover:bg-primary-hover font-medium transition-all shadow-lg shadow-primary/30 active:scale-95 flex items-center gap-2 disabled:opacity-50"
-            >
-              <Send size={18} />
-              {submitting ? '提交中...' : '立即提交'}
-            </button>
-          </div>
+          </aside>
         </div>
-      </div>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-3 border-t border-gray-100 px-6 py-5 dark:border-gray-700 sm:flex-row sm:items-center sm:justify-end">
+          <ActionButton
+            variant="secondary"
+            icon={Save}
+            onClick={handleSaveDraft}
+            disabled={savingDraft}
+            loading={savingDraft}
+          >
+            {savingDraft ? '保存中...' : '保存草稿'}
+          </ActionButton>
+          <ActionButton
+            icon={Send}
+            onClick={handleSubmit}
+            disabled={submitting}
+            loading={submitting}
+          >
+            {submitting ? '提交中...' : '立即提交'}
+          </ActionButton>
+        </div>
+      </SurfaceCard>
     </div>
   );
 };

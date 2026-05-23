@@ -4,6 +4,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { downloadCsvTemplate, selectCsvFile, parseCsvFile, importQuestions, getQuestionBankById } from '../api';
+import {
+  ActionButton,
+  AlertBanner,
+  EmptyState,
+  IconButton,
+  PageHeader,
+  StatusBadge,
+  SurfaceCard
+} from '../components/ui';
 
 const CsvImport = () => {
   const [searchParams] = useSearchParams();
@@ -127,67 +136,71 @@ const CsvImport = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={handleBackToBank}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition-colors"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">批量导入</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
-            {bank ? `导入到题库: ${bank.name}` : '通过CSV文件批量上传题目'}
-          </p>
-        </div>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <PageHeader
+        title="批量导入"
+        subtitle={bank ? `导入到题库：${bank.name}` : '通过 CSV 文件批量上传题目'}
+        actions={(
+          <ActionButton variant="secondary" icon={ArrowLeft} onClick={handleBackToBank}>
+            返回题库
+          </ActionButton>
+        )}
+      />
 
       {/* 错误提示 */}
-      {errorMessage && (
-        <div className="p-4 bg-danger/10 border border-danger/20 rounded-lg flex items-center gap-3">
-          <AlertCircle size={20} className="text-danger" />
-          <p className="text-sm text-danger">{errorMessage}</p>
-          <button onClick={() => setErrorMessage('')} className="ml-auto text-danger hover:text-danger/80">
-            <X size={18} />
-          </button>
-        </div>
+      {errorMessage && uploadStatus !== 'error' && (
+        <AlertBanner type="danger" title="操作失败" className="items-center">
+          <div className="flex items-center gap-3">
+            <span>{errorMessage}</span>
+            <button
+              type="button"
+              onClick={() => setErrorMessage('')}
+              className="rounded-lg p-1 text-danger transition-colors hover:bg-red-100 dark:hover:bg-red-900/30"
+              aria-label="关闭错误提示"
+              title="关闭错误提示"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </AlertBanner>
       )}
 
       {/* Stepper */}
-      <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">
-        <div className="flex items-center justify-between relative">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-100 dark:bg-gray-700 -z-0"></div>
+      <SurfaceCard padding="p-6">
+        <div className="relative grid gap-4 md:grid-cols-3">
+          <div className="absolute left-8 right-8 top-6 hidden h-1 rounded-full bg-blue-100 dark:bg-gray-700 md:block" />
           {steps.map((step) => {
             const isActive = currentStep >= step.id;
             const isCurrent = currentStep === step.id;
             
             return (
-              <div 
+              <button
+                type="button"
                 key={step.id} 
-                className="relative z-10 flex flex-col items-center gap-3 cursor-pointer"
+                className="relative z-10 flex items-center gap-4 rounded-2xl border border-transparent p-3 text-left transition-all hover:border-blue-100 hover:bg-blue-50/60 dark:hover:bg-gray-700 md:flex-col md:text-center"
                 onClick={() => setCurrentStep(step.id)}
               >
                 <div className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300",
-                  isActive ? "bg-primary text-white scale-110" : "bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400"
+                  "flex size-12 shrink-0 items-center justify-center rounded-2xl text-sm font-extrabold shadow-sm transition-all duration-300",
+                  isActive ? "bg-primary text-white" : "bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-300",
+                  isCurrent && "ring-4 ring-primary/10"
                 )}>
-                  {step.id}
+                  {currentStep > step.id ? <CheckCircle size={20} /> : step.id}
                 </div>
-                <div className="text-center bg-white dark:bg-gray-800 px-2">
-                  <p className={cn("text-sm font-bold", isActive ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400")}>
+                <div className="min-w-0 bg-transparent px-0 md:px-2">
+                  <p className={cn("text-sm font-extrabold", isActive ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400")}>
                     {step.title}
                   </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{step.desc}</p>
+                  <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{step.desc}</p>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
-      </div>
+      </SurfaceCard>
 
       {/* Content Area */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden min-h-[400px]">
+      <SurfaceCard className="min-h-[440px] overflow-hidden" padding="p-0">
         <AnimatePresence mode="wait">
           {currentStep === 1 && (
             <motion.div 
@@ -195,31 +208,32 @@ const CsvImport = () => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="p-12 flex flex-col items-center justify-center text-center space-y-6"
+              className="flex min-h-[440px] flex-col items-center justify-center space-y-6 p-8 text-center sm:p-12"
             >
-              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-4">
+              <div className="ui-icon-tile size-24 bg-gradient-to-br from-blue-50 to-blue-100 text-primary">
                 <FileDown size={40} />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">下载标准模板</h3>
-                <p className="text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">
+                <h3 className="text-2xl font-extrabold text-gray-900 dark:text-gray-100">下载标准模板</h3>
+                <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-gray-500 dark:text-gray-400">
                   请务必使用系统提供的标准模板进行填写，不要修改表头信息，否则可能导致导入失败。
                 </p>
               </div>
-              <div className="flex gap-4">
-                <button 
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <ActionButton
                   onClick={handleDownloadTemplate}
                   disabled={downloading}
-                  className="px-8 py-3 bg-primary text-white rounded-lg hover:bg-primary-hover active:scale-95 transition-all font-medium shadow-lg shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                  loading={downloading}
+                  icon={FileDown}
                 >
                   {downloading ? '下载中...' : '下载 CSV 模板'}
-                </button>
-                <button 
+                </ActionButton>
+                <ActionButton
+                  variant="secondary"
                   onClick={() => setCurrentStep(2)}
-                  className="px-8 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-95 transition-all font-medium"
                 >
                   已有模板，跳过
-                </button>
+                </ActionButton>
               </div>
             </motion.div>
           )}
@@ -230,10 +244,16 @@ const CsvImport = () => {
              initial={{ opacity: 0, x: 20 }}
              animate={{ opacity: 1, x: 0 }}
              exit={{ opacity: 0, x: -20 }}
-             className="p-12"
+             className="p-6 sm:p-10"
            >
-             <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6">模板填写规范</h3>
-             <div className="space-y-4">
+             <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+               <div>
+                 <h3 className="text-2xl font-extrabold text-gray-900 dark:text-gray-100">模板填写规范</h3>
+                 <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">按规则填写后再上传，可减少解析错误。</p>
+               </div>
+               <StatusBadge variant="primary">CSV 模板</StatusBadge>
+             </div>
+             <div className="grid gap-4 lg:grid-cols-2">
                {[
                  '题型：单选题/多选题/判断题/填空题/简答题',
                  '题干：题目内容，填空题使用 _、___、＿＿、（ ）或( ) 表示空栏',
@@ -241,27 +261,27 @@ const CsvImport = () => {
                  '答案：单选填选项字母(如A)，多选用|分隔(如A|B)，判断填"正确"或"错误"，填空用|分隔多个答案',
                  '解析：题目解析说明（可选）'
                ].map((rule, idx) => (
-                 <div key={idx} className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-100 dark:border-gray-600">
-                   <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                 <div key={idx} className="flex items-start gap-3 rounded-2xl border border-blue-50 bg-blue-50/60 p-4 dark:border-gray-700 dark:bg-gray-700/40">
+                   <div className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-white text-xs font-bold text-primary shadow-sm dark:bg-gray-800">
                      {idx + 1}
                    </div>
-                   <span className="text-gray-700 dark:text-gray-300 font-medium">{rule}</span>
+                   <span className="text-sm font-medium leading-6 text-gray-700 dark:text-gray-300">{rule}</span>
                  </div>
                ))}
              </div>
-             <div className="mt-8 flex justify-between">
-               <button 
+             <div className="mt-8 flex flex-col justify-between gap-3 sm:flex-row">
+               <ActionButton
+                 variant="secondary"
                  onClick={() => setCurrentStep(1)}
-                 className="px-8 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-95 transition-all font-medium"
                >
                  上一步
-               </button>
-               <button 
+               </ActionButton>
+               <ActionButton
                  onClick={() => setCurrentStep(3)}
-                 className="px-8 py-3 bg-primary text-white rounded-lg hover:bg-primary-hover active:scale-95 transition-all font-medium shadow-lg shadow-primary/30"
+                 icon={Upload}
                >
                  我已填写完毕，下一步
-               </button>
+               </ActionButton>
              </div>
            </motion.div>
           )}
@@ -272,58 +292,61 @@ const CsvImport = () => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="p-12"
+              className="p-6 sm:p-10"
             >
               {!file ? (
                 <div className="space-y-6">
-                  <div 
+                  <button
+                    type="button"
                     onClick={handleSelectFile}
-                    className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl p-12 flex flex-col items-center justify-center text-center hover:border-primary hover:bg-primary/5 transition-all cursor-pointer group"
+                    className="group flex min-h-[280px] w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed border-blue-200 bg-blue-50/40 p-8 text-center transition-all hover:border-primary hover:bg-blue-50 dark:border-gray-700 dark:bg-gray-700/30 dark:hover:bg-gray-700"
                   >
-                    <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-400 group-hover:scale-110 group-hover:text-primary transition-all mb-6">
+                    <div className="ui-icon-tile mb-6 size-24 bg-white text-primary shadow-sm transition-transform group-hover:scale-105 dark:bg-gray-800">
                       <Upload size={40} />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 group-hover:text-primary transition-colors">点击选择文件</h3>
-                    <p className="text-gray-500 dark:text-gray-400 mt-2">支持扩展名：.csv</p>
-                  </div>
+                    <h3 className="text-xl font-extrabold text-gray-900 transition-colors group-hover:text-primary dark:text-gray-100">点击选择文件</h3>
+                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">支持扩展名：.csv</p>
+                  </button>
                   <div className="flex justify-start">
-                    <button 
+                    <ActionButton
+                      variant="secondary"
                       onClick={() => setCurrentStep(2)}
-                      className="px-8 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-95 transition-all font-medium"
                     >
                       上一步
-                    </button>
+                    </ActionButton>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-6">
                   {/* 文件信息 */}
-                  <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
-                    <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg flex items-center justify-center">
+                  <div className="flex items-center gap-4 rounded-3xl border border-green-100 bg-green-50/60 p-4 dark:border-green-900/30 dark:bg-green-900/10">
+                    <div className="ui-icon-tile size-12 bg-white text-success shadow-sm dark:bg-gray-800">
                       <FileText size={24} />
                     </div>
-                    <div className="flex-1">
-                      <h4 className="font-bold text-gray-900 dark:text-gray-100">{file.name}</h4>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="truncate font-extrabold text-gray-900 dark:text-gray-100">{file.name}</h4>
                       <p className="text-sm text-gray-500 dark:text-gray-400">已选择文件</p>
                     </div>
                     {(uploadStatus === 'idle' || uploadStatus === 'parsed') && (
-                      <button 
+                      <IconButton
+                        label="移除文件"
+                        icon={X}
                         onClick={handleReset}
-                        className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full text-gray-500"
-                      >
-                        <X size={20} />
-                      </button>
+                        className="text-gray-500 hover:bg-red-50 hover:text-danger"
+                      />
                     )}
                   </div>
 
                   {/* 解析按钮 */}
                   {uploadStatus === 'idle' && (
-                    <button 
+                    <ActionButton
                       onClick={handleParseFile}
-                      className="w-full py-4 bg-primary text-white rounded-xl hover:bg-primary-hover active:scale-95 transition-all font-bold text-lg shadow-lg shadow-primary/30"
+                      className="w-full"
+                      icon={FileText}
+                      size="lg"
                     >
                       解析文件
-                    </button>
+                    </ActionButton>
                   )}
 
                   {/* 解析中 */}
@@ -334,7 +357,7 @@ const CsvImport = () => {
                           initial={{ width: 0 }}
                           animate={{ width: '100%' }}
                           transition={{ duration: 1.5 }}
-                          className="h-full bg-primary"
+                          className="h-full rounded-full bg-primary"
                         />
                       </div>
                       <p className="text-center text-sm text-gray-500 dark:text-gray-400">正在解析数据...</p>
@@ -346,24 +369,24 @@ const CsvImport = () => {
                     <div className="space-y-4">
                       {/* 统计信息 */}
                       <div className="grid grid-cols-3 gap-4">
-                        <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
-                          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{parseResult.totalRows}</p>
+                        <div className="rounded-2xl bg-gray-50 p-4 text-center dark:bg-gray-700">
+                          <p className="text-3xl font-extrabold text-gray-900 dark:text-gray-100">{parseResult.totalRows}</p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">总行数</p>
                         </div>
-                        <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg text-center">
-                          <p className="text-2xl font-bold text-green-600 dark:text-green-400">{parseResult.valid.length}</p>
+                        <div className="rounded-2xl bg-green-50 p-4 text-center dark:bg-green-900/20">
+                          <p className="text-3xl font-extrabold text-green-600 dark:text-green-400">{parseResult.valid.length}</p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">有效题目</p>
                         </div>
-                        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg text-center">
-                          <p className="text-2xl font-bold text-red-600 dark:text-red-400">{parseResult.errors.length}</p>
+                        <div className="rounded-2xl bg-red-50 p-4 text-center dark:bg-red-900/20">
+                          <p className="text-3xl font-extrabold text-red-600 dark:text-red-400">{parseResult.errors.length}</p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">错误行</p>
                         </div>
                       </div>
 
                       {/* 错误详情 */}
                       {parseResult.errors.length > 0 && (
-                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 max-h-48 overflow-y-auto">
-                          <h4 className="font-bold text-red-700 dark:text-red-400 mb-2 flex items-center gap-2">
+                        <div className="max-h-52 overflow-y-auto rounded-2xl border border-red-100 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-900/20">
+                          <h4 className="mb-3 flex items-center gap-2 font-bold text-red-700 dark:text-red-400">
                             <AlertCircle size={18} />
                             错误详情
                           </h4>
@@ -379,19 +402,25 @@ const CsvImport = () => {
 
                       {/* 导入按钮 */}
                       {parseResult.valid.length > 0 && (
-                        <button 
+                        <ActionButton
                           onClick={handleImport}
                           disabled={!bankId}
-                          className="w-full py-4 bg-primary text-white rounded-xl hover:bg-primary-hover active:scale-95 transition-all font-bold text-lg shadow-lg shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full"
+                          size="lg"
+                          icon={Upload}
                         >
                           {bankId ? `导入 ${parseResult.valid.length} 道题目` : '请先选择题库'}
-                        </button>
+                        </ActionButton>
                       )}
 
                       {parseResult.valid.length === 0 && (
-                        <div className="text-center py-4">
-                          <p className="text-gray-500 dark:text-gray-400">没有可导入的有效题目，请检查CSV文件格式</p>
-                        </div>
+                        <EmptyState
+                          icon={FileText}
+                          title="没有可导入的有效题目"
+                          description="请检查 CSV 文件格式、题型和答案字段，再重新选择文件解析。"
+                          action={<ActionButton variant="secondary" onClick={handleReset}>重新选择文件</ActionButton>}
+                          className="min-h-[220px] bg-blue-50/50 dark:bg-gray-700/30"
+                        />
                       )}
                     </div>
                   )}
@@ -404,7 +433,7 @@ const CsvImport = () => {
                           initial={{ width: 0 }}
                           animate={{ width: '100%' }}
                           transition={{ duration: 2 }}
-                          className="h-full bg-primary"
+                          className="h-full rounded-full bg-primary"
                         />
                       </div>
                       <p className="text-center text-sm text-gray-500 dark:text-gray-400">正在导入题目...</p>
@@ -413,60 +442,43 @@ const CsvImport = () => {
 
                   {/* 导入成功 */}
                   {uploadStatus === 'success' && importResult && (
-                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-6 flex flex-col items-center text-center space-y-4">
-                      <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center">
-                        <CheckCircle size={32} />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">导入完成</h3>
-                        <p className="text-green-600 dark:text-green-400 mt-1">
+                    <EmptyState
+                      icon={CheckCircle}
+                      title="导入完成"
+                      description={(
+                        <>
                           成功导入 {importResult.success} 道题目
                           {importResult.failed > 0 && (
                             <span className="text-red-500">，{importResult.failed} 道失败</span>
                           )}
-                        </p>
-                      </div>
-                      <div className="flex gap-4">
-                        <button 
-                          onClick={handleReset}
-                          className="px-6 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                        >
-                          继续导入
-                        </button>
-                        <button 
-                          onClick={handleBackToBank}
-                          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
-                        >
-                          返回题库
-                        </button>
-                      </div>
-                    </div>
+                        </>
+                      )}
+                      action={(
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                          <ActionButton variant="secondary" onClick={handleReset}>继续导入</ActionButton>
+                          <ActionButton onClick={handleBackToBank}>返回题库</ActionButton>
+                        </div>
+                      )}
+                      className="bg-green-50/60 dark:bg-green-900/10"
+                    />
                   )}
 
                   {/* 导入失败 */}
                   {uploadStatus === 'error' && (
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 flex flex-col items-center text-center space-y-4">
-                      <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center">
-                        <AlertCircle size={32} />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">操作失败</h3>
-                        <p className="text-red-600 dark:text-red-400 mt-1">{errorMessage || '未知错误'}</p>
-                      </div>
-                      <button 
-                        onClick={handleReset}
-                        className="px-6 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                      >
-                        重新选择文件
-                      </button>
-                    </div>
+                    <EmptyState
+                      icon={AlertCircle}
+                      title="操作失败"
+                      description={errorMessage || '未知错误'}
+                      action={<ActionButton variant="secondary" onClick={handleReset}>重新选择文件</ActionButton>}
+                      className="bg-red-50/60 dark:bg-red-900/10"
+                    />
                   )}
                 </div>
               )}
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </SurfaceCard>
     </div>
   );
 };
