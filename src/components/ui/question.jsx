@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight, CalendarDays, Edit3, Trash2 } from 'lucide-react';
+import { getPublicAssetPath } from '../../lib/assets';
 import { cn } from '../../lib/utils';
 import { ActionButton, IconButton, SurfaceCard, StatusBadge } from './base';
 
@@ -32,7 +33,7 @@ const QB_ICONS = [
 const getRandomIcon = (bankId) => {
   const seed = bankId ? bankId * 9301 + 49297 : Date.now();
   const index = seed % QB_ICONS.length;
-  return QB_ICONS[index];
+  return getPublicAssetPath(QB_ICONS[index]);
 };
 
 export function QuestionBankCard({ bank, icon: Icon, onClick, onEdit, onDelete, formatDate, toneClass = 'bg-blue-50 text-primary' }) {

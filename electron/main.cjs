@@ -13,6 +13,12 @@ app.setName('QuestPilot')
 
 let mainWindow = null
 
+function getWindowIconPath() {
+  return app.isPackaged
+    ? path.join(__dirname, '../dist/icon.png')
+    : path.join(__dirname, '../public/icon.png')
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -30,7 +36,7 @@ function createWindow() {
     titleBarStyle: 'hidden',
     transparent: true,
     backgroundColor: '#00000000',
-    icon: path.join(__dirname, '../public/icon.png'),
+    icon: getWindowIconPath(),
     autoHideMenuBar: true,
   })
 

@@ -1,5 +1,6 @@
 import React, { useRef, useCallback } from 'react';
 import { Bot, Camera, Paperclip, Send, Sparkles, ArrowRight } from 'lucide-react';
+import { getPublicAssetPath } from '../../lib/assets';
 import { cn } from '../../lib/utils';
 import { ActionButton, EmptyState, SurfaceCard } from './base';
 
@@ -72,9 +73,9 @@ export function AIChatWelcome({ features }) {
   return (
     <div className="flex flex-col items-center text-center w-full max-w-[880px]">
       <div className="relative mb-2">
-        {/* Main bot image */}
+        {/* AI 助手主图 */}
         <img
-          src="/ai-bot.png"
+          src={getPublicAssetPath('/ai-bot.png')}
           alt="AI 助手"
           className="relative h-56 w-auto object-contain"
         />
@@ -90,7 +91,7 @@ export function AIChatWelcome({ features }) {
                 className="group relative overflow-hidden rounded-[20px] border border-gray-100 bg-white text-left transition-all duration-200 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 dark:border-gray-700 dark:bg-gray-800"
               >
                 {feature.iconSrc ? (
-                  <img src={feature.iconSrc} alt="" className="h-24 w-full object-contain object-left" />
+                  <img src={getPublicAssetPath(feature.iconSrc)} alt="" className="h-24 w-full object-contain object-left" />
                 ) : (
                   <div className={cn('flex h-28 items-center justify-center', feature.iconClass || 'bg-primary-soft text-primary')}>
                     <Icon size={56} />
@@ -169,7 +170,7 @@ export function ChatComposer({ value, onChange, onKeyDown, onSend, loading, disa
 }
 
 const JiexiIcon = ({ size = 44, ...props }) => (
-  <img src="/jiexi-icon.png" alt="解析" width={size} height={size} {...props} />
+  <img src={getPublicAssetPath('/jiexi-icon.png')} alt="解析" width={size} height={size} {...props} />
 );
 
 export function ParseEmptyState() {

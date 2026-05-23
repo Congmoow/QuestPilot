@@ -1,15 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Minus, Square, X, Copy } from 'lucide-react';
+import { getPublicAssetPath } from '../lib/assets';
 
 const BRAND_FONT_FAMILY = 'QuestPilotBrand';
 let brandFontLoading = null;
-
-const getPublicAssetPath = (assetPath) => {
-  if (window.electronAPI) {
-    return `.${assetPath}`;
-  }
-  return assetPath;
-};
 
 const loadBrandFont = () => {
   if (brandFontLoading || typeof FontFace === 'undefined' || !document.fonts) {

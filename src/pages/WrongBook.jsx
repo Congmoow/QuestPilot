@@ -14,6 +14,7 @@ import { useQuestionBanks } from '../contexts/QuestionBankContext';
 import api from '../api';
 import ConfirmDialog from '../components/ConfirmDialog';
 import CodeAwareText from '../components/CodeAwareText';
+import { getPublicAssetPath } from '../lib/assets';
 import { countFillBlanks } from '../lib/fillBlank';
 import {
   ActionButton,
@@ -35,7 +36,7 @@ import {
 } from '../components/ui';
 
 const CuotiIcon = ({ size = 44, ...props }) => (
-  <img src="/cuoti-icon.png" alt="错题本" width={size} height={size} {...props} />
+  <img src={getPublicAssetPath('/cuoti-icon.png')} alt="错题本" width={size} height={size} {...props} />
 );
 
 const TYPE_LABELS = {

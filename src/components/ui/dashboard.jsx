@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowUpRight, Clock } from 'lucide-react';
+import { getPublicAssetPath } from '../../lib/assets';
 import { cn } from '../../lib/utils';
 import { SurfaceCard, StatusBadge } from './base';
 
@@ -18,7 +19,7 @@ const DASHBOARD_ICONS = [
 ];
 
 export function StatCard({ title, value, trend, iconIndex = 0, tone = 'blue' }) {
-  const iconSrc = DASHBOARD_ICONS[iconIndex % DASHBOARD_ICONS.length];
+  const iconSrc = getPublicAssetPath(DASHBOARD_ICONS[iconIndex % DASHBOARD_ICONS.length]);
 
   return (
     <SurfaceCard hover className="min-h-[120px]" padding="p-0">
