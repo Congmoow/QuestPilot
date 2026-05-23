@@ -127,14 +127,14 @@ const Practice = () => {
 
     setLoading(true);
     try {
-      const result = await api.question.getByBankId(bankId, { page: 1, pageSize: 1000 });
+      const data = await api.question.getRandom(bankId, { limit: 1000 });
 
-      if (result.data.length === 0) {
+      if (data.length === 0) {
         alert('该题库暂无题目');
         return;
       }
 
-      const shuffled = shuffleArray(result.data).map(q => {
+      const shuffled = data.map(q => {
         if ((q.type === 'single' || q.type === 'multiple') && q.options) {
           return shuffleQuestionOptions(q);
         }

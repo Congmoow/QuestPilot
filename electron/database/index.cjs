@@ -326,6 +326,54 @@ function createQuestion(bankId, data) {
 }
 
 /**
+ * 批量创建题目
+ */
+function createQuestionsBatch(bankId, questions) {
+  const safeBankId = Number(bankId)
+  if (!Number.isFinite(safeBankId) || safeBankId <= 0) {
+    throw new Error('题库不存在')
+  }
+
+  const items = Array.isArray(questions) ? questions : []
+  if (items.length === 0) {
+    return { count: 0 }
+  }
+
+  const stmt = db.prepare(`
+    INSERT INTO questions (bank_id, type, content, options, answer, analysis, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+  `)
+
+  let insertedCount = 0
+
+  try {
+    db.run('BEGIN TRANSACTION')
+
+    for (const item of items) {
+      const { type, content, options, answer, analysis } = item
+      const optionsJson = options ? JSON.stringify(options) : null
+      stmt.run([safeBankId, type, content, optionsJson, answer, analysis || null])
+      insertedCount++
+    }
+
+    db.run(`UPDATE question_banks SET updated_at = datetime('now') WHERE id = ${safeBankId}`)
+    db.run('COMMIT')
+  } catch (error) {
+    try {
+      db.run('ROLLBACK')
+    } catch (rollbackError) {
+      console.error('回滚批量创建题目失败:', rollbackError)
+    }
+    throw error
+  } finally {
+    stmt.free()
+  }
+
+  saveDatabase()
+  return { count: insertedCount }
+}
+
+/**
  * 根据题库ID获取题目列表（分页）
  */
 function getQuestionsByBankId(bankId, offset = 0, limit = 20) {
@@ -338,6 +386,31 @@ function getQuestionsByBankId(bankId, offset = 0, limit = 20) {
   
   if (!result.length) return []
   
+  return result[0].values.map(row => parseQuestionRow(row))
+}
+
+/**
+ * 从题库随机抽取题目
+ */
+function getRandomQuestions(bankId, limit = 20, type = null) {
+  const safeBankId = Number(bankId)
+  if (!Number.isFinite(safeBankId) || safeBankId <= 0) {
+    return []
+  }
+
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 1000))
+  let sql = `SELECT * FROM questions WHERE bank_id = ${safeBankId}`
+
+  if (type) {
+    const escapedType = String(type).replace(/'/g, "''")
+    sql += ` AND type = '${escapedType}'`
+  }
+
+  sql += ` ORDER BY RANDOM() LIMIT ${safeLimit}`
+
+  const result = db.exec(sql)
+  if (!result.length) return []
+
   return result[0].values.map(row => parseQuestionRow(row))
 }
 
@@ -1135,7 +1208,9 @@ module.exports = {
   
   // 题目操作
   createQuestion,
+  createQuestionsBatch,
   getQuestionsByBankId,
+  getRandomQuestions,
   getQuestionById,
   updateQuestion,
   deleteQuestions,

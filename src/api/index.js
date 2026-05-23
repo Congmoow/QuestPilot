@@ -192,6 +192,18 @@ export const createQuestion = async (data) => {
 }
 
 /**
+ * 批量创建题目
+ * @param {number} bankId
+ * @param {CreateQuestionInput[]} questions
+ * @returns {Promise<ImportResult>}
+ */
+export const createQuestionsBatch = async (bankId, questions) => {
+  const api = getElectronAPI()
+  if (!api) throw new Error('Electron API 不可用')
+  return api.question.createBatch(bankId, questions)
+}
+
+/**
  * 根据题库 ID 获取题目列表
  * @param {number} bankId
  * @param {QueryOptions} [options]
@@ -201,6 +213,18 @@ export const getQuestionsByBankId = async (bankId, options = {}) => {
   const api = getElectronAPI()
   if (!api) throw new Error('Electron API 不可用')
   return api.question.getByBankId(bankId, options)
+}
+
+/**
+ * 从题库随机获取题目
+ * @param {number} bankId
+ * @param {{limit?: number, type?: QuestionType}} [options]
+ * @returns {Promise<Question[]>}
+ */
+export const getRandomQuestions = async (bankId, options = {}) => {
+  const api = getElectronAPI()
+  if (!api) throw new Error('Electron API 不可用')
+  return api.question.getRandom(bankId, options)
 }
 
 /**
@@ -469,7 +493,9 @@ export default {
   // 题目
   question: {
     create: createQuestion,
+    createBatch: createQuestionsBatch,
     getByBankId: getQuestionsByBankId,
+    getRandom: getRandomQuestions,
     getById: getQuestionById,
     update: updateQuestion,
     delete: deleteQuestions,

@@ -14,7 +14,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 题目操作
   question: {
     create: (data) => ipcRenderer.invoke('question:create', data),
+    createBatch: (bankId, questions) => ipcRenderer.invoke('question:createBatch', bankId, questions),
     getByBankId: (bankId, options) => ipcRenderer.invoke('question:getByBankId', bankId, options),
+    getRandom: (bankId, options) => ipcRenderer.invoke('question:getRandom', bankId, options),
     getById: (id) => ipcRenderer.invoke('question:getById', id),
     update: (id, data) => ipcRenderer.invoke('question:update', id, data),
     delete: (ids) => ipcRenderer.invoke('question:delete', ids),

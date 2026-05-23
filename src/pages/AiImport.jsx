@@ -227,28 +227,12 @@ const AiImport = () => {
     setImportResult(null);
 
     try {
-      let successCount = 0;
-      let failCount = 0;
-      const errors = [];
+      const result = await api.question.createBatch(selectedBankId, parsedQuestions);
+      const successCount = result.success || 0;
+      const failCount = result.failed || 0;
+      const errors = Array.isArray(result.errors) ? result.errors : [];
 
-      for (let i = 0; i < parsedQuestions.length; i++) {
-        try {
-          await api.question.create({
-            bankId: selectedBankId,
-            ...parsedQuestions[i],
-          });
-          successCount++;
-        } catch (err) {
-          failCount++;
-          errors.push({ index: i, message: err.message });
-        }
-      }
-
-      setImportResult({
-        success: successCount,
-        failed: failCount,
-        errors,
-      });
+      setImportResult(result);
 
       if (successCount > 0) {
         if (failCount === 0) {
