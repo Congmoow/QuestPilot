@@ -11,6 +11,17 @@ const LEGACY_DATABASE_FILE_NAMES = ['question-bank.db']
 const LEGACY_USER_DATA_DIRS = ['question-bank-assistant', '题库助手']
 
 /**
+ * 获取 sql.js 的 wasm 文件路径
+ */
+function getSqlWasmPath() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'sql-wasm.wasm')
+  }
+
+  return path.resolve(__dirname, '../../node_modules/sql.js/dist/sql-wasm.wasm')
+}
+
+/**
  * 获取数据库文件路径（用户数据目录）
  */
 function getDatabasePath() {
@@ -51,7 +62,14 @@ function migrateLegacyDatabase(targetPath) {
 async function initDatabase() {
   if (db) return db
 
-  const SQL = await initSqlJs()
+  const SQL = await initSqlJs({
+    locateFile: (fileName) => {
+      if (fileName === 'sql-wasm.wasm') {
+        return getSqlWasmPath()
+      }
+      return fileName
+    }
+  })
   dbPath = getDatabasePath()
 
   // 确保目录存在
