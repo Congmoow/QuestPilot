@@ -1,0 +1,42 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "QuestPilot",
+  "version": "1.5.6",
+  "identifier": "com.questpilot.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "QuestPilot",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 700,
+        "resizable": true,
+        "decorations": false,
+        "transparent": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "../build/icon.png"
+    ],
+    "windows": {
+      "nsis": {
+        "displayLanguageSelector": true
+      }
+    }
+  }
+}

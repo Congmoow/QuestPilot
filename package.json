@@ -19,10 +19,14 @@
     "electron:build:linux": "vite build && electron-builder --linux",
     "electron:preview": "vite build && electron .",
     "electron:pack": "vite build && electron-builder --dir",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:info": "tauri info",
     "clean": "rimraf dist release",
     "optimize:assets": "node scripts/optimize-assets.cjs"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.11.0",
     "clsx": "^2.1.0",
     "framer-motion": "^11.0.8",
     "katex": "^0.16.27",
@@ -40,6 +44,7 @@
     "tailwind-merge": "^2.2.1"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.11.2",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4.2.1",

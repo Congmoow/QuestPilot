@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Minus, Square, X, Copy } from 'lucide-react';
 import { getPublicAssetPath } from '../lib/assets';
+import { windowControls } from '../lib/desktopRuntime';
 
 const BRAND_FONT_FAMILY = 'QuestPilotBrand';
 let brandFontLoading = null;
@@ -50,9 +51,11 @@ const TitleBar = () => {
 
   useEffect(() => {
     const checkMaximized = async () => {
-      if (window.electronAPI?.window?.isMaximized) {
-        const maximized = await window.electronAPI.window.isMaximized();
+      try {
+        const maximized = await windowControls.isMaximized();
         setIsMaximized(maximized);
+      } catch (error) {
+        console.warn('获取窗口最大化状态失败:', error);
       }
     };
     checkMaximized();
@@ -63,22 +66,34 @@ const TitleBar = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleMinimize = () => {
-    window.electronAPI?.window?.minimize();
+  const handleMinimize = async () => {
+    try {
+      await windowControls.minimize();
+    } catch (error) {
+      console.warn('最小化窗口失败:', error);
+    }
   };
 
   const handleMaximize = async () => {
-    await window.electronAPI?.window?.maximize();
-    const maximized = await window.electronAPI?.window?.isMaximized();
-    setIsMaximized(maximized);
+    try {
+      await windowControls.maximize();
+      const maximized = await windowControls.isMaximized();
+      setIsMaximized(maximized);
+    } catch (error) {
+      console.warn('切换窗口最大化状态失败:', error);
+    }
   };
 
-  const handleClose = () => {
-    window.electronAPI?.window?.close();
+  const handleClose = async () => {
+    try {
+      await windowControls.close();
+    } catch (error) {
+      console.warn('关闭窗口失败:', error);
+    }
   };
 
   return (
-    <div className="app-drag flex h-14 select-none items-center justify-between overflow-hidden rounded-t-xl bg-white shadow-[8px_0_28px_rgba(15,23,42,0.04)] dark:bg-gray-800">
+    <div data-tauri-drag-region className="app-drag flex h-14 select-none items-center justify-between overflow-hidden rounded-t-xl bg-white shadow-[8px_0_28px_rgba(15,23,42,0.04)] dark:bg-gray-800">
       <div className="flex items-center gap-2 px-4">
         <img src={iconPath} alt="QuestPilot 标志" className="size-8" />
         <span className="text-[36px] font-bold leading-none text-gray-700 dark:text-gray-200" style={{ fontFamily: `'${BRAND_FONT_FAMILY}', 'Microsoft YaHei', 'PingFang SC', cursive` }}>QuestPilot</span>
