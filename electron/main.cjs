@@ -9,6 +9,8 @@ const { normalizeAiParseResult } = require('./ai-normalize.cjs')
 const { splitMarkdownIntoChunks } = require('./ai-import-chunker.cjs')
 const { resolveWindowEntry } = require('./window-entry.cjs')
 
+app.setName('QuestPilot')
+
 let mainWindow = null
 
 function createWindow() {

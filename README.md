@@ -1,6 +1,6 @@
-# 题库助手
+# QuestPilot
 
-题库助手是一款基于 Electron + React + Vite 构建的桌面端题库管理与刷题工具，支持 CSV / JSON / AI 导入、随机练题、错题本、统计面板与 AI 问答。
+QuestPilot 是一款基于 Electron + React + Vite 构建的桌面端题库管理与刷题工具，支持 CSV / JSON / AI 导入、随机练题、错题本、统计面板与 AI 问答。
 
 ![Electron](https://img.shields.io/badge/Electron-33.x-47848F?logo=electron&logoColor=white)
 ![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react&logoColor=white)
@@ -50,9 +50,9 @@
 
 前往仓库的 Releases 页面下载对应平台的安装包：
 
-- Windows：`题库助手-<version>-Setup.exe`
-- macOS：`题库助手-<version>-<arch>.dmg`
-- Linux：`.AppImage`
+- Windows：`QuestPilot-<version>-Setup.exe`
+- macOS：`QuestPilot-<version>-<arch>.dmg`
+- Linux：`QuestPilot-<version>-<arch>.AppImage`
 
 ### 本地构建产物
 
@@ -161,7 +161,8 @@ npm run clean
 
 所有数据默认保存在本地（不会自动上传）。
 
-- **数据库文件**：`question-bank.db`
+- **数据库文件**：`questpilot.db`
+- **旧版数据兼容**：首次启动时会尝试从旧版 `question-bank.db` 复制迁移
 - **数据库位置**：Electron `app.getPath('userData')` 目录下
   - 启动应用后，主进程控制台会输出数据库路径：`数据库初始化完成，路径: ...`
 
@@ -265,7 +266,7 @@ Explanation: 支持英文答案和解析标记。
 ## 项目结构
 
 ```
-question-bank-assistant/
+questpilot/
 ├── image/                    # README 文档图片
 │   └── README/               # README 中引用的界面截图
 ├── electron/                 # Electron 主进程

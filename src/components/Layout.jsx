@@ -139,7 +139,7 @@ const Layout = () => {
             <div className="min-w-0">
               <div>
                 <p className="text-base font-semibold text-gray-600 dark:text-gray-300">你的专属题库管理与学习助手</p>
-                <p className="mt-0.5 text-xs font-medium text-gray-400 dark:text-gray-500">Your Smart Question Bank & Learning Assistant</p>
+                <p className="mt-0.5 text-xs font-medium text-gray-400 dark:text-gray-500">QuestPilot 智能题库与学习助手</p>
               </div>
             </div>
           )}
