@@ -1,19 +1,58 @@
 import { useState, useEffect } from 'react';
 import { Minus, Square, X, Copy } from 'lucide-react';
 
+const BRAND_FONT_FAMILY = 'QuestPilotBrand';
+let brandFontLoading = null;
+
+const getPublicAssetPath = (assetPath) => {
+  if (window.electronAPI) {
+    return `.${assetPath}`;
+  }
+  return assetPath;
+};
+
+const loadBrandFont = () => {
+  if (brandFontLoading || typeof FontFace === 'undefined' || !document.fonts) {
+    return brandFontLoading;
+  }
+
+  const fonts = [
+    new FontFace(BRAND_FONT_FAMILY, `url("${getPublicAssetPath('/fonts/dancing-script-regular.ttf')}")`, {
+      style: 'normal',
+      weight: '400',
+      display: 'swap',
+    }),
+    new FontFace(BRAND_FONT_FAMILY, `url("${getPublicAssetPath('/fonts/dancing-script-bold.ttf')}")`, {
+      style: 'normal',
+      weight: '700',
+      display: 'swap',
+    }),
+  ];
+
+  brandFontLoading = Promise.all(fonts.map((font) => font.load()))
+    .then((loadedFonts) => {
+      loadedFonts.forEach((font) => document.fonts.add(font));
+    })
+    .catch((error) => {
+      console.warn('加载本地品牌字体失败:', error);
+      brandFontLoading = null;
+    });
+
+  return brandFontLoading;
+};
+
 // 获取图标路径，兼容开发环境和打包后环境
 const getIconPath = () => {
-  // 打包后的 Electron 环境
-  if (window.electronAPI) {
-    return './icon.png';
-  }
-  // 开发环境
-  return '/icon.png';
+  return getPublicAssetPath('/icon.png');
 };
 
 const TitleBar = () => {
   const [isMaximized, setIsMaximized] = useState(false);
   const iconPath = getIconPath();
+
+  useEffect(() => {
+    loadBrandFont();
+  }, []);
 
   useEffect(() => {
     const checkMaximized = async () => {
@@ -45,39 +84,37 @@ const TitleBar = () => {
   };
 
   return (
-    <div className="h-10 bg-white dark:bg-[#1F1F1F] rounded-tl-xl overflow-hidden flex items-center justify-between select-none app-drag">
-      {/* 左侧图标和标题 */}
-      <div className="flex items-center gap-3 px-4">
-        <img src={iconPath} alt="logo" className="w-8 h-8" />
-        <span className="text-lg font-medium text-gray-700 dark:text-gray-200">题库助手系统</span>
+    <div className="app-drag flex h-14 select-none items-center justify-between overflow-hidden rounded-t-xl bg-white shadow-[8px_0_28px_rgba(15,23,42,0.04)] dark:bg-gray-800">
+      <div className="flex items-center gap-2 px-4">
+        <img src={iconPath} alt="QuestPilot 标志" className="size-8" />
+        <span className="text-[36px] font-bold leading-none text-gray-700 dark:text-gray-200" style={{ fontFamily: `'${BRAND_FONT_FAMILY}', 'Microsoft YaHei', 'PingFang SC', cursive` }}>QuestPilot</span>
       </div>
       
-      {/* 右侧窗口控制按钮 */}
-      <div className="flex items-center h-full app-no-drag">
+      <div className="app-no-drag flex h-full items-center">
         <button
           onClick={handleMinimize}
-          className="h-full px-5 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+          className="flex h-full items-center justify-center px-5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
           title="最小化"
         >
-          <Minus size={18} className="text-gray-600 dark:text-gray-400" />
+          <Minus size={17} className="text-gray-500 dark:text-gray-400" />
         </button>
         <button
           onClick={handleMaximize}
-          className="h-full px-5 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+          className="flex h-full items-center justify-center px-5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
           title={isMaximized ? "还原" : "最大化"}
         >
           {isMaximized ? (
-            <Copy size={14} className="text-gray-600 dark:text-gray-400" />
+            <Copy size={14} className="text-gray-500 dark:text-gray-400" />
           ) : (
-            <Square size={14} className="text-gray-600 dark:text-gray-400" />
+            <Square size={14} className="text-gray-500 dark:text-gray-400" />
           )}
         </button>
         <button
           onClick={handleClose}
-          className="h-full px-5 hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center group"
+          className="group flex h-full items-center justify-center px-5 transition-colors hover:bg-red-500 hover:text-white"
           title="关闭"
         >
-          <X size={18} className="text-gray-600 dark:text-gray-400 group-hover:text-white" />
+          <X size={17} className="text-gray-500 group-hover:text-white dark:text-gray-400" />
         </button>
       </div>
     </div>

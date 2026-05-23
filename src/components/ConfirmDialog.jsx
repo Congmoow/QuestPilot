@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import Dialog from './Dialog';
+import { ActionButton } from './ui';
 
 /**
  * 确认对话框组件
@@ -38,15 +39,15 @@ export function ConfirmDialog({
   const typeStyles = {
     danger: {
       icon: 'bg-danger/10 text-danger',
-      button: 'bg-danger hover:bg-danger/90 shadow-danger/30',
+      button: 'danger',
     },
     warning: {
       icon: 'bg-orange-100 text-orange-600',
-      button: 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/30',
+      button: 'primary',
     },
     primary: {
       icon: 'bg-primary/10 text-primary',
-      button: 'bg-primary hover:bg-primary-hover shadow-primary/30',
+      button: 'primary',
     },
   };
 
@@ -56,39 +57,23 @@ export function ConfirmDialog({
     <Dialog open={open} onClose={onClose} title={title}>
       <div className="space-y-4">
         <div className="flex items-start gap-4">
-          <div className={`p-3 rounded-full ${styles.icon}`}>
+          <div className={`rounded-2xl p-3 ${styles.icon}`}>
             <AlertTriangle size={24} />
           </div>
           <div className="flex-1">
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+            <p className="leading-7 text-gray-600 dark:text-gray-300">
               {message}
             </p>
           </div>
         </div>
 
         <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50"
-          >
+          <ActionButton type="button" variant="secondary" onClick={onClose} disabled={loading}>
             {cancelText}
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={loading}
-            className={`px-4 py-2 text-sm font-medium text-white rounded-lg shadow-sm transition-colors disabled:opacity-50 flex items-center gap-2 ${styles.button}`}
-          >
-            {loading && (
-              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            )}
+          </ActionButton>
+          <ActionButton type="button" variant={styles.button} onClick={handleConfirm} disabled={loading} loading={loading}>
             {confirmText}
-          </button>
+          </ActionButton>
         </div>
       </div>
     </Dialog>

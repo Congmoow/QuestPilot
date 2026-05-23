@@ -9,13 +9,15 @@ const { normalizeAiParseResult } = require('./ai-normalize.cjs')
 const { splitMarkdownIntoChunks } = require('./ai-import-chunker.cjs')
 const { resolveWindowEntry } = require('./window-entry.cjs')
 
+app.setName('QuestPilot')
+
 let mainWindow = null
 
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
-    minWidth: 1024,
+    minWidth: 900,
     minHeight: 700,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -64,7 +66,6 @@ function createWindow() {
 app.whenReady().then(async () => {
   // 初始化数据库
   await database.initDatabase()
-  console.log('数据库初始化完成，路径:', database.getDatabasePath())
   
   createWindow()
 

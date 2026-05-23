@@ -6,12 +6,43 @@ const { app } = require('electron')
 let db = null
 let dbPath = null
 
+const DATABASE_FILE_NAME = 'questpilot.db'
+const LEGACY_DATABASE_FILE_NAMES = ['question-bank.db']
+const LEGACY_USER_DATA_DIRS = ['question-bank-assistant', '题库助手']
+
 /**
  * 获取数据库文件路径（用户数据目录）
  */
 function getDatabasePath() {
   const userDataPath = app.getPath('userData')
-  return path.join(userDataPath, 'question-bank.db')
+  return path.join(userDataPath, DATABASE_FILE_NAME)
+}
+
+function getLegacyDatabasePaths(targetPath) {
+  const paths = []
+  const userDataPath = app.getPath('userData')
+  const appDataPath = app.getPath('appData')
+
+  for (const fileName of LEGACY_DATABASE_FILE_NAMES) {
+    paths.push(path.join(userDataPath, fileName))
+  }
+
+  for (const dirName of LEGACY_USER_DATA_DIRS) {
+    for (const fileName of LEGACY_DATABASE_FILE_NAMES) {
+      paths.push(path.join(appDataPath, dirName, fileName))
+    }
+  }
+
+  return [...new Set(paths)].filter((legacyPath) => legacyPath !== targetPath)
+}
+
+function migrateLegacyDatabase(targetPath) {
+  if (fs.existsSync(targetPath)) return
+
+  const legacyPath = getLegacyDatabasePaths(targetPath).find((candidate) => fs.existsSync(candidate))
+  if (legacyPath) {
+    fs.copyFileSync(legacyPath, targetPath)
+  }
 }
 
 /**
@@ -28,6 +59,8 @@ async function initDatabase() {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true })
   }
+
+  migrateLegacyDatabase(dbPath)
 
   // 如果数据库文件存在，加载它；否则创建新数据库
   if (fs.existsSync(dbPath)) {

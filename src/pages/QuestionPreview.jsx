@@ -1,24 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Filter, 
-  Trash2, 
-  Download, 
-  ChevronLeft, 
-  ChevronRight, 
-  Edit, 
-  Eye, 
-  Plus,
-  Upload,
+import React, { useCallback, useEffect, useState } from 'react';
+import {
   ArrowLeft,
   BookOpen,
+  Download,
+  Edit,
+  Filter,
   FolderOpen,
   LibraryBig,
+  Loader2,
+  Plus,
   Search,
-  X
+  Trash2,
+  Upload,
 } from 'lucide-react';
-import { cn } from '../lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
+import { cn } from '../lib/utils';
 import { useQuestionBanks } from '../contexts/QuestionBankContext';
 import { useQuestions } from '../contexts/QuestionContext';
 import QuestionBankDialog from '../components/QuestionBankDialog';
@@ -26,6 +23,36 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import QuestionEditDialog from '../components/QuestionEditDialog';
 import { exportQuestionBank } from '../api';
 import CodeAwareText from '../components/CodeAwareText';
+import {
+  ActionButton,
+  AlertBanner,
+  EmptyState,
+  IconButton,
+  PageHeader,
+  QuestionBankCard,
+  SearchInput,
+  SelectInput,
+  SurfaceCard,
+  ToolbarCard,
+  TypeBadge,
+} from '../components/ui';
+
+const typeMap = {
+  single: { label: '单选题' },
+  multiple: { label: '多选题' },
+  boolean: { label: '判断题' },
+  fill: { label: '填空题' },
+  short: { label: '简答题' },
+};
+
+const bankTones = [
+  'bg-blue-50 text-primary',
+  'bg-emerald-50 text-emerald-600',
+  'bg-violet-50 text-violet-600',
+  'bg-orange-50 text-orange-600',
+  'bg-cyan-50 text-cyan-600',
+  'bg-teal-50 text-teal-600',
+];
 
 const QuestionPreview = () => {
   const { banks, loading: banksLoading, error: banksError, addBank, editBank, removeBank, fetchBanks } = useQuestionBanks();
@@ -52,11 +79,10 @@ const QuestionPreview = () => {
     removeQuestions,
     editQuestion,
   } = useQuestions();
-  
+
   const [selectedBank, setSelectedBank] = useState(null);
   const [searchInput, setSearchInput] = useState('');
 
-  // 对话框状态
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -64,25 +90,11 @@ const QuestionPreview = () => {
   const [deletingBank, setDeletingBank] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // 题目删除确认对话框
   const [deleteQuestionsDialogOpen, setDeleteQuestionsDialogOpen] = useState(false);
-
-  // 题目编辑对话框
   const [editQuestionDialogOpen, setEditQuestionDialogOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
-
-  // 导出状态
   const [exporting, setExporting] = useState(false);
 
-  const typeMap = {
-    single: { label: '单选题', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-    multiple: { label: '多选题', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-    boolean: { label: '判断题', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
-    fill: { label: '填空题', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
-    short: { label: '简答题', color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
-  };
-
-  // 加载题目列表
   const loadQuestions = useCallback(async (bankId, options = {}) => {
     await fetchQuestions(bankId, {
       page: options.page || 1,
@@ -90,14 +102,12 @@ const QuestionPreview = () => {
     });
   }, [fetchQuestions, filterType]);
 
-  // 进入题库时加载题目
   useEffect(() => {
     if (selectedBank) {
       loadQuestions(selectedBank.id, { page: 1 });
     }
   }, [selectedBank]);
 
-  // 题型筛选变化时重新加载
   useEffect(() => {
     if (selectedBank && filterType !== null) {
       loadQuestions(selectedBank.id, { page: 1, type: filterType });
@@ -136,7 +146,6 @@ const QuestionPreview = () => {
     setSearchInput('');
   };
 
-  // 搜索处理
   const handleSearch = useCallback(() => {
     if (selectedBank) {
       if (searchInput.trim()) {
@@ -148,7 +157,6 @@ const QuestionPreview = () => {
     }
   }, [selectedBank, searchInput, filterType, search, setSearchKeyword, loadQuestions]);
 
-  // 清除搜索
   const handleClearSearch = useCallback(() => {
     setSearchInput('');
     setSearchKeyword('');
@@ -157,13 +165,11 @@ const QuestionPreview = () => {
     }
   }, [selectedBank, setSearchKeyword, loadQuestions]);
 
-  // 题型筛选处理
   const handleTypeFilter = useCallback((type) => {
     const newType = type === 'all' ? null : type;
     setFilterType(newType);
   }, [setFilterType]);
 
-  // 分页处理
   const handlePageChange = useCallback((newPage) => {
     if (selectedBank && newPage >= 1 && newPage <= totalPages) {
       setPage(newPage);
@@ -175,35 +181,30 @@ const QuestionPreview = () => {
     }
   }, [selectedBank, totalPages, setPage, searchKeyword, search, filterType, loadQuestions]);
 
-  // 批量删除题目
   const handleDeleteQuestions = async () => {
     if (selectedIds.length === 0) return;
     setSubmitting(true);
     try {
       await removeQuestions(selectedIds);
       setDeleteQuestionsDialogOpen(false);
-      // 刷新题库列表以更新题目数量
       fetchBanks();
     } finally {
       setSubmitting(false);
     }
   };
 
-  // 打开编辑题目对话框
   const handleOpenEditQuestion = (question, e) => {
     e.stopPropagation();
     setEditingQuestion(question);
     setEditQuestionDialogOpen(true);
   };
 
-  // 删除单个题目
   const handleDeleteSingleQuestion = async (id, e) => {
     e.stopPropagation();
     setSelectedIds([id]);
     setDeleteQuestionsDialogOpen(true);
   };
 
-  // 新建题库
   const handleCreateBank = async (data) => {
     setSubmitting(true);
     try {
@@ -214,14 +215,12 @@ const QuestionPreview = () => {
     }
   };
 
-  // 打开编辑对话框
   const handleOpenEditDialog = (bank, e) => {
     e.stopPropagation();
     setEditingBank(bank);
     setEditDialogOpen(true);
   };
 
-  // 编辑题库
   const handleEditBank = async (data) => {
     if (!editingBank) return;
     setSubmitting(true);
@@ -234,14 +233,12 @@ const QuestionPreview = () => {
     }
   };
 
-  // 打开删除确认对话框
   const handleOpenDeleteDialog = (bank, e) => {
     e.stopPropagation();
     setDeletingBank(bank);
     setDeleteDialogOpen(true);
   };
 
-  // 删除题库
   const handleDeleteBank = async () => {
     if (!deletingBank) return;
     setSubmitting(true);
@@ -254,16 +251,11 @@ const QuestionPreview = () => {
     }
   };
 
-  // 导出题库
   const handleExportBank = async () => {
     if (!selectedBank) return;
     setExporting(true);
     try {
-      const result = await exportQuestionBank(selectedBank.id);
-      if (result.success) {
-        // 导出成功，可以显示提示
-        console.log(`导出成功: ${result.count} 道题目`);
-      }
+      await exportQuestionBank(selectedBank.id);
     } catch (error) {
       console.error('导出失败:', error);
       alert(error.message || '导出失败');
@@ -272,537 +264,324 @@ const QuestionPreview = () => {
     }
   };
 
-  // 格式化日期
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
     return date.toLocaleDateString('zh-CN');
   };
 
-  // 题库列表视图
+  const renderDialogs = () => (
+    <>
+      <QuestionBankDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        onSubmit={handleCreateBank}
+        loading={submitting}
+      />
+
+      <QuestionBankDialog
+        open={editDialogOpen}
+        onClose={() => {
+          setEditDialogOpen(false);
+          setEditingBank(null);
+        }}
+        onSubmit={handleEditBank}
+        initialData={editingBank}
+        loading={submitting}
+      />
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setDeletingBank(null);
+        }}
+        onConfirm={handleDeleteBank}
+        title="删除题库"
+        message={`确定要删除题库"${deletingBank?.name}"吗？删除后该题库及其所有题目将无法恢复。`}
+        confirmText="删除"
+        type="danger"
+        loading={submitting}
+      />
+    </>
+  );
+
   if (!selectedBank) {
     return (
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">题库管理</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">管理和查看所有题库</p>
-          </div>
-          
-          <button 
-            onClick={() => setCreateDialogOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover active:scale-95 transition-all text-sm font-medium shadow-sm shadow-primary/30"
-          >
-            <Plus size={18} />
-            新建题库
-          </button>
-        </div>
-
-        {/* 加载状态 */}
-        {banksLoading && banks.length === 0 && (
-          <div className="flex items-center justify-center py-12">
-            <div className="flex items-center gap-3 text-gray-500">
-              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <span>加载中...</span>
-            </div>
-          </div>
-        )}
-
-        {/* 错误提示 */}
-        {banksError && (
-          <div className="p-4 bg-danger/10 border border-danger/20 rounded-lg">
-            <p className="text-sm text-danger">{banksError}</p>
-          </div>
-        )}
-
-        {/* 空状态 */}
-        {!banksLoading && banks.length === 0 && !banksError && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-              <FolderOpen size={32} className="text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">暂无题库</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">点击上方按钮创建你的第一个题库</p>
-            <button 
-              onClick={() => setCreateDialogOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors text-sm font-medium"
-            >
-              <Plus size={18} />
+        <PageHeader
+          title="题库管理"
+          subtitle="管理和查看所有题库"
+          actions={(
+            <ActionButton icon={Plus} onClick={() => setCreateDialogOpen(true)}>
               新建题库
-            </button>
-          </div>
+            </ActionButton>
+          )}
+        />
+
+        {banksLoading && banks.length === 0 && (
+          <SurfaceCard className="flex min-h-[260px] items-center justify-center gap-3 text-gray-500">
+            <Loader2 className="size-6 animate-spin text-primary" />
+            <span className="font-semibold">题库加载中...</span>
+          </SurfaceCard>
         )}
 
-        {/* 题库卡片网格 */}
+        {banksError && <AlertBanner type="danger">{banksError}</AlertBanner>}
+
+        {!banksLoading && banks.length === 0 && !banksError && (
+          <SurfaceCard padding="p-8">
+            <EmptyState
+              icon={FolderOpen}
+              title="暂无题库"
+              description="创建第一个题库后，就可以开始录入、管理和练习题目。"
+              action={(
+                <ActionButton icon={Plus} onClick={() => setCreateDialogOpen(true)}>
+                  新建题库
+                </ActionButton>
+              )}
+            />
+          </SurfaceCard>
+        )}
+
         {banks.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {banks.map((bank, index) => (
               <motion.div
                 key={bank.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -8, scale: 1.015 }}
-                whileTap={{ scale: 0.99 }}
-                transition={{
-                  opacity: { duration: 0.36, delay: index * 0.05 },
-                  y: { type: 'spring', stiffness: 260, damping: 24 },
-                  scale: { type: 'spring', stiffness: 260, damping: 24 },
-                }}
-                onClick={() => handleEnterBank(bank)}
-                className="group relative cursor-pointer overflow-hidden rounded-2xl border border-white/80 bg-white shadow-[0_18px_45px_-32px_rgba(56,105,150,0.48)] transition-colors duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-white hover:shadow-[0_28px_70px_-34px_rgba(56,105,150,0.58)] dark:border-white/10 dark:bg-gray-800 dark:hover:border-white/20"
+                transition={{ delay: index * 0.04 }}
               >
-                <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent dark:via-white/20" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.92),transparent_34%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100 dark:bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.08),transparent_34%)]" />
-
-                <div className="relative p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-sky-100 bg-[#eef7ff] text-[#2f6faa] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_14px_30px_-22px_rgba(56,105,150,0.62)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-0.5 group-hover:border-sky-200 group-hover:bg-[#e2f1ff] group-hover:text-[#165dff] group-hover:shadow-[0_18px_38px_-24px_rgba(56,105,150,0.72)] dark:border-sky-200/10 dark:bg-sky-200/10 dark:text-sky-100 dark:group-hover:bg-sky-100 dark:group-hover:text-primary">
-                        <LibraryBig size={23} strokeWidth={1.8} />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-gray-900 transition-colors duration-300 dark:text-gray-100">
-                          {bank.name}
-                        </h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                          {bank.questionCount || 0} 道题目
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-4 line-clamp-2 min-h-[40px]">
-                    {bank.description || '暂无描述'}
-                  </p>
-                  
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <span className="text-xs text-gray-400">
-                      创建于 {formatDate(bank.createdAt)}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button 
-                        onClick={(e) => handleOpenEditDialog(bank, e)}
-                        className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                        title="编辑题库"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button 
-                        onClick={(e) => handleOpenDeleteDialog(bank, e)}
-                        className="p-1.5 text-gray-400 hover:text-danger hover:bg-danger/5 rounded-lg transition-colors"
-                        title="删除题库"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <QuestionBankCard
+                  bank={bank}
+                  icon={LibraryBig}
+                  formatDate={formatDate}
+                  toneClass={bankTones[index % bankTones.length]}
+                  onClick={() => handleEnterBank(bank)}
+                  onEdit={(e) => handleOpenEditDialog(bank, e)}
+                  onDelete={(e) => handleOpenDeleteDialog(bank, e)}
+                />
               </motion.div>
             ))}
           </div>
         )}
 
-        {/* 新建题库对话框 */}
-        <QuestionBankDialog
-          open={createDialogOpen}
-          onClose={() => setCreateDialogOpen(false)}
-          onSubmit={handleCreateBank}
-          loading={submitting}
-        />
-
-        {/* 编辑题库对话框 */}
-        <QuestionBankDialog
-          open={editDialogOpen}
-          onClose={() => {
-            setEditDialogOpen(false);
-            setEditingBank(null);
-          }}
-          onSubmit={handleEditBank}
-          initialData={editingBank}
-          loading={submitting}
-        />
-
-        {/* 删除确认对话框 */}
-        <ConfirmDialog
-          open={deleteDialogOpen}
-          onClose={() => {
-            setDeleteDialogOpen(false);
-            setDeletingBank(null);
-          }}
-          onConfirm={handleDeleteBank}
-          title="删除题库"
-          message={`确定要删除题库"${deletingBank?.name}"吗？删除后该题库及其所有题目将无法恢复。`}
-          confirmText="删除"
-          type="danger"
-          loading={submitting}
-        />
+        {renderDialogs()}
       </div>
     );
   }
 
-  // 题目列表视图（选中题库后）
   return (
     <div className="space-y-6">
-      {/* 返回按钮和标题 */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={handleBackToList}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition-colors"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{selectedBank.name}</h1>
-              <span className="text-sm text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
-                {total} 题
-              </span>
-            </div>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">{selectedBank.description || '暂无描述'}</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <NavLink to={`/manual-entry?bankId=${selectedBank.id}`}>
-            <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover active:scale-95 transition-all text-sm font-medium shadow-sm shadow-primary/30">
-              <Plus size={16} />
-              手动录入
-            </button>
-          </NavLink>
-          <NavLink to={`/csv-import?bankId=${selectedBank.id}`}>
-            <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-all text-sm font-medium">
-              <Upload size={16} />
-              CSV导入
-            </button>
-          </NavLink>
-          <button 
-            onClick={handleExportBank}
-            disabled={exporting || total === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download size={16} />
-            {exporting ? '导出中...' : '导出'}
-          </button>
-          {selectedIds.length > 0 && (
-            <button 
-              onClick={() => setDeleteQuestionsDialogOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-danger/10 text-danger border border-danger/20 rounded-lg hover:bg-danger/20 active:scale-95 transition-all text-sm font-medium"
+      <PageHeader
+        title={selectedBank.name}
+        subtitle={selectedBank.description || '暂无描述'}
+        actions={(
+          <>
+            <NavLink to={`/manual-entry?bankId=${selectedBank.id}`}>
+              <ActionButton icon={Plus}>手动录入</ActionButton>
+            </NavLink>
+            <NavLink to={`/csv-import?bankId=${selectedBank.id}`}>
+              <ActionButton variant="secondary" icon={Upload}>CSV导入</ActionButton>
+            </NavLink>
+            <ActionButton
+              variant="secondary"
+              icon={Download}
+              onClick={handleExportBank}
+              disabled={exporting || total === 0}
+              loading={exporting}
             >
-              <Trash2 size={16} />
-              删除 ({selectedIds.length})
-            </button>
-          )}
-        </div>
+              {exporting ? '导出中' : '导出'}
+            </ActionButton>
+            {selectedIds.length > 0 && (
+              <ActionButton variant="danger" icon={Trash2} onClick={() => setDeleteQuestionsDialogOpen(true)}>
+                删除 ({selectedIds.length})
+              </ActionButton>
+            )}
+          </>
+        )}
+      />
+
+      <div className="flex items-center gap-3">
+        <IconButton label="返回题库列表" icon={ArrowLeft} variant="secondary" onClick={handleBackToList} />
+        <span className="rounded-xl bg-primary-soft px-3 py-1.5 text-sm font-bold text-primary">{total} 题</span>
       </div>
 
-      {/* 搜索和筛选器 */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        {/* 搜索框 */}
-        <div className="relative flex-1 w-full sm:max-w-md">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
+      <ToolbarCard>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+          <SearchInput
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            onEnter={handleSearch}
+            onClear={handleClearSearch}
             placeholder="搜索题目内容..."
-            className="w-full pl-10 pr-10 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+            className="w-full lg:max-w-md"
           />
-          {searchInput && (
-            <button
-              onClick={handleClearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </div>
-        
-        {/* 搜索按钮 */}
-        <button
-          onClick={handleSearch}
-          className="px-4 py-2.5 bg-primary text-white text-sm rounded-lg hover:bg-primary-hover transition-colors"
-        >
-          搜索
-        </button>
-
-        {/* 题型筛选 */}
-        <div className="flex items-center gap-2 text-gray-500">
-          <Filter size={18} />
-          <span className="text-sm font-medium">筛选:</span>
-        </div>
-        <select 
-          value={filterType || 'all'}
-          onChange={(e) => handleTypeFilter(e.target.value)}
-          className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded-lg block p-2.5"
-        >
-          <option value="all">所有题型</option>
-          <option value="single">单选题</option>
-          <option value="multiple">多选题</option>
-          <option value="boolean">判断题</option>
-          <option value="fill">填空题</option>
-          <option value="short">简答题</option>
-        </select>
-      </div>
-
-      {/* 搜索结果提示 */}
-      {searchKeyword && (
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <span>搜索 "{searchKeyword}" 的结果：{total} 条</span>
-          <button
-            onClick={handleClearSearch}
-            className="text-primary hover:underline"
+          <ActionButton icon={Search} onClick={handleSearch}>搜索</ActionButton>
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-500">
+            <Filter size={18} />
+            题型筛选
+          </div>
+          <SelectInput
+            value={filterType || 'all'}
+            onChange={(e) => handleTypeFilter(e.target.value)}
+            className="w-full lg:w-44"
           >
+            <option value="all">所有题型</option>
+            <option value="single">单选题</option>
+            <option value="multiple">多选题</option>
+            <option value="boolean">判断题</option>
+            <option value="fill">填空题</option>
+            <option value="short">简答题</option>
+          </SelectInput>
+        </div>
+      </ToolbarCard>
+
+      {searchKeyword && (
+        <AlertBanner type="info">
+          搜索“{searchKeyword}”的结果：{total} 条
+          <button type="button" onClick={handleClearSearch} className="ml-2 font-semibold text-primary hover:underline">
             清除搜索
           </button>
-        </div>
+        </AlertBanner>
       )}
 
-      {/* 错误提示 */}
-      {questionsError && (
-        <div className="p-4 bg-danger/10 border border-danger/20 rounded-lg">
-          <p className="text-sm text-danger">{questionsError}</p>
-        </div>
+      {questionsError && <AlertBanner type="danger">{questionsError}</AlertBanner>}
+
+      {questionsLoading && (
+        <SurfaceCard className="flex min-h-[240px] items-center justify-center gap-3 text-gray-500">
+          <Loader2 className="size-6 animate-spin text-primary" />
+          <span className="font-semibold">题目加载中...</span>
+        </SurfaceCard>
       )}
 
-      {/* 题目列表 */}
-      <div className="space-y-4">
-        {/* 加载状态 */}
-        {questionsLoading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="flex items-center gap-3 text-gray-500">
-              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <span>加载中...</span>
-            </div>
-          </div>
-        )}
+      {!questionsLoading && questions.length === 0 && (
+        <SurfaceCard padding="p-8">
+          <EmptyState
+            icon={BookOpen}
+            title={searchKeyword ? '未找到匹配的题目' : '暂无题目'}
+            description={searchKeyword ? '尝试使用其他关键词搜索。' : '点击上方按钮添加题目，题目会显示在这里。'}
+          />
+        </SurfaceCard>
+      )}
 
-        {/* 空状态 */}
-        {!questionsLoading && questions.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-              <BookOpen size={32} className="text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-              {searchKeyword ? '未找到匹配的题目' : '暂无题目'}
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              {searchKeyword ? '尝试使用其他关键词搜索' : '点击上方按钮添加题目'}
-            </p>
-          </div>
-        )}
-
-        {/* 题目列表 */}
-        {!questionsLoading && questions.length > 0 && (
-          <>
-            <div className="flex items-center gap-4 px-6">
-              <input 
-                type="checkbox" 
-                className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded"
+      {!questionsLoading && questions.length > 0 && (
+        <div className="space-y-4">
+          <SurfaceCard padding="px-5 py-4">
+            <label className="inline-flex items-center gap-3 text-sm font-semibold text-gray-500">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-gray-300 text-primary"
                 onChange={handleSelectAll}
                 checked={selectedIds.length === questions.length && questions.length > 0}
               />
-              <span className="text-sm text-gray-500 dark:text-gray-400">全选本页</span>
-            </div>
+              全选本页
+            </label>
+          </SurfaceCard>
 
-            <div className="grid gap-4">
-              <AnimatePresence>
-                {questions.map((q, index) => (
-                  <motion.div
-                    key={q.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className={cn(
-                      "group bg-white dark:bg-gray-800 p-6 rounded-xl border transition-all duration-200",
-                      selectedIds.includes(q.id) 
-                        ? "border-primary ring-1 ring-primary shadow-md" 
-                        : "border-gray-100 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm"
-                    )}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="pt-1">
-                        <input 
-                          type="checkbox" 
-                          className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded"
-                          checked={selectedIds.includes(q.id)}
-                          onChange={() => handleSelectOne(q.id)}
-                        />
+          <div className="grid gap-4">
+            <AnimatePresence>
+              {questions.map((q, index) => (
+                <motion.article
+                  key={q.id}
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.03 }}
+                  className={cn(
+                    'ui-card group p-6 transition-all duration-200',
+                    selectedIds.includes(q.id) ? 'border-primary ring-2 ring-primary/20' : 'hover:border-blue-200'
+                  )}
+                >
+                  <div className="flex items-start gap-4">
+                    <input
+                      type="checkbox"
+                      className="mt-2 size-4 rounded border-gray-300 text-primary"
+                      checked={selectedIds.includes(q.id)}
+                      onChange={() => handleSelectOne(q.id)}
+                    />
+
+                    <div className="min-w-0 flex-1 space-y-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <TypeBadge type={q.type} label={typeMap[q.type]?.label || q.type} />
+                        <span className="ml-auto text-xs text-gray-400">
+                          {q.createdAt ? new Date(q.createdAt).toLocaleString('zh-CN') : ''}
+                        </span>
                       </div>
-                      
-                      <div className="flex-1 space-y-3">
-                        <div className="flex items-center gap-3">
-                          <span className={cn("px-2.5 py-0.5 rounded text-xs font-medium", typeMap[q.type]?.color || 'bg-gray-100 text-gray-700')}>
-                            {typeMap[q.type]?.label || q.type}
-                          </span>
-                          <span className="text-xs text-gray-400 ml-auto">
-                            {q.createdAt ? new Date(q.createdAt).toLocaleString('zh-CN') : ''}
-                          </span>
-                        </div>
-                        
-                        <div className="text-gray-900 dark:text-gray-100 font-medium leading-relaxed">
-                          <CodeAwareText text={q.content} />
-                        </div>
 
-                        {/* 显示选项（单选/多选题） */}
-                        {q.options && q.options.length > 0 && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 items-stretch">
-                            {q.options.map((opt) => (
-                              <div 
-                                key={opt.id} 
-                                className={cn(
-                                  "text-sm px-3 py-1.5 rounded-lg flex flex-col h-full border border-transparent",
-                                  q.answer?.includes(opt.id) 
-                                    ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border border-green-200 dark:border-green-800" 
-                                    : "bg-gray-50 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
-                                )}
-                              >
-                                <div className="flex items-stretch gap-2 flex-1 min-h-0">
-                                  <span className="flex-shrink-0 self-start">{opt.id}.</span>
-                                  <CodeAwareText text={opt.text} className="min-w-0 flex-1 self-stretch bg-transparent p-0 h-full" />
-                                </div>
+                      <div className="text-base font-semibold leading-8 text-gray-900 dark:text-gray-100">
+                        <CodeAwareText text={q.content} />
+                      </div>
+
+                      {q.options && q.options.length > 0 && (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          {q.options.map((opt) => (
+                            <div
+                              key={opt.id}
+                              className={cn(
+                                'rounded-2xl border px-4 py-3 text-sm',
+                                q.answer?.includes(opt.id)
+                                  ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300'
+                                  : 'border-gray-100 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                              )}
+                            >
+                              <div className="flex gap-2">
+                                <span className="shrink-0 font-bold">{opt.id}.</span>
+                                <CodeAwareText text={opt.text} className="min-w-0 flex-1 bg-transparent p-0" />
                               </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* 显示答案 */}
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          <span className="font-medium">答案：</span>
-                          <span className="text-green-600 dark:text-green-400">{q.answer}</span>
-                        </div>
-
-                        {/* 显示解析 */}
-                        {q.analysis && (
-                          <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
-                            <span className="font-medium">解析：</span>
-                            <div className="mt-1">
-                              <CodeAwareText text={q.analysis} className="bg-transparent p-0" />
                             </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="rounded-2xl bg-green-50 px-4 py-3 text-sm text-gray-600 dark:bg-green-900/20 dark:text-gray-300">
+                        <span className="font-semibold text-gray-700 dark:text-gray-200">答案：</span>
+                        <span className="font-bold text-green-700 dark:text-green-300">{q.answer}</span>
+                      </div>
+
+                      {q.analysis && (
+                        <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm text-gray-600 dark:bg-blue-900/20 dark:text-gray-300">
+                          <span className="font-semibold text-gray-700 dark:text-gray-200">解析：</span>
+                          <div className="mt-1">
+                            <CodeAwareText text={q.analysis} className="bg-transparent p-0" />
                           </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={(e) => handleOpenEditQuestion(q, e)}
-                          className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors" 
-                          title="编辑"
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button 
-                          onClick={(e) => handleDeleteSingleQuestion(q.id, e)}
-                          className="p-2 text-gray-400 hover:text-danger hover:bg-danger/5 rounded-lg transition-colors" 
-                          title="删除"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
+                        </div>
+                      )}
                     </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          </>
-        )}
-      </div>
 
-      {/* 分页 */}
-      {!questionsLoading && totalPages > 0 && (
-        <div className="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-700">
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            显示 {(page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, total)} 条，共 {total} 条
-          </span>
-          <div className="flex items-center gap-2">
-            <button 
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={page === 1}
-              onClick={() => handlePageChange(page - 1)}
-            >
-              <ChevronLeft size={20} />
-            </button>
-            
-            {/* 动态生成页码 */}
-            {(() => {
-              const pages = [];
-              const maxVisiblePages = 5;
-              let startPage = Math.max(1, page - Math.floor(maxVisiblePages / 2));
-              let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-              
-              if (endPage - startPage + 1 < maxVisiblePages) {
-                startPage = Math.max(1, endPage - maxVisiblePages + 1);
-              }
-
-              if (startPage > 1) {
-                pages.push(
-                  <button
-                    key={1}
-                    onClick={() => handlePageChange(1)}
-                    className="w-9 h-9 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    1
-                  </button>
-                );
-                if (startPage > 2) {
-                  pages.push(<span key="start-ellipsis" className="text-gray-400">...</span>);
-                }
-              }
-
-              for (let i = startPage; i <= endPage; i++) {
-                pages.push(
-                  <button
-                    key={i}
-                    onClick={() => handlePageChange(i)}
-                    className={cn(
-                      "w-9 h-9 rounded-lg text-sm font-medium transition-colors",
-                      page === i 
-                        ? "bg-primary text-white shadow-lg shadow-primary/30" 
-                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    )}
-                  >
-                    {i}
-                  </button>
-                );
-              }
-
-              if (endPage < totalPages) {
-                if (endPage < totalPages - 1) {
-                  pages.push(<span key="end-ellipsis" className="text-gray-400">...</span>);
-                }
-                pages.push(
-                  <button
-                    key={totalPages}
-                    onClick={() => handlePageChange(totalPages)}
-                    className="w-9 h-9 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    {totalPages}
-                  </button>
-                );
-              }
-
-              return pages;
-            })()}
-            
-            <button 
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={page === totalPages}
-              onClick={() => handlePageChange(page + 1)}
-            >
-              <ChevronRight size={20} />
-            </button>
+                    <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+                      <IconButton label="编辑题目" icon={Edit} onClick={(e) => handleOpenEditQuestion(q, e)} />
+                      <IconButton
+                        label="删除题目"
+                        icon={Trash2}
+                        onClick={(e) => handleDeleteSingleQuestion(q.id, e)}
+                        className="hover:bg-red-50 hover:text-danger dark:hover:bg-red-900/20"
+                      />
+                    </div>
+                  </div>
+                </motion.article>
+              ))}
+            </AnimatePresence>
           </div>
         </div>
       )}
 
-      {/* 删除题目确认对话框 */}
+      {!questionsLoading && totalPages > 0 && (
+        <SurfaceCard className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" padding="px-5 py-4">
+          <span className="text-sm text-gray-500">
+            显示 {(page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, total)} 条，共 {total} 条
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <ActionButton variant="secondary" size="sm" disabled={page === 1} onClick={() => handlePageChange(page - 1)}>
+              上一页
+            </ActionButton>
+            <span className="px-3 text-sm font-bold text-gray-500">{page} / {totalPages}</span>
+            <ActionButton variant="secondary" size="sm" disabled={page === totalPages} onClick={() => handlePageChange(page + 1)}>
+              下一页
+            </ActionButton>
+          </div>
+        </SurfaceCard>
+      )}
+
       <ConfirmDialog
         open={deleteQuestionsDialogOpen}
         onClose={() => {
@@ -819,7 +598,6 @@ const QuestionPreview = () => {
         loading={submitting}
       />
 
-      {/* 编辑题目对话框 - 待实现 */}
       {editQuestionDialogOpen && editingQuestion && (
         <QuestionEditDialog
           open={editQuestionDialogOpen}
@@ -832,7 +610,6 @@ const QuestionPreview = () => {
             await editQuestion(editingQuestion.id, data);
             setEditQuestionDialogOpen(false);
             setEditingQuestion(null);
-            // 刷新列表
             if (selectedBank) {
               loadQuestions(selectedBank.id, { page });
             }

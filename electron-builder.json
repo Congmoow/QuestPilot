@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "com.questionbank.assistant",
-  "productName": "题库助手",
+  "appId": "com.questpilot.app",
+  "productName": "QuestPilot",
   "directories": {
     "output": "release",
     "buildResources": "build"
@@ -30,7 +30,7 @@
       }
     ],
     "icon": "build/icon.png",
-    "artifactName": "${productName}-${version}-Setup.${ext}"
+    "artifactName": "QuestPilot-${version}-Setup.${ext}"
   },
   "nsis": {
     "oneClick": false,
@@ -39,7 +39,7 @@
     "deleteAppDataOnUninstall": false,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "shortcutName": "题库助手",
+    "shortcutName": "QuestPilot",
     "runAfterFinish": true,
     "installerLanguages": ["zh_CN", "en_US"],
     "language": "2052"
@@ -53,7 +53,7 @@
     ],
     "icon": "build/icon.png",
     "category": "public.app-category.education",
-    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "artifactName": "QuestPilot-${version}-${arch}.${ext}",
     "hardenedRuntime": true,
     "gatekeeperAssess": false,
     "entitlements": "build/entitlements.mac.plist",
@@ -61,6 +61,7 @@
   },
   "linux": {
     "target": ["AppImage"],
-    "category": "Education"
+    "category": "Education",
+    "artifactName": "QuestPilot-${version}-${arch}.${ext}"
   }
 }

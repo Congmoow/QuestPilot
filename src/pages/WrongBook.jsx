@@ -1,28 +1,49 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   BookOpen,
-  Play,
-  Loader2,
-  Trash2,
-  XCircle,
   CheckCircle,
   ChevronRight,
+  Loader2,
+  Play,
   RotateCcw,
-  AlertCircle,
+  Trash2,
+  XCircle,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useQuestionBanks } from '../contexts/QuestionBankContext';
 import api from '../api';
 import ConfirmDialog from '../components/ConfirmDialog';
 import CodeAwareText from '../components/CodeAwareText';
 import { countFillBlanks } from '../lib/fillBlank';
+import {
+  ActionButton,
+  AlertBanner,
+  AnswerOptionCard,
+  EmptyState,
+  Field,
+  IconButton,
+  PageHeader,
+  Pagination,
+  QuizShell,
+  ResultSummary,
+  SelectInput,
+  SurfaceCard,
+  TextareaInput,
+  TextInput,
+  ToolbarCard,
+  TypeBadge,
+} from '../components/ui';
+
+const CuotiIcon = ({ size = 44, ...props }) => (
+  <img src="/cuoti-icon.png" alt="错题本" width={size} height={size} {...props} />
+);
 
 const TYPE_LABELS = {
   single: '单选题',
   multiple: '多选题',
   boolean: '判断题',
   fill: '填空题',
-  short: '简答题'
+  short: '简答题',
 };
 
 const WrongBook = () => {
@@ -38,6 +59,7 @@ const WrongBook = () => {
   const [totalPages, setTotalPages] = useState(0);
 
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   const [practicing, setPracticing] = useState(false);
   const [questions, setQuestions] = useState([]);
@@ -115,6 +137,7 @@ const WrongBook = () => {
 
   const loadItems = async (bankId, targetPage = 1) => {
     setLoading(true);
+    setLoadError(null);
     try {
       const result = await api.wrongBook.getItems(bankId, { page: targetPage, pageSize });
       setItems(result.data || []);
@@ -126,6 +149,7 @@ const WrongBook = () => {
       setItems([]);
       setTotal(0);
       setTotalPages(0);
+      setLoadError(error.message || '加载错题本失败');
     } finally {
       setLoading(false);
     }
@@ -219,17 +243,17 @@ const WrongBook = () => {
       if (q.type === 'multiple') {
         const correctArr = q.answer.split('|').sort();
         const userArr = (userAnswer || []).sort();
-        const isCorrect = JSON.stringify(correctArr) === JSON.stringify(userArr);
-        if (isCorrect) correct++;
-        perQuestionResults.push({ questionId: q.id, bankId: q.bankId, isCorrect });
+        const isCorrectAnswer = JSON.stringify(correctArr) === JSON.stringify(userArr);
+        if (isCorrectAnswer) correct++;
+        perQuestionResults.push({ questionId: q.id, bankId: q.bankId, isCorrect: isCorrectAnswer });
       } else if (q.type === 'fill') {
         const ok = isFillAnswerCorrect(q, userAnswer);
         if (ok) correct++;
         perQuestionResults.push({ questionId: q.id, bankId: q.bankId, isCorrect: ok });
       } else {
-        const isCorrect = userAnswer === q.answer;
-        if (isCorrect) correct++;
-        perQuestionResults.push({ questionId: q.id, bankId: q.bankId, isCorrect });
+        const isCorrectAnswer = userAnswer === q.answer;
+        if (isCorrectAnswer) correct++;
+        perQuestionResults.push({ questionId: q.id, bankId: q.bankId, isCorrect: isCorrectAnswer });
       }
     });
 
@@ -240,7 +264,7 @@ const WrongBook = () => {
       wrong: questions.length - correct,
       accuracy,
       bankId: selectedBankId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     setPracticeResult(result);
@@ -308,56 +332,27 @@ const WrongBook = () => {
 
   if (practiceResult) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white dark:bg-gray-800 rounded-2xl p-8 text-center shadow-lg"
-        >
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
-            <BookOpen className="w-10 h-10 text-primary" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">练习完成！</h2>
-          <p className="text-gray-500 dark:text-gray-400 mb-8">{currentBankName}</p>
-
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4">
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">{practiceResult.total}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">总题数</p>
-            </div>
-            <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4">
-              <p className="text-3xl font-bold text-green-600 dark:text-green-400">{practiceResult.correct}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">正确</p>
-            </div>
-            <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4">
-              <p className="text-3xl font-bold text-red-600 dark:text-red-400">{practiceResult.wrong}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">错误</p>
-            </div>
-          </div>
-
-          <div className="mb-8">
-            <div className="text-6xl font-bold text-primary mb-2">{practiceResult.accuracy}%</div>
-            <p className="text-gray-500 dark:text-gray-400">正确率</p>
-          </div>
-
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={restart}
-              className="px-6 py-3 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
-            >
-              <RotateCcw size={20} />
+      <ResultSummary
+        title="练习完成！"
+        subtitle={currentBankName}
+        icon={BookOpen}
+        score={practiceResult.accuracy}
+        stats={[
+          { label: '总题数', value: practiceResult.total, className: 'bg-blue-50 text-gray-900' },
+          { label: '正确', value: practiceResult.correct, className: 'bg-green-50 text-green-700' },
+          { label: '错误', value: practiceResult.wrong, className: 'bg-red-50 text-red-700' },
+        ]}
+        actions={(
+          <>
+            <ActionButton variant="secondary" icon={RotateCcw} onClick={restart}>
               返回错题本
-            </button>
-            <button
-              onClick={startPractice}
-              className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors flex items-center gap-2"
-            >
-              <Play size={20} />
+            </ActionButton>
+            <ActionButton icon={Play} onClick={startPractice}>
               再练一次
-            </button>
-          </div>
-        </motion.div>
-      </div>
+            </ActionButton>
+          </>
+        )}
+      />
     );
   }
 
@@ -381,41 +376,35 @@ const WrongBook = () => {
     })();
 
     return (
-      <div className="max-w-3xl mx-auto">
-        <div className="mb-6">
-          <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400 mb-2">
-            <span>第 {currentIndex + 1} 题 / 共 {questions.length} 题</span>
-            <span>{Math.round(((currentIndex + 1) / questions.length) * 100)}%</span>
-          </div>
-          <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-primary"
-              initial={{ width: 0 }}
-              animate={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
-            />
-          </div>
-        </div>
-
+      <QuizShell
+        current={currentIndex + 1}
+        total={questions.length}
+        actions={!submitted ? (
+          <ActionButton onClick={submitAnswer} disabled={!canSubmit}>
+            确认答案
+          </ActionButton>
+        ) : (
+          <ActionButton icon={ChevronRight} onClick={nextQuestion}>
+            {currentIndex < questions.length - 1 ? '下一题' : '查看结果'}
+          </ActionButton>
+        )}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={currentQuestion.id}
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: 18 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg"
+            exit={{ opacity: 0, x: -18 }}
+            className="space-y-6"
           >
-            <div className="flex items-center gap-2 mb-4">
-              <span className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full">
-                {TYPE_LABELS[currentQuestion.type]}
-              </span>
-            </div>
+            <TypeBadge type={currentQuestion.type} label={TYPE_LABELS[currentQuestion.type]} />
 
-            <div className="text-lg font-medium text-gray-900 dark:text-white mb-6 leading-relaxed">
+            <div className="text-lg font-semibold leading-8 text-gray-900 dark:text-white">
               <CodeAwareText text={currentQuestion.content} />
             </div>
 
             {(currentQuestion.type === 'single' || currentQuestion.type === 'multiple') && currentQuestion.options && (
-              <div className="space-y-3 mb-6">
+              <div className="space-y-3">
                 {currentQuestion.options.map((option, index) => {
                   const optionLabel = String.fromCharCode(65 + index);
                   const isSelected = currentQuestion.type === 'multiple'
@@ -425,324 +414,245 @@ const WrongBook = () => {
                     ? currentQuestion.answer.split('|').includes(option.id)
                     : currentQuestion.answer === option.id;
 
-                  let optionClass = 'border-gray-200 dark:border-gray-600 hover:border-primary';
+                  let state = isSelected ? 'selected' : 'default';
                   if (showResult) {
-                    if (isCorrectOption) {
-                      optionClass = 'border-green-500 bg-green-50 dark:bg-green-900/20';
-                    } else if (isSelected && !isCorrectOption) {
-                      optionClass = 'border-red-500 bg-red-50 dark:bg-red-900/20';
-                    }
-                  } else if (isSelected) {
-                    optionClass = 'border-primary bg-primary/5';
+                    if (isCorrectOption) state = 'correct';
+                    else if (isSelected && !isCorrectOption) state = 'wrong';
                   }
 
                   return (
-                    <button
+                    <AnswerOptionCard
                       key={option.id}
+                      state={state}
                       onClick={() => currentQuestion.type === 'multiple'
                         ? toggleMultipleAnswer(currentQuestion.id, option.id)
                         : handleAnswer(currentQuestion.id, option.id)
                       }
                       disabled={submitted}
-                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${optionClass}`}
                     >
                       <div className="flex items-start gap-3">
-                        <span className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-sm font-medium">
+                        <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold shadow-sm dark:bg-gray-800">
                           {optionLabel}
                         </span>
-                        <CodeAwareText
-                          text={option.text}
-                          className="flex-1 text-gray-900 dark:text-white"
-                        />
-                        {showResult && isCorrectOption && <CheckCircle className="text-green-500" size={20} />}
-                        {showResult && isSelected && !isCorrectOption && <XCircle className="text-red-500" size={20} />}
+                        <CodeAwareText text={option.text} className="min-w-0 flex-1 bg-transparent p-0 text-gray-900 dark:text-white" />
+                        {showResult && isCorrectOption && <CheckCircle className="shrink-0 text-green-500" size={20} />}
+                        {showResult && isSelected && !isCorrectOption && <XCircle className="shrink-0 text-red-500" size={20} />}
                       </div>
-                    </button>
+                    </AnswerOptionCard>
                   );
                 })}
               </div>
             )}
 
             {currentQuestion.type === 'boolean' && (
-              <div className="flex gap-4 mb-6">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {['正确', '错误'].map((option) => {
                   const isSelected = userAnswers[currentQuestion.id] === option;
                   const isCorrectOption = currentQuestion.answer === option;
 
-                  let optionClass = 'border-gray-200 dark:border-gray-600 hover:border-primary';
+                  let state = isSelected ? 'selected' : 'default';
                   if (showResult) {
-                    if (isCorrectOption) {
-                      optionClass = 'border-green-500 bg-green-50 dark:bg-green-900/20';
-                    } else if (isSelected && !isCorrectOption) {
-                      optionClass = 'border-red-500 bg-red-50 dark:bg-red-900/20';
-                    }
-                  } else if (isSelected) {
-                    optionClass = 'border-primary bg-primary/5';
+                    if (isCorrectOption) state = 'correct';
+                    else if (isSelected && !isCorrectOption) state = 'wrong';
                   }
 
                   return (
-                    <button
+                    <AnswerOptionCard
                       key={option}
+                      state={state}
                       onClick={() => handleAnswer(currentQuestion.id, option)}
                       disabled={submitted}
-                      className={`flex-1 p-4 rounded-xl border-2 transition-all ${optionClass}`}
                     >
-                      <span className="text-gray-900 dark:text-white font-medium">{option}</span>
-                    </button>
+                      <span className="font-semibold">{option}</span>
+                    </AnswerOptionCard>
                   );
                 })}
               </div>
             )}
 
-            {/* 填空题输入（支持多个空） */}
             {currentQuestion.type === 'fill' && (
-              <div className="mb-6 space-y-3">
+              <div className="space-y-3">
                 {blankCount > 0 && Array.from({ length: blankCount }).map((_, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <span className="text-sm text-gray-500 dark:text-gray-400 w-16">
-                      第 {index + 1} 空
-                    </span>
-                    <input
-                      type="text"
+                  <div key={index} className="grid gap-2 sm:grid-cols-[84px_minmax(0,1fr)] sm:items-center">
+                    <span className="text-sm font-semibold text-gray-500">第 {index + 1} 空</span>
+                    <TextInput
                       value={fillValues[index] || ''}
                       onChange={(e) => handleFillAnswer(currentQuestion.id, blankCount, index, e.target.value)}
                       disabled={submitted}
                       placeholder="请输入答案..."
-                      className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                   </div>
                 ))}
                 {showResult && (
-                  <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg space-y-1">
-                    <p className="text-sm text-green-700 dark:text-green-400 font-medium">参考答案：</p>
+                  <AlertBanner type="success" title="参考答案">
                     {fillCorrectValues.map((a, i) => (
-                      <p key={i} className="text-sm text-green-700 dark:text-green-400">
-                        第 {i + 1} 空：{a}
-                      </p>
+                      <p key={i}>第 {i + 1} 空：{a}</p>
                     ))}
-                  </div>
+                  </AlertBanner>
                 )}
               </div>
             )}
 
-            {/* 简答题输入 */}
             {currentQuestion.type === 'short' && (
-              <div className="mb-6">
-                <textarea
+              <div className="space-y-3">
+                <TextareaInput
                   value={userAnswers[currentQuestion.id] || ''}
                   onChange={(e) => handleAnswer(currentQuestion.id, e.target.value)}
                   disabled={submitted}
                   placeholder="请输入答案..."
-                  className="w-full p-4 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none h-32"
+                  rows={5}
                 />
                 {showResult && (
-                  <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <p className="text-sm text-green-700 dark:text-green-400">
-                      <span className="font-medium">参考答案：</span>{currentQuestion.answer}
-                    </p>
-                  </div>
+                  <AlertBanner type="success">
+                    <span className="font-semibold">参考答案：</span>{currentQuestion.answer}
+                  </AlertBanner>
                 )}
               </div>
             )}
 
             {showResult && currentQuestion.analysis && (
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl mb-6">
-                <div className="text-sm text-blue-700 dark:text-blue-400">
-                  <span className="font-medium">解析：</span>
-                  <div className="mt-1">
-                    <CodeAwareText text={currentQuestion.analysis} className="bg-transparent p-0" />
-                  </div>
-                </div>
-              </div>
+              <AlertBanner type="info" title="解析">
+                <CodeAwareText text={currentQuestion.analysis} className="bg-transparent p-0" />
+              </AlertBanner>
             )}
 
             {showResult && (
-              <div className="mb-6 flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 {isCorrect(currentQuestion)
                   ? <CheckCircle className="text-green-500" size={18} />
                   : <XCircle className="text-red-500" size={18} />}
-                <span className={`text-sm ${isCorrect(currentQuestion) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                <span className={isCorrect(currentQuestion) ? 'text-sm font-semibold text-green-600' : 'text-sm font-semibold text-red-600'}>
                   {isCorrect(currentQuestion) ? '回答正确' : '回答错误'}
                 </span>
               </div>
             )}
-
-            <div className="flex justify-end gap-3">
-              {!submitted ? (
-                <button
-                  onClick={submitAnswer}
-                  disabled={!canSubmit}
-                  className="px-6 py-2.5 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50"
-                >
-                  确认答案
-                </button>
-              ) : (
-                <button
-                  onClick={nextQuestion}
-                  className="px-6 py-2.5 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors flex items-center gap-2"
-                >
-                  {currentIndex < questions.length - 1 ? '下一题' : '查看结果'}
-                  <ChevronRight size={18} />
-                </button>
-              )}
-            </div>
           </motion.div>
         </AnimatePresence>
-      </div>
+      </QuizShell>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">错题本</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">记录每次练习做错的题目，并支持随机练错题</p>
-        </div>
-      </div>
+      <PageHeader
+        title="错题本"
+        subtitle="记录每次练习做错的题目，并支持随机练错题"
+      />
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">题库筛选</label>
-            <select
+      <ToolbarCard>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_180px_auto] lg:items-end">
+          <Field label="题库筛选">
+            <SelectInput
               value={selectedBankId || ''}
               onChange={(e) => setSelectedBankId(e.target.value ? Number(e.target.value) : null)}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="">全部题库</option>
               {banks.map(bank => (
                 <option key={bank.id} value={bank.id}>{bank.name}</option>
               ))}
-            </select>
-          </div>
+            </SelectInput>
+          </Field>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">练习题数</label>
-            <input
+          <Field label="练习题数">
+            <TextInput
               type="number"
               min={1}
               max={200}
               value={practiceCount}
               onChange={(e) => setPracticeCount(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
-          </div>
+          </Field>
 
-          <div className="flex gap-3">
-            <button
-              onClick={startPractice}
-              disabled={loading}
-              className="flex-1 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {loading ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
+          <div className="flex flex-wrap gap-3">
+            <ActionButton icon={Play} onClick={startPractice} disabled={loading} loading={loading}>
               随机练错题
-            </button>
-            <button
+            </ActionButton>
+            <ActionButton
+              variant="secondary"
+              icon={Trash2}
               onClick={() => setClearDialogOpen(true)}
               disabled={loading || total === 0}
-              className="px-4 py-2.5 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
-              <Trash2 size={18} />
               清空
-            </button>
+            </ActionButton>
           </div>
         </div>
 
-        <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-          当前筛选：{currentBankName}，共 {total} 道错题
+        <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+          当前筛选：<span className="text-primary">{currentBankName}</span>，共 <span className="text-primary">{total}</span> 道错题
         </div>
-      </div>
+      </ToolbarCard>
+
+      {loadError && <AlertBanner type="danger">{loadError}</AlertBanner>}
 
       {loading && items.length === 0 ? (
-        <div className="flex items-center justify-center h-48">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <span className="ml-2 text-gray-500 dark:text-gray-400">加载中...</span>
-        </div>
+        <SurfaceCard className="flex min-h-[260px] items-center justify-center gap-3 text-gray-500">
+          <Loader2 className="size-7 animate-spin text-primary" />
+          <span className="font-semibold">错题加载中...</span>
+        </SurfaceCard>
       ) : total === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center">
-          <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400">错题本暂无题目</p>
-        </div>
+        <SurfaceCard padding="p-8">
+          <EmptyState
+            icon={CuotiIcon}
+            title="错题本暂无题目"
+            description="继续练习，系统会自动收集你的错题，帮助你针对性提升哦～"
+            className="min-h-[360px]"
+            bareIcon
+          />
+        </SurfaceCard>
       ) : (
         <div className="space-y-4">
           <div className="grid gap-4">
             <AnimatePresence>
               {items.map((item) => (
-                <motion.div
+                <motion.article
                   key={item.questionId}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-100 dark:border-gray-700"
+                  className="ui-card p-6"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
-                          {TYPE_LABELS[item.question?.type] || '题目'}
-                        </span>
-                        <span className="text-xs text-gray-400 ml-auto">
+                    <div className="min-w-0 flex-1 space-y-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <TypeBadge type={item.question?.type} label={TYPE_LABELS[item.question?.type] || '题目'} />
+                        <span className="ml-auto rounded-xl bg-red-50 px-3 py-1 text-xs font-bold text-red-600">
                           错 {item.wrongCount} 次 / 对 {item.correctCount} 次
                         </span>
                       </div>
 
-                      <div className="text-gray-900 dark:text-gray-100 font-medium leading-relaxed">
+                      <div className="text-base font-semibold leading-8 text-gray-900 dark:text-gray-100">
                         <CodeAwareText text={item.question?.content} />
                       </div>
 
                       {item.question?.analysis && (
-                        <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                        <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm text-gray-600 dark:bg-blue-900/20 dark:text-gray-300">
                           <CodeAwareText text={item.question.analysis} className="bg-transparent p-0" />
                         </div>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleRemoveItem(item.questionId)}
-                        disabled={removingId === item.questionId}
-                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                        title="移除"
-                      >
-                        {removingId === item.questionId ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
-                      </button>
-                    </div>
+                    <IconButton
+                      label="移除错题"
+                      icon={removingId === item.questionId ? Loader2 : Trash2}
+                      onClick={() => handleRemoveItem(item.questionId)}
+                      disabled={removingId === item.questionId}
+                      className="hover:bg-red-50 hover:text-danger dark:hover:bg-red-900/20"
+                    />
                   </div>
-                </motion.div>
+                </motion.article>
               ))}
             </AnimatePresence>
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => {
-                  const next = page - 1;
-                  setPage(next);
-                  loadItems(selectedBankId, next);
-                }}
-                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 disabled:opacity-50"
-              >
-                上一页
-              </button>
-              <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-                {page} / {totalPages}
-              </div>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => {
-                  const next = page + 1;
-                  setPage(next);
-                  loadItems(selectedBankId, next);
-                }}
-                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 disabled:opacity-50"
-              >
-                下一页
-              </button>
-            </div>
-          )}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={(next) => {
+              setPage(next);
+              loadItems(selectedBankId, next);
+            }}
+          />
         </div>
       )}
 

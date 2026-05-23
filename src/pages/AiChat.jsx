@@ -1,5 +1,19 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, User, Loader2, Trash2, AlertCircle, ChevronDown, History, Plus, X, Bot } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import {
+  BookOpenCheck,
+  Bot,
+  Camera,
+  ChevronDown,
+  FileQuestion,
+  History,
+  Loader2,
+  MessageCircle,
+  Plus,
+  Sparkles,
+  Trash2,
+  User,
+  X,
+} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -7,37 +21,40 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { cn } from '../lib/utils';
 import api from '../api';
+import {
+  AIChatWelcome,
+  AlertBanner,
+  ChatComposer,
+  ChatMessageBubble,
+  PageHeaderNoTitle,
+  SurfaceCard,
+} from '../components/ui';
 
-// 预处理 LaTeX 公式，将 \( \) 和 \[ \] 转换为 $ 和 $$
 const preprocessLatex = (content) => {
   if (!content) return content;
   return content
-    // 将 \[ ... \] 转换为 $$ ... $$（块级公式）
     .replace(/\\\[([\s\S]*?)\\\]/g, '$$$$1$$')
-    // 将 \( ... \) 转换为 $ ... $（行内公式）
     .replace(/\\\(([\s\S]*?)\\\)/g, '$$$1$$');
 };
 
-// AI 提供商配置（图标和名称）- 使用 emoji 作为备用图标
 const AI_PROVIDER_INFO = {
-  openai: { name: 'ChatGPT', icon: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg', emoji: '🤖', color: '#10a37f' },
-  anthropic: { name: 'Claude', icon: 'https://upload.wikimedia.org/wikipedia/commons/8/8a/Claude_AI_logo.svg', emoji: '🧠', color: '#d97706' },
-  gemini: { name: 'Gemini', icon: 'https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg', emoji: '✨', color: '#4285f4' },
-  deepseek: { name: 'DeepSeek', icon: 'https://chat.deepseek.com/favicon.svg', emoji: '🔍', color: '#4d6bfe' },
-  qwen: { name: '通义千问', icon: null, emoji: '🌐', color: '#6366f1' },
-  zhipu: { name: '智谱清言', icon: null, emoji: '💡', color: '#2563eb' },
-  moonshot: { name: 'Kimi', icon: null, emoji: '🌙', color: '#000000' },
-  doubao: { name: '豆包', icon: null, emoji: '🫘', color: '#3b82f6' },
-  minimax: { name: 'MiniMax', icon: 'https://filecdn.minimax.chat/public/58eca777-e31f-448a-9823-e2220e49b426.png', emoji: '🎯', color: '#ff6b35' },
-  baichuan: { name: '百川', icon: null, emoji: '🌊', color: '#059669' },
-  yi: { name: '零一万物', icon: null, emoji: '🔮', color: '#8b5cf6' },
-  groq: { name: 'Groq', icon: null, emoji: '⚡', color: '#f97316' },
-  together: { name: 'Together AI', icon: null, emoji: '🤝', color: '#06b6d4' },
-  siliconflow: { name: 'SiliconFlow', icon: null, emoji: '🌊', color: '#8b5cf6' },
-  custom: { name: 'AI 助手', icon: null, emoji: '🤖', color: '#6366f1' }
+  openai: { name: 'ChatGPT', color: '#10a37f' },
+  anthropic: { name: 'Claude', color: '#d97706' },
+  gemini: { name: 'Gemini', color: '#4285f4' },
+  deepseek: { name: 'DeepSeek', color: '#4d6bfe' },
+  qwen: { name: '通义千问', color: '#6366f1' },
+  zhipu: { name: '智谱清言', color: '#2563eb' },
+  moonshot: { name: 'Kimi', color: '#000000' },
+  doubao: { name: '豆包', color: '#3b82f6' },
+  minimax: { name: 'MiniMax', color: '#ff6b35' },
+  baichuan: { name: '百川', color: '#059669' },
+  yi: { name: '零一万物', color: '#8b5cf6' },
+  groq: { name: 'Groq', color: '#f97316' },
+  together: { name: 'Together AI', color: '#06b6d4' },
+  siliconflow: { name: 'SiliconFlow', color: '#8b5cf6' },
+  custom: { name: 'AI 助手', color: '#6366f1' },
 };
 
-// 根据模型名称推断提供商
 const inferProviderFromModel = (modelId) => {
   if (!modelId) return 'custom';
   const model = modelId.toLowerCase();
@@ -56,47 +73,56 @@ const inferProviderFromModel = (modelId) => {
   return 'custom';
 };
 
-// AI 图标组件
 const AiIcon = ({ provider, modelId, size = 24, className = '' }) => {
-  const [imgError, setImgError] = useState(false);
   const actualProvider = provider !== 'custom' ? provider : inferProviderFromModel(modelId);
   const info = AI_PROVIDER_INFO[actualProvider] || AI_PROVIDER_INFO.custom;
-  
-  // 如果有图标URL且未加载失败，显示图片
-  if (info.icon && !imgError) {
-    return (
-      <img
-        src={info.icon}
-        alt={info.name}
-        width={size}
-        height={size}
-        className={cn('object-contain', className)}
-        onError={() => setImgError(true)}
-      />
-    );
-  }
-  
-  // 显示 emoji 图标
-  if (info.emoji) {
-    return (
-      <span 
-        className={cn('flex items-center justify-center', className)} 
-        style={{ fontSize: size * 0.8, lineHeight: 1 }}
-      >
-        {info.emoji}
-      </span>
-    );
-  }
-  
-  return <Bot size={size} className={className} style={{ color: info.color }} />;
+
+  return (
+    <span
+      className={cn('inline-flex items-center justify-center rounded-xl bg-primary-soft text-primary', className)}
+      style={{ width: size, height: size, color: info.color }}
+    >
+      <Bot size={Math.max(16, size * 0.62)} />
+    </span>
+  );
 };
 
-// 获取 AI 名称
 const getAiName = (provider, modelId) => {
   const actualProvider = provider !== 'custom' ? provider : inferProviderFromModel(modelId);
   const info = AI_PROVIDER_INFO[actualProvider] || AI_PROVIDER_INFO.custom;
   return info.name;
 };
+
+const markdownComponents = {
+  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+  ul: ({ children }) => <ul className="mb-2 list-disc pl-4">{children}</ul>,
+  ol: ({ children }) => <ol className="mb-2 list-decimal pl-4">{children}</ol>,
+  li: ({ children }) => <li className="mb-1">{children}</li>,
+  code: ({ inline, children }) => (
+    inline ? (
+      <code className="rounded bg-gray-100 px-1 py-0.5 text-sm dark:bg-gray-600">{children}</code>
+    ) : (
+      <code className="block overflow-x-auto rounded-xl bg-gray-100 p-3 text-sm dark:bg-gray-600">{children}</code>
+    )
+  ),
+  pre: ({ children }) => <pre className="mb-2 overflow-x-auto rounded-xl bg-gray-100 p-3 dark:bg-gray-600">{children}</pre>,
+  table: ({ children }) => <table className="my-2 w-full border-collapse border border-gray-200 text-sm dark:border-gray-500">{children}</table>,
+  th: ({ children }) => <th className="border border-gray-200 bg-gray-100 px-2 py-1 dark:border-gray-500 dark:bg-gray-600">{children}</th>,
+  td: ({ children }) => <td className="border border-gray-200 px-2 py-1 dark:border-gray-500">{children}</td>,
+  h1: ({ children }) => <h1 className="mb-2 text-xl font-bold">{children}</h1>,
+  h2: ({ children }) => <h2 className="mb-2 text-lg font-bold">{children}</h2>,
+  h3: ({ children }) => <h3 className="mb-1 text-base font-bold">{children}</h3>,
+  blockquote: ({ children }) => <blockquote className="my-2 border-l-4 border-blue-200 pl-3 italic">{children}</blockquote>,
+  hr: () => <hr className="my-3 border-gray-200 dark:border-gray-500" />,
+  a: ({ href, children }) => <a href={href} className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+};
+
+const features = [
+  { title: '上传题目解析', description: '上传题目图片\n获取详细解析', iconSrc: '/aichat-icon/icon-1.png', iconClass: 'bg-blue-50 text-blue-600' },
+  { title: '知识点总结', description: '梳理知识要点\n构建知识体系', iconSrc: '/aichat-icon/icon-2.png', iconClass: 'bg-emerald-50 text-emerald-600' },
+  { title: '错题分析', description: '智能分析错因\n提供改进建议', iconSrc: '/aichat-icon/icon-3.png', iconClass: 'bg-orange-50 text-orange-600' },
+  { title: '生成练习题', description: '生成相似题目\n巩固知识掌握', iconSrc: '/aichat-icon/icon-4.png', iconClass: 'bg-violet-50 text-violet-600' },
+];
 
 const AiChat = () => {
   const [messages, setMessages] = useState([]);
@@ -115,7 +141,6 @@ const AiChat = () => {
   const dropdownRef = useRef(null);
   const historyRef = useRef(null);
 
-  // 加载 AI 配置
   useEffect(() => {
     const loadAiConfig = async () => {
       try {
@@ -128,13 +153,11 @@ const AiChat = () => {
     loadAiConfig();
   }, []);
 
-  // 加载 Prompt 列表
   useEffect(() => {
     const loadPrompts = async () => {
       try {
         const list = await window.electronAPI.prompt.getAll();
         setPrompts(list);
-        // 默认选择第一个（默认 prompt）
         if (list.length > 0) {
           const defaultPrompt = list.find(p => p.isDefault) || list[0];
           setSelectedPrompt(defaultPrompt);
@@ -146,7 +169,6 @@ const AiChat = () => {
     loadPrompts();
   }, []);
 
-  // 加载聊天记录列表
   useEffect(() => {
     loadChatHistory();
   }, []);
@@ -160,7 +182,6 @@ const AiChat = () => {
     }
   };
 
-  // 点击外部关闭下拉菜单
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -196,16 +217,13 @@ const AiChat = () => {
       const result = await window.electronAPI.ai.chat(newMessages, selectedPrompt?.id);
       const assistantMessage = {
         role: 'assistant',
-        content: result.message || result.content || '抱歉，我无法理解您的问题。'
+        content: result.message || result.content || '抱歉，我无法理解您的问题。',
       };
       const finalMessages = [...newMessages, assistantMessage];
       setMessages(finalMessages);
-      
-      // 保存或更新聊天记录
       await saveChatToHistory(finalMessages);
     } catch (err) {
       setError(err.message || 'AI 回复失败，请重试');
-      // 移除用户消息，让用户可以重试
       setMessages(messages);
       setInput(userMessage.content);
     } finally {
@@ -221,40 +239,33 @@ const AiChat = () => {
     }
   };
 
-  // 保存聊天记录
   const saveChatToHistory = async (msgs) => {
     try {
-      // 使用第一条用户消息作为标题
       const firstUserMsg = msgs.find(m => m.role === 'user');
       const title = firstUserMsg ? firstUserMsg.content.slice(0, 30) + (firstUserMsg.content.length > 30 ? '...' : '') : '新对话';
-      
+
       if (currentChatId) {
-        // 更新现有记录
         await window.electronAPI.chatHistory.update(currentChatId, msgs);
       } else {
-        // 创建新记录
         const saved = await window.electronAPI.chatHistory.save({
           title,
           messages: msgs,
-          promptId: selectedPrompt?.id
+          promptId: selectedPrompt?.id,
         });
         setCurrentChatId(saved.id);
       }
-      // 刷新列表
       await loadChatHistory();
     } catch (err) {
       console.error('保存聊天记录失败:', err);
     }
   };
 
-  // 加载历史对话
   const loadChat = async (chatId) => {
     try {
       const chat = await window.electronAPI.chatHistory.getById(chatId);
       if (chat) {
         setMessages(chat.messages);
         setCurrentChatId(chat.id);
-        // 如果有关联的 prompt，选中它
         if (chat.promptId && prompts.length > 0) {
           const prompt = prompts.find(p => p.id === chat.promptId);
           if (prompt) setSelectedPrompt(prompt);
@@ -266,13 +277,11 @@ const AiChat = () => {
     }
   };
 
-  // 删除历史对话
   const deleteChat = async (chatId, e) => {
     e.stopPropagation();
     try {
       await window.electronAPI.chatHistory.delete(chatId);
       await loadChatHistory();
-      // 如果删除的是当前对话，清空
       if (chatId === currentChatId) {
         setMessages([]);
         setCurrentChatId(null);
@@ -282,7 +291,6 @@ const AiChat = () => {
     }
   };
 
-  // 新建对话
   const newChat = () => {
     setMessages([]);
     setCurrentChatId(null);
@@ -296,256 +304,164 @@ const AiChat = () => {
   };
 
   return (
-    <div className="flex flex-col max-w-4xl mx-auto h-full">
-      {/* 头部 */}
-      <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI 问答助手</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-            有任何学习问题，都可以问我
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* 历史记录按钮 */}
-          <div className="relative" ref={historyRef}>
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="flex items-center gap-2 px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              title="历史记录"
-            >
-              <History size={16} className="text-gray-500" />
-            </button>
-            {showHistory && (
-              <div className="absolute right-0 mt-1 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10 overflow-hidden">
-                <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">历史对话</span>
-                  <button
-                    onClick={newChat}
-                    className="flex items-center gap-1 text-xs text-primary hover:text-primary/80"
-                  >
-                    <Plus size={14} />
-                    新对话
-                  </button>
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {chatHistoryList.length === 0 ? (
-                    <div className="p-4 text-center text-sm text-gray-400">暂无历史记录</div>
-                  ) : (
-                    chatHistoryList.map((chat) => (
-                      <div
-                        key={chat.id}
-                        onClick={() => loadChat(chat.id)}
-                        className={cn(
-                          'px-3 py-2 cursor-pointer flex items-center justify-between group',
-                          currentChatId === chat.id
-                            ? 'bg-primary/10'
-                            : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                        )}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className={cn(
-                            'text-sm truncate',
-                            currentChatId === chat.id ? 'text-primary' : 'text-gray-700 dark:text-gray-300'
-                          )}>
+    <div className="flex h-full min-h-0 flex-col gap-5">
+      <PageHeaderNoTitle
+        subtitle="有任何学习问题，都可以问我"
+        actions={(
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative" ref={historyRef}>
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-[13px] font-medium text-gray-700 shadow-sm transition-colors hover:bg-blue-50 hover:text-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+              >
+                <History size={16} />
+                历史记录
+              </button>
+              {showHistory && (
+                <div className="absolute right-0 z-30 mt-2 w-80 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-popover dark:border-gray-700 dark:bg-gray-800">
+                  <div className="flex items-center justify-between border-b border-gray-100 p-4 dark:border-gray-700">
+                    <span className="text-sm font-bold text-gray-700 dark:text-gray-200">历史对话</span>
+                    <button onClick={newChat} className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                      <Plus size={14} />
+                      新对话
+                    </button>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto p-2">
+                    {chatHistoryList.length === 0 ? (
+                      <div className="p-5 text-center text-sm text-gray-400">暂无历史记录</div>
+                    ) : (
+                      chatHistoryList.map((chat) => (
+                        <div
+                          key={chat.id}
+                          onClick={() => loadChat(chat.id)}
+                          className={cn(
+                            'group flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2 transition-colors',
+                            currentChatId === chat.id ? 'bg-primary-soft' : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                          )}
+                        >
+                          <p className={cn('min-w-0 flex-1 truncate text-sm font-semibold', currentChatId === chat.id ? 'text-primary' : 'text-gray-600 dark:text-gray-300')}>
                             {chat.title}
                           </p>
+                          <button
+                            onClick={(e) => deleteChat(chat.id, e)}
+                            className="rounded-lg p-1 text-gray-400 opacity-0 transition-opacity hover:bg-red-50 hover:text-danger group-hover:opacity-100"
+                          >
+                            <X size={14} />
+                          </button>
                         </div>
-                        <button
-                          onClick={(e) => deleteChat(chat.id, e)}
-                          className="p-1 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ))
-                  )}
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-          {/* Prompt 选择器 */}
-          <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setShowPromptDropdown(!showPromptDropdown)}
-              className="flex items-center gap-2 px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <span className="text-gray-700 dark:text-gray-300">
-                {selectedPrompt?.name || '默认'}
-              </span>
-              <ChevronDown size={16} className={cn(
-                'text-gray-400 transition-transform',
-                showPromptDropdown && 'rotate-180'
-              )} />
-            </button>
-            {showPromptDropdown && (
-              <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10 py-1">
-                {prompts.map((prompt) => (
-                  <button
-                    key={prompt.id}
-                    onClick={() => {
-                      setSelectedPrompt(prompt);
-                      setShowPromptDropdown(false);
-                    }}
-                    className={cn(
-                      'w-full px-4 py-2 text-left text-sm transition-colors',
-                      selectedPrompt?.id === prompt.id
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    )}
-                  >
-                    {prompt.name}
-                    {prompt.isDefault && (
-                      <span className="ml-2 text-xs text-gray-400">(默认)</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* 清空对话按钮 */}
-          {messages.length > 0 && (
-            <button
-              onClick={clearChat}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-            >
-              <Trash2 size={16} />
-              清空对话
-            </button>
-          )}
-        </div>
-      </div>
+              )}
+            </div>
 
-      {/* 消息区域 */}
-      <div className="flex-1 min-h-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
-        <div className="flex-1 overflow-y-auto p-4">
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setShowPromptDropdown(!showPromptDropdown)}
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-[13px] font-medium text-gray-700 shadow-sm transition-colors hover:bg-blue-50 hover:text-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+              >
+                {selectedPrompt?.name || '智能模型 Pro'}
+                <ChevronDown size={14} className={cn('text-gray-400 transition-transform', showPromptDropdown && 'rotate-180')} />
+              </button>
+              {showPromptDropdown && (
+                <div className="absolute right-0 z-30 mt-2 w-56 rounded-2xl border border-gray-100 bg-white p-2 shadow-popover dark:border-gray-700 dark:bg-gray-800">
+                  {prompts.map((prompt) => (
+                    <button
+                      key={prompt.id}
+                      onClick={() => {
+                        setSelectedPrompt(prompt);
+                        setShowPromptDropdown(false);
+                      }}
+                      className={cn(
+                        'w-full rounded-xl px-3 py-2 text-left text-sm font-semibold transition-colors',
+                        selectedPrompt?.id === prompt.id
+                          ? 'bg-primary-soft text-primary'
+                          : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
+                      )}
+                    >
+                      {prompt.name}
+                      {prompt.isDefault && <span className="ml-2 text-xs text-gray-400">(默认)</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {messages.length > 0 && (
+              <button
+                onClick={clearChat}
+                className="inline-flex h-10 items-center gap-2 rounded-xl px-4 text-[13px] font-medium text-gray-500 transition-colors hover:bg-red-50 hover:text-danger"
+              >
+                <Trash2 size={16} />
+                清空对话
+              </button>
+            )}
+          </div>
+        )}
+      />
+
+      <SurfaceCard className="flex min-h-0 flex-1 flex-col overflow-hidden" padding="p-0">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-6">
           {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
-              <AiIcon provider={aiConfig.provider} modelId={aiConfig.modelId} size={48} className="mb-4 opacity-80" />
-              <p className="text-lg">开始和 {getAiName(aiConfig.provider, aiConfig.modelId)} 对话吧</p>
-              <p className="text-sm mt-2">可以问我任何学习相关的问题</p>
+            <div className="flex min-h-full items-center justify-center py-10">
+              <AIChatWelcome features={features} />
             </div>
           ) : (
-            <div className="space-y-4">
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                className={cn(
-                  'flex gap-3',
-                  msg.role === 'user' ? 'flex-row-reverse' : ''
-                )}
-              >
-                <div
-                  className={cn(
-                    'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden',
-                    msg.role === 'user'
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 dark:bg-gray-700'
-                  )}
-                >
-                  {msg.role === 'user' ? <User size={16} /> : <AiIcon provider={aiConfig.provider} modelId={aiConfig.modelId} size={24} />}
-                </div>
-                <div
-                  className={cn(
-                    'max-w-[80%] px-4 py-3 rounded-2xl',
-                    msg.role === 'user'
-                      ? 'bg-primary text-white rounded-tr-md whitespace-pre-wrap'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-md prose prose-sm dark:prose-invert max-w-none'
-                  )}
+            <div className="mx-auto max-w-4xl space-y-5">
+              {messages.map((msg, index) => (
+                <ChatMessageBubble
+                  key={index}
+                  role={msg.role}
+                  avatar={msg.role === 'user' ? <User size={18} /> : null}
                 >
                   {msg.role === 'user' ? (
-                    msg.content.trim()
+                    <div className="whitespace-pre-wrap">{msg.content.trim()}</div>
                   ) : (
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm, remarkMath]}
-                      rehypePlugins={[rehypeKatex]}
-                      components={{
-                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                        ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
-                        ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
-                        li: ({ children }) => <li className="mb-1">{children}</li>,
-                        code: ({ inline, children }) => 
-                          inline ? (
-                            <code className="bg-gray-200 dark:bg-gray-600 px-1 py-0.5 rounded text-sm">{children}</code>
-                          ) : (
-                            <code className="block bg-gray-200 dark:bg-gray-600 p-2 rounded text-sm overflow-x-auto">{children}</code>
-                          ),
-                        pre: ({ children }) => <pre className="bg-gray-200 dark:bg-gray-600 p-3 rounded-lg overflow-x-auto mb-2">{children}</pre>,
-                        table: ({ children }) => <table className="border-collapse border border-gray-300 dark:border-gray-500 my-2 w-full text-sm">{children}</table>,
-                        th: ({ children }) => <th className="border border-gray-300 dark:border-gray-500 px-2 py-1 bg-gray-200 dark:bg-gray-600">{children}</th>,
-                        td: ({ children }) => <td className="border border-gray-300 dark:border-gray-500 px-2 py-1">{children}</td>,
-                        h1: ({ children }) => <h1 className="text-xl font-bold mb-2">{children}</h1>,
-                        h2: ({ children }) => <h2 className="text-lg font-bold mb-2">{children}</h2>,
-                        h3: ({ children }) => <h3 className="text-base font-bold mb-1">{children}</h3>,
-                        blockquote: ({ children }) => <blockquote className="border-l-4 border-gray-300 dark:border-gray-500 pl-3 italic my-2">{children}</blockquote>,
-                        hr: () => <hr className="my-3 border-gray-300 dark:border-gray-500" />,
-                        a: ({ href, children }) => <a href={href} className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">{children}</a>,
-                      }}
-                    >
-                      {preprocessLatex(msg.content.trim())}
-                    </ReactMarkdown>
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                        components={markdownComponents}
+                      >
+                        {preprocessLatex(msg.content.trim())}
+                      </ReactMarkdown>
+                    </div>
                   )}
-                </div>
-              </div>
-            ))}
+                </ChatMessageBubble>
+              ))}
+              {loading && (
+                <ChatMessageBubble
+                  role="assistant"
+                  avatar={<AiIcon provider={aiConfig.provider} modelId={aiConfig.modelId} size={28} />}
+                >
+                  <Loader2 size={20} className="animate-spin text-gray-400" />
+                </ChatMessageBubble>
+              )}
+              <div ref={messagesEndRef} />
             </div>
           )}
-          {loading && (
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
-                <AiIcon provider={aiConfig.provider} modelId={aiConfig.modelId} size={24} />
-              </div>
-              <div className="bg-gray-100 dark:bg-gray-700 px-4 py-3 rounded-2xl rounded-tl-md">
-                <Loader2 size={20} className="animate-spin text-gray-400" />
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
         </div>
 
-        {/* 错误提示 */}
         {error && (
-          <div className="mx-4 mb-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
-            <AlertCircle size={16} />
-            {error}
+          <div className="px-6 pb-3">
+            <AlertBanner type="danger">{error}</AlertBanner>
           </div>
         )}
 
-        {/* 输入区域 */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex gap-3">
-            <textarea
-              id="ai-chat-input"
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="输入你的问题..."
-              rows={1}
-              className="flex-1 px-4 py-3 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 text-gray-800 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500"
-              style={{ minHeight: '48px', maxHeight: '120px' }}
-            />
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || loading}
-              className={cn(
-                'px-4 rounded-xl flex items-center justify-center transition-colors',
-                input.trim() && !loading
-                  ? 'bg-primary text-white hover:bg-primary/90'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-              )}
-            >
-              {loading ? (
-                <Loader2 size={20} className="animate-spin" />
-              ) : (
-                <Send size={20} />
-              )}
-            </button>
-          </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">
-            按 Enter 发送，Shift + Enter 换行
-          </p>
+        <div className="p-5">
+          <ChatComposer
+            inputRef={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onSend={handleSend}
+            loading={loading}
+            disabled={!input.trim()}
+            placeholder="输入你的问题..."
+          />
         </div>
-      </div>
+      </SurfaceCard>
     </div>
   );
 };

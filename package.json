@@ -1,13 +1,13 @@
 {
-  "name": "question-bank-assistant",
+  "name": "questpilot",
   "private": true,
-  "version": "1.4.5",
+  "version": "1.5.5",
   "type": "module",
   "main": "electron/main.cjs",
   "author": {
-    "name": "Question Bank Team"
+    "name": "QuestPilot Team"
   },
-  "description": "题库助手 - 一个用于管理和组织考试题目的桌面应用程序",
+  "description": "QuestPilot - 一款用于管理和组织考试题目的桌面应用程序",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
