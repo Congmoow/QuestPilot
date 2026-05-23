@@ -10,23 +10,32 @@ const toneMap = {
   purple: 'from-violet-500 to-violet-600 text-white shadow-violet-500/25',
 };
 
-export function StatCard({ title, value, trend, icon: Icon, tone = 'blue' }) {
+const DASHBOARD_ICONS = [
+  '/dashboard-icons/iocn-1.png',
+  '/dashboard-icons/icon-2.png',
+  '/dashboard-icons/icon-3.png',
+  '/dashboard-icons/icon-4.png',
+];
+
+export function StatCard({ title, value, trend, iconIndex = 0, tone = 'blue' }) {
+  const iconSrc = DASHBOARD_ICONS[iconIndex % DASHBOARD_ICONS.length];
+
   return (
-    <SurfaceCard hover className="min-h-[140px]" padding="p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">{title}</p>
-          <p className="mt-3 text-4xl font-extrabold text-gray-900 dark:text-white">{value}</p>
+    <SurfaceCard hover className="min-h-[120px]" padding="p-0">
+      <div className="flex h-[120px] items-center justify-between gap-0">
+        <div className="min-w-0 p-5">
+          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">{title}</p>
+          <p className="mt-2 text-2xl font-extrabold text-gray-900 dark:text-white">{value}</p>
           {trend && (
-            <p className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-success">
+            <p className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-success">
               <span className="text-gray-400">{trend.label}</span>
               {trend.value}
-              <ArrowUpRight size={15} />
+              <ArrowUpRight size={13} />
             </p>
           )}
         </div>
-        <div className={cn('ui-icon-tile size-16 bg-gradient-to-br shadow-lg', toneMap[tone] || toneMap.blue)}>
-          {Icon && <Icon size={30} strokeWidth={1.8} />}
+        <div className="h-[120px] w-[120px] shrink-0 overflow-hidden rounded-r-[20px]">
+          <img src={iconSrc} alt="" className="h-full w-full object-cover" />
         </div>
       </div>
     </SurfaceCard>
@@ -35,11 +44,11 @@ export function StatCard({ title, value, trend, icon: Icon, tone = 'blue' }) {
 
 export function ChartCard({ title, icon: Icon, action, children, className }) {
   return (
-    <SurfaceCard className={className} padding="p-6">
-      <div className="mb-5 flex items-center justify-between gap-4">
+    <SurfaceCard className={className} padding="p-5">
+      <div className="mb-4 flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-2">
-          {Icon && <Icon size={20} className="text-primary" />}
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
+          {Icon && <Icon size={18} className="text-primary" />}
+          <h2 className="text-sm font-bold text-gray-900 dark:text-white">{title}</h2>
         </div>
         {action}
       </div>

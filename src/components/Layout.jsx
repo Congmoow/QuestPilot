@@ -134,13 +134,13 @@ const Layout = () => {
         animate={{ width: isSidebarOpen ? 264 : 76 }}
         className="relative z-20 flex shrink-0 flex-col overflow-visible border-r border-gray-200/80 bg-white shadow-[8px_0_28px_rgba(15,23,42,0.04)] transition-all duration-300 dark:border-gray-800 dark:bg-gray-800"
       >
-        <div className={cn('flex h-20 items-center gap-3 px-6', !isSidebarOpen && 'justify-center px-0')}>
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-500 text-white shadow-soft">
-            <span className="text-lg font-black leading-none">M</span>
-          </div>
+        <div className={cn('flex h-20 items-center px-6', !isSidebarOpen && 'justify-center px-0')}>
           {isSidebarOpen && (
             <div className="min-w-0">
-              <p className="truncate text-lg font-extrabold text-gray-900 dark:text-white">题库助手系统</p>
+              <div>
+                <p className="text-base font-semibold text-gray-600 dark:text-gray-300">你的专属题库管理与学习助手</p>
+                <p className="mt-0.5 text-xs font-medium text-gray-400 dark:text-gray-500">Your Smart Question Bank & Learning Assistant</p>
+              </div>
             </div>
           )}
         </div>
@@ -161,7 +161,7 @@ const Layout = () => {
               {({ isActive }) => (
                 <>
                   {isActive && isSidebarOpen && (
-                    <span className="absolute left-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
+                    <span className="absolute left-0 top-1/2 h-12 w-1.5 -translate-y-1/2 rounded-l-full bg-primary" />
                   )}
                   <item.icon size={21} className="min-w-[21px]" />
               {isSidebarOpen && (
@@ -183,20 +183,17 @@ const Layout = () => {
             type="button"
             onClick={handleToggleTheme}
             className={cn(
-              "flex h-[58px] w-full items-center rounded-2xl border border-gray-100 bg-white px-4 text-gray-700 shadow-sm transition-colors hover:bg-blue-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700",
+              "flex h-12 w-full items-center rounded-2xl px-3 text-gray-700 transition-colors hover:bg-blue-50 dark:text-gray-200 dark:hover:bg-gray-700",
               !isSidebarOpen && "justify-center px-0"
             )}
           >
-            <Sun size={20} className="shrink-0" />
+            {lightModeActive ? <Sun size={20} className="shrink-0" /> : <Moon size={20} className="shrink-0" />}
             {isSidebarOpen && (
-              <>
-                <span className="ml-3 flex-1 text-left text-sm font-semibold">{lightModeActive ? '浅色模式' : '暗色模式'}</span>
-                <span className={cn('relative inline-flex h-6 w-11 items-center rounded-full transition-colors', lightModeActive ? 'bg-primary' : 'bg-gray-300')}>
-                  <span className={cn('inline-flex size-5 translate-x-5 items-center justify-center rounded-full bg-white text-primary shadow-sm transition-transform', !lightModeActive && 'translate-x-1 text-gray-500')}>
-                    {lightModeActive ? <Sun size={13} /> : <Moon size={13} />}
-                  </span>
+              <span className={cn('relative ml-3 inline-flex h-6 w-11 items-center rounded-full transition-colors', lightModeActive ? 'bg-primary' : 'bg-gray-300')}>
+                <span className={cn('inline-flex size-5 translate-x-5 items-center justify-center rounded-full bg-white text-primary shadow-sm transition-transform', !lightModeActive && 'translate-x-1 text-gray-500')}>
+                  {lightModeActive ? <Sun size={13} /> : <Moon size={13} />}
                 </span>
-              </>
+              </span>
             )}
           </button>
 

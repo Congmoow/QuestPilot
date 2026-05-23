@@ -51,6 +51,17 @@ export function PageHeader({ title, subtitle, actions, className }) {
   );
 }
 
+export function PageHeaderNoTitle({ subtitle, actions, className }) {
+  return (
+    <header className={cn('flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between', className)}>
+      <div className="min-w-0">
+        {subtitle && <p className="ui-subtitle">{subtitle}</p>}
+      </div>
+      {actions && <div className="flex shrink-0 flex-wrap items-center gap-3">{actions}</div>}
+    </header>
+  );
+}
+
 export function SurfaceCard({ children, className, hover = false, padding = 'p-6', as: Component = 'section', ...props }) {
   return (
     <Component className={cn('ui-card', hover && 'ui-card-hover', padding, className)} {...props}>
@@ -78,9 +89,9 @@ export function ActionButton({
   ...props
 }) {
   const sizes = {
-    sm: 'h-10 px-4 text-sm',
-    md: 'h-[46px] px-5 text-sm',
-    lg: 'h-12 px-6 text-base',
+    sm: 'h-9 px-3 text-xs',
+    md: 'h-10 px-4 text-xs',
+    lg: 'h-11 px-5 text-sm',
   };
 
   return (
@@ -131,8 +142,8 @@ export function AlertBanner({ type = 'info', title, children, className }) {
   const Icon = config.icon;
 
   return (
-    <div className={cn('flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm', config.className, className)}>
-      <Icon size={18} className="mt-0.5 shrink-0" />
+    <div className={cn('flex items-start gap-3 rounded-2xl border px-4 py-3 text-xs', config.className, className)}>
+      <Icon size={16} className="mt-0.5 shrink-0" />
       <div className="min-w-0">
         {title && <p className="font-semibold">{title}</p>}
         {children && <div className={cn(title && 'mt-1')}>{children}</div>}
@@ -141,19 +152,25 @@ export function AlertBanner({ type = 'info', title, children, className }) {
   );
 }
 
-export function EmptyState({ icon: Icon = Info, title, description, action, className }) {
+export function EmptyState({ icon: Icon = Info, title, description, action, className, bareIcon }) {
   return (
     <div className={cn('flex min-h-[260px] flex-col items-center justify-center rounded-card px-6 py-12 text-center', className)}>
-      <div className="relative mb-5">
-        <div className="absolute -left-4 top-3 size-3 rounded-full bg-blue-200/70" />
-        <div className="absolute -right-5 bottom-2 size-2 rounded-full bg-primary/40" />
-        <div className="ui-icon-tile size-24 bg-gradient-to-br from-blue-50 to-blue-100 text-primary">
-          <Icon size={44} strokeWidth={1.8} />
+      {bareIcon ? (
+        <div className="mb-5">
+          <Icon size={200} />
         </div>
-      </div>
-      <h3 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h3>
-      {description && <p className="mt-2 max-w-md text-sm leading-7 text-gray-500 dark:text-gray-400">{description}</p>}
-      {action && <div className="mt-6">{action}</div>}
+      ) : (
+        <div className="relative mb-5">
+          <div className="absolute -left-4 top-3 size-3 rounded-full bg-blue-200/70" />
+          <div className="absolute -right-5 bottom-2 size-2 rounded-full bg-primary/40" />
+          <div className="ui-icon-tile size-24 bg-gradient-to-br from-blue-50 to-blue-100 text-primary">
+            <Icon size={44} strokeWidth={1.8} />
+          </div>
+        </div>
+      )}
+      <h3 className="text-sm font-bold text-gray-900 dark:text-white">{title}</h3>
+      {description && <p className="mt-2 max-w-md text-xs leading-5 text-gray-500 dark:text-gray-400">{description}</p>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
@@ -172,7 +189,7 @@ export function SegmentedTabs({ tabs, value, onChange, className }) {
             disabled={tab.disabled}
             title={tab.title}
             className={cn(
-              'inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50',
+              'inline-flex h-9 items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50',
               active ? 'bg-primary-soft text-primary shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
             )}
           >

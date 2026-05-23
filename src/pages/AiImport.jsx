@@ -400,11 +400,7 @@ const AiImport = () => {
     setShowParseWarnings(false);
   };
 
-  useEffect(() => {
-    if (!hasApiKey && mode === 'ai') {
-      setMode('json');
-    }
-  }, [hasApiKey, mode]);
+
 
   const currentInput = mode === 'ai' ? inputText : jsonInput;
   const currentPlaceholder = mode === 'ai' ? AI_PLACEHOLDER : JSON_PLACEHOLDER;
@@ -433,7 +429,7 @@ const AiImport = () => {
       )}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-        <div className="space-y-4">
+        <div className="flex h-full flex-col gap-4">
           <JsonEditorPanel
             title={mode === 'ai' ? '输入题目文本' : '输入 JSON 数据'}
             supportText="支持单选、多选、判断、填空、简答题"
@@ -475,8 +471,8 @@ const AiImport = () => {
           )}
         </div>
 
-        <div className="space-y-4">
-          <SurfaceCard className="min-h-[520px]" padding="p-5">
+        <div className="flex h-full flex-col gap-4">
+          <SurfaceCard className="flex flex-1 flex-col min-h-0" padding="p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-base font-bold text-gray-900 dark:text-white">
                 解析结果 {parsedQuestions.length > 0 && `(${parsedQuestions.length} 道题目)`}

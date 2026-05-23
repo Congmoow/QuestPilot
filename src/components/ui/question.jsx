@@ -19,22 +19,40 @@ const practiceTones = [
   'from-cyan-50 to-blue-100 text-cyan-600',
 ];
 
+const QB_ICONS = [
+  '/questionbank-icons/QBicon1.png',
+  '/questionbank-icons/QBicon2.png',
+  '/questionbank-icons/QBicon3.png',
+  '/questionbank-icons/QBicon4.png',
+  '/questionbank-icons/QBicon5.png',
+  '/questionbank-icons/QBicon6.png',
+  '/questionbank-icons/QBicon7.png',
+];
+
+const getRandomIcon = (bankId) => {
+  const seed = bankId ? bankId * 9301 + 49297 : Date.now();
+  const index = seed % QB_ICONS.length;
+  return QB_ICONS[index];
+};
+
 export function QuestionBankCard({ bank, icon: Icon, onClick, onEdit, onDelete, formatDate, toneClass = 'bg-blue-50 text-primary' }) {
+  const iconSrc = getRandomIcon(bank.id);
+
   return (
-    <SurfaceCard hover as="article" className="group cursor-pointer" padding="p-7" onClick={onClick}>
-      <div className="flex items-start gap-5">
-        <div className={cn('ui-icon-tile size-14 shrink-0', toneClass)}>
-          {Icon && <Icon size={28} strokeWidth={1.8} />}
+    <SurfaceCard hover as="article" className="group cursor-pointer overflow-hidden" padding="p-0" onClick={onClick}>
+      <div className="flex items-start gap-4">
+        <div className="size-[88px] shrink-0">
+          <img src={iconSrc} alt="" className="h-full w-full object-cover" />
         </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-2 text-lg font-extrabold leading-7 text-gray-900 dark:text-white">{bank.name}</h3>
-          <p className="mt-2 text-sm font-semibold text-primary">{bank.questionCount || 0} 道题目</p>
+        <div className="min-w-0 flex-1 py-5 pr-5">
+          <h3 className="line-clamp-2 text-sm font-extrabold leading-5 text-gray-900 dark:text-white">{bank.name}</h3>
+          <p className="mt-1 text-xs font-semibold text-primary">{bank.questionCount || 0} 道题目</p>
         </div>
       </div>
-      <p className="mt-5 line-clamp-2 min-h-[48px] text-sm leading-6 text-gray-500 dark:text-gray-400">{bank.description || '暂无描述'}</p>
-      <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-5 dark:border-gray-700">
+      <p className="mt-3 line-clamp-2 min-h-[36px] px-5 text-xs leading-5 text-gray-500 dark:text-gray-400">{bank.description || '暂无描述'}</p>
+      <div className="mt-4 flex items-center justify-between border-t border-gray-100 px-5 pt-3 dark:border-gray-700">
         <span className="inline-flex items-center gap-2 text-xs text-gray-400">
-          <CalendarDays size={15} />
+          <CalendarDays size={13} />
           创建于 {formatDate ? formatDate(bank.createdAt) : bank.createdAt}
         </span>
         <div className="flex items-center gap-2">
@@ -47,19 +65,20 @@ export function QuestionBankCard({ bank, icon: Icon, onClick, onEdit, onDelete, 
 }
 
 export function PracticeCard({ bank, icon: Icon, index = 0, selected = false, onSelect, onStart }) {
-  const tone = practiceTones[index % practiceTones.length];
+  const iconSrc = getRandomIcon(bank.id);
+
   return (
-    <SurfaceCard hover as="article" className={cn('group cursor-pointer overflow-hidden', selected && 'ring-2 ring-primary/30')} padding="p-7" onClick={onSelect}>
-      <div className="flex items-center gap-6">
-        <div className={cn('ui-icon-tile size-24 bg-gradient-to-br', tone)}>
-          {Icon && <Icon size={44} strokeWidth={1.7} />}
+    <SurfaceCard hover as="article" className={cn('group cursor-pointer overflow-hidden', selected && 'ring-2 ring-primary/30')} padding="p-0" onClick={onSelect}>
+      <div className="flex items-center gap-4">
+        <div className="size-[88px] shrink-0">
+          <img src={iconSrc} alt="" className="h-full w-full object-cover" />
         </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-2 text-xl font-extrabold text-gray-900 dark:text-white">{bank.name}</h3>
-          <p className="mt-3 text-base font-semibold text-gray-500 dark:text-gray-400">{bank.questionCount || 0} 道题目</p>
+        <div className="min-w-0 flex-1 py-5 pr-5">
+          <h3 className="line-clamp-2 text-sm font-extrabold text-gray-900 dark:text-white">{bank.name}</h3>
+          <p className="mt-2 text-xs font-semibold text-gray-500 dark:text-gray-400">{bank.questionCount || 0} 道题目</p>
         </div>
       </div>
-      <div className="mt-7 flex items-center gap-3 rounded-2xl bg-blue-50 p-2 dark:bg-gray-700">
+      <div className="mx-5 mb-5 mt-3 flex items-center gap-3 rounded-2xl bg-blue-50 p-2 dark:bg-gray-700">
         <button
           type="button"
           onClick={onStart}

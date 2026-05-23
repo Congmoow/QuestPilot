@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  AlertCircle,
   BookOpen,
   CheckCircle,
   ChevronRight,
@@ -34,6 +33,10 @@ import {
   ToolbarCard,
   TypeBadge,
 } from '../components/ui';
+
+const CuotiIcon = ({ size = 44, ...props }) => (
+  <img src="/cuoti-icon.png" alt="错题本" width={size} height={size} {...props} />
+);
 
 const TYPE_LABELS = {
   single: '单选题',
@@ -590,10 +593,11 @@ const WrongBook = () => {
       ) : total === 0 ? (
         <SurfaceCard padding="p-8">
           <EmptyState
-            icon={AlertCircle}
+            icon={CuotiIcon}
             title="错题本暂无题目"
             description="继续练习，系统会自动收集你的错题，帮助你针对性提升哦～"
             className="min-h-[360px]"
+            bareIcon
           />
         </SurfaceCard>
       ) : (

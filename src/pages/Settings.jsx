@@ -250,13 +250,13 @@ const Settings = () => {
       <PageHeader title="系统设置" subtitle="配置 AI 功能与练习偏好" />
 
       <SurfaceCard padding="p-6">
-        <div className="mb-6 flex items-start gap-4">
-          <div className="ui-icon-tile size-14 bg-primary-soft text-primary">
-            <BookOpen size={28} />
+        <div className="mb-4 flex items-start gap-4">
+          <div className="ui-icon-tile size-12 bg-primary-soft text-primary">
+            <BookOpen size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">错题本设置</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-7 text-gray-500 dark:text-gray-400">
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">错题本设置</h2>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-gray-500 dark:text-gray-400">
               错题本会记录练习中答错的题目。答对次数达到阈值后，该题会自动从错题本移除。
             </p>
           </div>
@@ -284,13 +284,13 @@ const Settings = () => {
       </SurfaceCard>
 
       <SurfaceCard padding="p-6">
-        <div className="mb-6 flex items-start gap-4">
-          <div className="ui-icon-tile size-14 bg-violet-50 text-violet-600">
-            <Key size={28} />
+        <div className="mb-4 flex items-start gap-4">
+          <div className="ui-icon-tile size-12 bg-violet-50 text-violet-600">
+            <Key size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">AI API 配置</h2>
-            <p className="mt-2 max-w-4xl text-sm leading-7 text-gray-500 dark:text-gray-400">
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">AI API 配置</h2>
+            <p className="mt-1 max-w-4xl text-xs leading-5 text-gray-500 dark:text-gray-400">
               支持 OpenAI、Claude、Gemini、DeepSeek、通义千问、智谱等主流 AI 服务，配置后可使用 AI 智能识别和问答功能。
             </p>
           </div>
@@ -384,14 +384,14 @@ const Settings = () => {
       </SurfaceCard>
 
       <SurfaceCard padding="p-6">
-        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-4">
-            <div className="ui-icon-tile size-14 bg-blue-50 text-primary">
-              <MessageSquare size={28} />
+            <div className="ui-icon-tile size-12 bg-blue-50 text-primary">
+              <MessageSquare size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">AI Prompt 管理</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-7 text-gray-500 dark:text-gray-400">
+              <h2 className="text-base font-bold text-gray-900 dark:text-white">AI Prompt 管理</h2>
+              <p className="mt-1 max-w-3xl text-xs leading-5 text-gray-500 dark:text-gray-400">
                 自定义 AI 问答的系统提示词，可以让 AI 扮演不同角色或专注于特定领域。
               </p>
             </div>
@@ -409,7 +409,7 @@ const Settings = () => {
 
         {showPromptForm && (
           <div className="mb-5 rounded-2xl border border-blue-100 bg-blue-50/50 p-5 dark:border-gray-700 dark:bg-gray-800/80">
-            <h3 className="mb-4 font-bold text-gray-900 dark:text-white">
+            <h3 className="mb-4 text-sm font-bold text-gray-900 dark:text-white">
               {editingPrompt ? '编辑 Prompt' : '新建 Prompt'}
             </h3>
             <div className="space-y-4">
@@ -450,12 +450,12 @@ const Settings = () => {
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h4 className="font-bold text-gray-900 dark:text-white">{prompt.name}</h4>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">{prompt.name}</h4>
                     {prompt.isDefault && (
                       <span className="rounded-lg bg-primary-soft px-2 py-0.5 text-xs font-bold text-primary">默认</span>
                     )}
                   </div>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
                     {prompt.content}
                   </p>
                 </div>

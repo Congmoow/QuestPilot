@@ -50,6 +50,7 @@
   body {
     @apply text-gray-800 antialiased;
     font-variant-numeric: tabular-nums;
+    font-size: 14px;
   }
 
   .dark body {
@@ -154,16 +155,16 @@
 
   .ui-title {
     color: var(--color-text-main);
-    font-size: 30px;
-    line-height: 1.18;
-    font-weight: 800;
+    font-size: 18px;
+    line-height: 1.3;
+    font-weight: 700;
     text-wrap: balance;
   }
 
   .ui-subtitle {
     color: var(--color-text-secondary);
-    font-size: 15px;
-    line-height: 1.65;
+    font-size: 13px;
+    line-height: 1.5;
     text-wrap: pretty;
   }
 

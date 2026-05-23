@@ -5,7 +5,7 @@
 ![Electron](https://img.shields.io/badge/Electron-33.x-47848F?logo=electron&logoColor=white)
 ![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-5.x-646CFF?logo=vite&logoColor=white)
-![License](https://img.shields.io/badge/License-UNLICENSED-lightgrey)
+![License](https://img.shields.io/badge/License-Study%20Only-lightgrey)
 
 ---
 
@@ -364,5 +364,5 @@ question-bank-assistant/
 
 ## 许可证
 
-本仓库根目录当前未提供 `LICENSE` 文件，因此默认不授予任何开源许可。
-如果你希望以某种开源协议发布（例如 MIT），请补充 `LICENSE` 并同步更新本 README。
+本项目仅供学习、课程作业、技术交流和个人研究参考使用。
+具体限制与免责声明请查看仓库根目录的 [`LICENSE`](LICENSE) 文件。

@@ -26,7 +26,7 @@ import {
   AlertBanner,
   ChatComposer,
   ChatMessageBubble,
-  PageHeader,
+  PageHeaderNoTitle,
   SurfaceCard,
 } from '../components/ui';
 
@@ -118,10 +118,10 @@ const markdownComponents = {
 };
 
 const features = [
-  { title: '拍题讲解', description: '拍照上传题目\n获取详细解析', icon: Camera, iconClass: 'bg-blue-50 text-blue-600' },
-  { title: '知识点总结', description: '梳理知识要点\n构建知识体系', icon: BookOpenCheck, iconClass: 'bg-emerald-50 text-emerald-600' },
-  { title: '错题分析', description: '智能分析错因\n提供改进建议', icon: MessageCircle, iconClass: 'bg-orange-50 text-orange-600' },
-  { title: '生成练习题', description: '生成相似题目\n巩固知识掌握', icon: FileQuestion, iconClass: 'bg-violet-50 text-violet-600' },
+  { title: '上传题目解析', description: '上传题目图片\n获取详细解析', iconSrc: '/aichat-icon/icon-1.png', iconClass: 'bg-blue-50 text-blue-600' },
+  { title: '知识点总结', description: '梳理知识要点\n构建知识体系', iconSrc: '/aichat-icon/icon-2.png', iconClass: 'bg-emerald-50 text-emerald-600' },
+  { title: '错题分析', description: '智能分析错因\n提供改进建议', iconSrc: '/aichat-icon/icon-3.png', iconClass: 'bg-orange-50 text-orange-600' },
+  { title: '生成练习题', description: '生成相似题目\n巩固知识掌握', iconSrc: '/aichat-icon/icon-4.png', iconClass: 'bg-violet-50 text-violet-600' },
 ];
 
 const AiChat = () => {
@@ -305,17 +305,16 @@ const AiChat = () => {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-5">
-      <PageHeader
-        title="AI 问答助手"
+      <PageHeaderNoTitle
         subtitle="有任何学习问题，都可以问我"
         actions={(
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative" ref={historyRef}>
               <button
                 onClick={() => setShowHistory(!showHistory)}
-                className="inline-flex h-11 items-center gap-2 rounded-control border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-blue-50 hover:text-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-[13px] font-medium text-gray-700 shadow-sm transition-colors hover:bg-blue-50 hover:text-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
               >
-                <History size={17} />
+                <History size={16} />
                 历史记录
               </button>
               {showHistory && (
@@ -360,11 +359,10 @@ const AiChat = () => {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowPromptDropdown(!showPromptDropdown)}
-                className="inline-flex h-11 items-center gap-2 rounded-control border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-blue-50 hover:text-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-[13px] font-medium text-gray-700 shadow-sm transition-colors hover:bg-blue-50 hover:text-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
               >
-                <Sparkles size={17} className="text-primary" />
                 {selectedPrompt?.name || '智能模型 Pro'}
-                <ChevronDown size={16} className={cn('text-gray-400 transition-transform', showPromptDropdown && 'rotate-180')} />
+                <ChevronDown size={14} className={cn('text-gray-400 transition-transform', showPromptDropdown && 'rotate-180')} />
               </button>
               {showPromptDropdown && (
                 <div className="absolute right-0 z-30 mt-2 w-56 rounded-2xl border border-gray-100 bg-white p-2 shadow-popover dark:border-gray-700 dark:bg-gray-800">
@@ -393,9 +391,9 @@ const AiChat = () => {
             {messages.length > 0 && (
               <button
                 onClick={clearChat}
-                className="inline-flex h-11 items-center gap-2 rounded-control px-4 text-sm font-semibold text-gray-500 transition-colors hover:bg-red-50 hover:text-danger"
+                className="inline-flex h-10 items-center gap-2 rounded-xl px-4 text-[13px] font-medium text-gray-500 transition-colors hover:bg-red-50 hover:text-danger"
               >
-                <Trash2 size={17} />
+                <Trash2 size={16} />
                 清空对话
               </button>
             )}
@@ -404,7 +402,7 @@ const AiChat = () => {
       />
 
       <SurfaceCard className="flex min-h-0 flex-1 flex-col overflow-hidden" padding="p-0">
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-6">
           {messages.length === 0 ? (
             <div className="flex min-h-full items-center justify-center py-10">
               <AIChatWelcome features={features} />
@@ -415,9 +413,7 @@ const AiChat = () => {
                 <ChatMessageBubble
                   key={index}
                   role={msg.role}
-                  avatar={msg.role === 'user'
-                    ? <User size={18} />
-                    : <AiIcon provider={aiConfig.provider} modelId={aiConfig.modelId} size={28} />}
+                  avatar={msg.role === 'user' ? <User size={18} /> : null}
                 >
                   {msg.role === 'user' ? (
                     <div className="whitespace-pre-wrap">{msg.content.trim()}</div>
@@ -453,7 +449,7 @@ const AiChat = () => {
           </div>
         )}
 
-        <div className="border-t border-gray-100 p-5 dark:border-gray-700">
+        <div className="p-5">
           <ChatComposer
             inputRef={inputRef}
             value={input}
@@ -464,9 +460,6 @@ const AiChat = () => {
             disabled={!input.trim()}
             placeholder="输入你的问题..."
           />
-          <p className="mt-2 text-center text-xs text-gray-400">
-            当前助手：{getAiName(aiConfig.provider, aiConfig.modelId)}
-          </p>
         </div>
       </SurfaceCard>
     </div>

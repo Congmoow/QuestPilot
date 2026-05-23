@@ -13,7 +13,6 @@ import {
 } from 'recharts';
 import {
   Activity,
-  Bell,
   CalendarDays,
   CheckCircle2,
   Clock,
@@ -35,7 +34,6 @@ import {
   ChartCard,
   EmptyState,
   PageHeader,
-  SearchInput,
   SelectInput,
   StatCard,
   SurfaceCard,
@@ -103,7 +101,6 @@ const Dashboard = () => {
   const [practiceStats, setPracticeStats] = useState([]);
   const [selectedTypeBankId, setSelectedTypeBankId] = useState(null);
   const [typeDistribution, setTypeDistribution] = useState([]);
-  const [searchKeyword, setSearchKeyword] = useState('');
 
   const normalizeDateString = (value) => {
     if (!value) return '';
@@ -251,28 +248,28 @@ const Dashboard = () => {
     {
       title: '总题目数',
       value: formatNumber(dashboardStats.totalQuestions),
-      icon: FileQuestion,
+      iconIndex: 0,
       tone: 'blue',
       trend: { label: '今日新增', value: `+${formatNumber(dashboardStats.todayQuestions)}` },
     },
     {
       title: '今日新增',
       value: formatNumber(dashboardStats.todayQuestions),
-      icon: CheckCircle2,
+      iconIndex: 1,
       tone: 'green',
       trend: { label: '题库同步', value: '实时' },
     },
     {
       title: '本周新增',
       value: formatNumber(dashboardStats.weekQuestions),
-      icon: Activity,
+      iconIndex: 2,
       tone: 'orange',
       trend: { label: '本周累计', value: `+${formatNumber(dashboardStats.weekQuestions)}` },
     },
     {
       title: '练习次数',
       value: formatNumber(totalPracticeCount),
-      icon: Zap,
+      iconIndex: 3,
       tone: 'purple',
       trend: { label: '累计完成', value: `${formatNumber(totalPracticeCount)}` },
     },
@@ -339,26 +336,6 @@ const Dashboard = () => {
         subtitle="欢迎回来，查看今日题库概览"
         actions={(
           <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-            <SearchInput
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
-              onClear={() => setSearchKeyword('')}
-              placeholder="搜索题库或题目"
-              className="w-full sm:w-72"
-            />
-            <button
-              type="button"
-              className="relative inline-flex size-11 items-center justify-center rounded-control border border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-blue-50 hover:text-primary dark:border-gray-700 dark:bg-gray-800"
-              aria-label="通知"
-              title="通知"
-            >
-              <Bell size={20} />
-              {operationLogs.length > 0 && (
-                <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-xs font-bold text-white">
-                  {Math.min(operationLogs.length, 9)}
-                </span>
-              )}
-            </button>
             <button
               type="button"
               className="inline-flex h-11 items-center gap-2 rounded-control border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-blue-50 hover:text-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
