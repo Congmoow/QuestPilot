@@ -7,7 +7,6 @@ import {
   Sun,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { motion } from 'framer-motion';
 import { getTheme, setTheme as setThemeApi } from '../api';
 import {
   SidebarAiChatIcon,
@@ -129,9 +128,8 @@ const Layout = () => {
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
       <div className="app-canvas flex h-full overflow-hidden">
-      <motion.aside 
-        initial={false}
-        animate={{ width: isSidebarOpen ? 264 : 76 }}
+      <aside
+        style={{ width: isSidebarOpen ? 264 : 76 }}
         className="relative z-20 flex shrink-0 flex-col overflow-visible border-r border-gray-200/80 bg-white shadow-[8px_0_28px_rgba(15,23,42,0.04)] transition-all duration-300 dark:border-gray-800 dark:bg-gray-800"
       >
         <div className={cn('flex h-20 items-center px-6', !isSidebarOpen && 'justify-center px-0')}>
@@ -206,7 +204,7 @@ const Layout = () => {
             {isSidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
           </button>
         </div>
-      </motion.aside>
+      </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
