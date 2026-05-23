@@ -64,7 +64,6 @@ function createWindow() {
 app.whenReady().then(async () => {
   // 初始化数据库
   await database.initDatabase()
-  console.log('数据库初始化完成，路径:', database.getDatabasePath())
   
   createWindow()
 
