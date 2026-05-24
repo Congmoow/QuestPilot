@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "QuestPilot",
   "version": "1.5.6",
-  "identifier": "com.questpilot.app",
+  "identifier": "com.questpilot.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -31,7 +31,9 @@
     "active": true,
     "targets": ["nsis"],
     "icon": [
-      "../build/icon.png"
+      "icons/icon.ico",
+      "icons/icon.icns",
+      "icons/icon.png"
     ],
     "windows": {
       "nsis": {

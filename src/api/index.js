@@ -129,13 +129,6 @@ const requireElectronApi = (apiName) => {
   return api
 }
 
-const getStoredTheme = () => {
-  if (typeof localStorage === 'undefined') return 'system'
-
-  const stored = localStorage.getItem('theme')
-  return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system'
-}
-
 // ==================== 题库 API ====================
 
 /**
@@ -144,8 +137,10 @@ const getStoredTheme = () => {
  * @returns {Promise<QuestionBank>}
  */
 export const createQuestionBank = async (data) => {
-  const api = requireElectronApi('questionBank.create')
-  return api.questionBank.create(data)
+  const api = getElectronAPI()
+  if (api) return api.questionBank.create(data)
+  if (isTauriRuntime()) return invokeTauriCommand('question_bank_create', { data })
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -410,7 +405,7 @@ export const getTypeDistribution = async (bankId = null) => {
 export const getTheme = async () => {
   const api = getElectronAPI()
   if (api) return api.settings.getTheme()
-  if (isTauriRuntime()) return getStoredTheme()
+  if (isTauriRuntime()) return invokeTauriCommand('settings_get_theme')
   throw getDesktopApiUnavailableError()
 }
 
@@ -422,7 +417,7 @@ export const getTheme = async () => {
 export const setTheme = async (theme) => {
   const api = getElectronAPI()
   if (api) return api.settings.setTheme(theme)
-  if (isTauriRuntime()) return undefined
+  if (isTauriRuntime()) return invokeTauriCommand('settings_set_theme', { theme })
   throw getDesktopApiUnavailableError()
 }
 
