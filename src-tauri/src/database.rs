@@ -43,7 +43,7 @@ pub struct CreateQuestionBankInput {
     pub description: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateQuestionInput {
     pub r#type: String,

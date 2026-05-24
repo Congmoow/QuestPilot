@@ -1,6 +1,8 @@
 pub mod ai;
+pub mod csv_tools;
 pub mod database;
 
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Manager, WebviewWindow};
@@ -511,25 +513,79 @@ fn csv_select_file(window: WebviewWindow) -> Result<Option<String>, String> {
 }
 
 #[tauri::command(rename_all = "camelCase")]
-fn csv_parse_file(file_path: String) -> Result<serde_json::Value, String> {
-    let path = Path::new(&file_path);
-    let mut reader = csv::Reader::from_path(path).map_err(|error| error.to_string())?;
-    let headers = reader
-        .headers()
-        .map_err(|error| error.to_string())?
-        .iter()
-        .map(str::to_string)
-        .collect::<Vec<_>>();
-    let total_rows = reader
-        .records()
-        .try_fold(0usize, |count, row| row.map(|_| count + 1))
-        .map_err(|error| error.to_string())?;
+fn csv_download_template(window: WebviewWindow) -> Result<serde_json::Value, String> {
+    let Some(file_path) = window
+        .dialog()
+        .file()
+        .add_filter("CSV 文件", &["csv"])
+        .set_file_name("题目导入模板.csv")
+        .blocking_save_file()
+    else {
+        return Ok(serde_json::json!({ "success": false, "cancelled": true }));
+    };
+
+    let content = csv_tools::generate_template()?;
+    let file_path = file_path.to_string();
+    fs::write(&file_path, format!("\u{feff}{content}"))
+        .map_err(|error| format!("保存 CSV 模板失败: {error}"))?;
 
     Ok(serde_json::json!({
-        "valid": [],
-        "errors": [],
-        "headers": headers,
-        "totalRows": total_rows
+        "success": true,
+        "filePath": file_path.to_string(),
+    }))
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn csv_parse_file(file_path: String) -> Result<serde_json::Value, String> {
+    let content = fs::read_to_string(Path::new(&file_path))
+        .map_err(|error| format!("读取 CSV 文件失败: {error}"))?;
+    serde_json::to_value(csv_tools::parse_csv_content(content.as_str())?)
+        .map_err(|error| format!("序列化 CSV 解析结果失败: {error}"))
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn csv_import(
+    app: AppHandle,
+    bank_id: i64,
+    questions: Vec<database::CreateQuestionInput>,
+) -> Result<database::ImportResult, String> {
+    open_store(&app)?.create_questions_batch(bank_id, questions)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn csv_export(
+    app: AppHandle,
+    window: WebviewWindow,
+    bank_id: i64,
+) -> Result<serde_json::Value, String> {
+    let store = open_store(&app)?;
+    let bank = store
+        .get_bank_by_id(bank_id)?
+        .ok_or_else(|| "题库不存在".to_string())?;
+    let total = store.count_questions(bank_id, String::new(), None)?;
+    if total <= 0 {
+        return Err("题库中没有题目可导出".to_string());
+    }
+    let questions = store.get_questions_by_bank_id(bank_id, 0, total.min(100_000) as u32, None)?;
+    let Some(file_path) = window
+        .dialog()
+        .file()
+        .add_filter("CSV 文件", &["csv"])
+        .set_file_name(format!("{}.csv", bank.name))
+        .blocking_save_file()
+    else {
+        return Ok(serde_json::json!({ "success": false, "cancelled": true }));
+    };
+
+    let content = csv_tools::export_questions_to_csv(&questions)?;
+    let file_path = file_path.to_string();
+    fs::write(&file_path, format!("\u{feff}{content}"))
+        .map_err(|error| format!("保存 CSV 文件失败: {error}"))?;
+
+    Ok(serde_json::json!({
+        "success": true,
+        "filePath": file_path.to_string(),
+        "count": questions.len(),
     }))
 }
 
@@ -588,8 +644,11 @@ pub fn run() {
             wrong_book_update_from_practice,
             wrong_book_remove_item,
             wrong_book_clear,
+            csv_download_template,
             csv_select_file,
-            csv_parse_file
+            csv_parse_file,
+            csv_import,
+            csv_export
         ])
         .run(tauri::generate_context!())
         .expect("启动 QuestPilot Tauri PoC 失败");

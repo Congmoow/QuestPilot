@@ -341,8 +341,10 @@ export const searchQuestions = async (bankId, keyword, options = {}) => {
  * @returns {Promise<void>}
  */
 export const downloadCsvTemplate = async () => {
-  const api = requireElectronApi('csv.downloadTemplate')
-  return api.csv.downloadTemplate()
+  const api = getElectronAPI()
+  if (api) return api.csv.downloadTemplate()
+  if (isTauriRuntime()) return invokeTauriCommand('csv_download_template')
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -375,8 +377,10 @@ export const parseCsvFile = async (filePath) => {
  * @returns {Promise<ImportResult>}
  */
 export const importQuestions = async (bankId, questions) => {
-  const api = requireElectronApi('csv.importQuestions')
-  return api.csv.importQuestions(bankId, questions)
+  const api = getElectronAPI()
+  if (api) return api.csv.importQuestions(bankId, questions)
+  if (isTauriRuntime()) return invokeTauriCommand('csv_import', { bankId, questions })
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -385,8 +389,10 @@ export const importQuestions = async (bankId, questions) => {
  * @returns {Promise<void>}
  */
 export const exportQuestionBank = async (bankId) => {
-  const api = requireElectronApi('csv.exportBank')
-  return api.csv.exportBank(bankId)
+  const api = getElectronAPI()
+  if (api) return api.csv.exportBank(bankId)
+  if (isTauriRuntime()) return invokeTauriCommand('csv_export', { bankId })
+  throw getDesktopApiUnavailableError()
 }
 
 
