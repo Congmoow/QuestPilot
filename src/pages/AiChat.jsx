@@ -214,7 +214,7 @@ const AiChat = () => {
     setLoading(true);
 
     try {
-      const result = await window.electronAPI.ai.chat(newMessages, selectedPrompt?.id);
+      const result = await api.ai.chat(newMessages, selectedPrompt?.id);
       const assistantMessage = {
         role: 'assistant',
         content: result.message || result.content || '抱歉，我无法理解您的问题。',

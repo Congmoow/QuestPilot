@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod database;
 
 use std::path::{Path, PathBuf};
@@ -301,6 +302,40 @@ fn settings_set_api_config(
 }
 
 #[tauri::command(rename_all = "camelCase")]
+fn settings_test_api_connection(app: AppHandle) -> Result<serde_json::Value, String> {
+    let config = open_store(&app)?.get_api_config()?;
+    ai::test_connection(&ai_config_from_database(config))
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn ai_parse_questions(app: AppHandle, content: String) -> Result<serde_json::Value, String> {
+    let config = open_store(&app)?.get_api_config()?;
+    ai::parse_questions_with_ai(&ai_config_from_database(config), content.as_str())
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn ai_chat(
+    app: AppHandle,
+    messages: Vec<ai::AiMessage>,
+    prompt_id: Option<i64>,
+) -> Result<serde_json::Value, String> {
+    let store = open_store(&app)?;
+    let config = store.get_api_config()?;
+    let custom_prompt = prompt_id
+        .and_then(|id| store.get_prompt_by_id(id).ok().flatten())
+        .map(|prompt| prompt.content);
+    ai::chat_with_ai(&ai_config_from_database(config), messages, custom_prompt)
+}
+
+fn ai_config_from_database(config: database::ApiConfig) -> ai::AiConfig {
+    ai::AiConfig {
+        api_key: config.api_key,
+        api_url: config.api_url,
+        model_id: config.model_id,
+    }
+}
+
+#[tauri::command(rename_all = "camelCase")]
 fn draft_save(app: AppHandle, data: serde_json::Value) -> Result<serde_json::Value, String> {
     open_store(&app)?.save_draft(data)?;
     Ok(serde_json::json!({ "success": true }))
@@ -526,6 +561,9 @@ pub fn run() {
             settings_set_theme,
             settings_get_api_config,
             settings_set_api_config,
+            settings_test_api_connection,
+            ai_parse_questions,
+            ai_chat,
             settings_get_wrong_book_threshold,
             settings_set_wrong_book_threshold,
             draft_save,

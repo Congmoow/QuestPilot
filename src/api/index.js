@@ -533,8 +533,10 @@ export const setApiConfig = async (config) => {
  * @returns {Promise<{success: boolean, message: string}>}
  */
 export const testApiConnection = async () => {
-  const api = requireElectronApi('settings.testApiConnection')
-  return api.settings.testApiConnection()
+  const api = getElectronAPI()
+  if (api) return api.settings.testApiConnection()
+  if (isTauriRuntime()) return invokeTauriCommand('settings_test_api_connection')
+  throw getDesktopApiUnavailableError()
 }
 
 // ==================== AI API ====================
@@ -545,8 +547,17 @@ export const testApiConnection = async () => {
  * @returns {Promise<{questions: CreateQuestionInput[]}>}
  */
 export const parseQuestionsWithAI = async (content) => {
-  const api = requireElectronApi('ai.parseQuestions')
-  return api.ai.parseQuestions(content)
+  const api = getElectronAPI()
+  if (api) return api.ai.parseQuestions(content)
+  if (isTauriRuntime()) return invokeTauriCommand('ai_parse_questions', { content })
+  throw getDesktopApiUnavailableError()
+}
+
+export const chatWithAI = async (messages, promptId) => {
+  const api = getElectronAPI()
+  if (api) return api.ai.chat(messages, promptId)
+  if (isTauriRuntime()) return invokeTauriCommand('ai_chat', { messages, promptId })
+  throw getDesktopApiUnavailableError()
 }
 
 // ==================== Prompt API ====================
@@ -678,6 +689,7 @@ export default {
   // AI
   ai: {
     parseQuestions: parseQuestionsWithAI,
+    chat: chatWithAI,
   },
   prompt: {
     getAll: getAllPrompts,
