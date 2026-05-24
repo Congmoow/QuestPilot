@@ -40,12 +40,12 @@ export function QuestionBankCard({ bank, icon: Icon, onClick, onEdit, onDelete, 
   const iconSrc = getRandomIcon(bank.id);
 
   return (
-    <SurfaceCard hover as="article" className="group cursor-pointer overflow-hidden" padding="p-0" onClick={onClick}>
+    <SurfaceCard hover as="article" className="group cursor-pointer overflow-hidden hover:shadow-none [&:hover]:border-transparent" padding="p-0" onClick={onClick}>
       <div className="flex items-start gap-4">
-        <div className="size-[88px] shrink-0">
+        <div className="size-[72px] shrink-0">
           <img src={iconSrc} alt="" className="h-full w-full object-cover" />
         </div>
-        <div className="min-w-0 flex-1 py-5 pr-5">
+        <div className="min-w-0 flex-1 py-4 pr-4">
           <h3 className="line-clamp-2 text-sm font-extrabold leading-5 text-gray-900 dark:text-white">{bank.name}</h3>
           <p className="mt-1 text-xs font-semibold text-primary">{bank.questionCount || 0} 道题目</p>
         </div>
@@ -69,12 +69,12 @@ export function PracticeCard({ bank, icon: Icon, index = 0, selected = false, on
   const iconSrc = getRandomIcon(bank.id);
 
   return (
-    <SurfaceCard hover as="article" className={cn('group cursor-pointer overflow-hidden', selected && 'ring-2 ring-primary/30')} padding="p-0" onClick={onSelect}>
+    <SurfaceCard hover as="article" className={cn('group cursor-pointer overflow-hidden hover:shadow-none [&:hover]:border-transparent', selected && 'ring-2 ring-primary/30')} padding="p-0" onClick={onSelect}>
       <div className="flex items-center gap-4">
-        <div className="size-[88px] shrink-0">
+        <div className="size-[72px] shrink-0">
           <img src={iconSrc} alt="" className="h-full w-full object-cover" />
         </div>
-        <div className="min-w-0 flex-1 py-5 pr-5">
+        <div className="min-w-0 flex-1 py-4 pr-4">
           <h3 className="line-clamp-2 text-sm font-extrabold text-gray-900 dark:text-white">{bank.name}</h3>
           <p className="mt-2 text-xs font-semibold text-gray-500 dark:text-gray-400">{bank.questionCount || 0} 道题目</p>
         </div>

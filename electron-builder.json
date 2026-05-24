@@ -2,6 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "com.questpilot.app",
   "productName": "QuestPilot",
+  "copyright": "作者: wangzhongwu | Copyright © 2026",
   "directories": {
     "output": "release",
     "buildResources": "build"
@@ -31,7 +32,9 @@
       }
     ],
     "icon": "build/icon.png",
-    "artifactName": "QuestPilot-${version}-Setup.${ext}"
+    "artifactName": "QuestPilot-${version}-Setup.${ext}",
+    "requestedExecutionLevel": "asInvoker",
+    "rfc3161TimeStampServer": "http://timestamp.digicert.com"
   },
   "nsis": {
     "oneClick": false,

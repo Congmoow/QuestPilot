@@ -62,11 +62,11 @@
   }
 
   input:focus, textarea:focus, select:focus {
-    @apply border-primary bg-white shadow-[0_0_0_3px_rgba(22,93,255,0.1)];
+    @apply border-gray-400 bg-white;
   }
 
   .dark input:focus, .dark textarea:focus, .dark select:focus {
-    @apply border-primary bg-gray-700 shadow-[0_0_0_3px_rgba(22,93,255,0.2)];
+    @apply border-gray-500 bg-gray-700;
   }
 
   button:focus-visible,
@@ -149,8 +149,8 @@
   }
 
   .ui-control:focus {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    border-color: var(--color-border-strong);
+    box-shadow: none;
   }
 
   .ui-title {

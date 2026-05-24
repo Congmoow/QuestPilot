@@ -111,21 +111,28 @@ export function ActionButton({
   );
 }
 
-export function IconButton({ label, icon: Icon, variant = 'ghost', className, type = 'button', ...props }) {
+export function IconButton({ label, icon: Icon, variant = 'ghost', className, type = 'button', tooltip = true, ...props }) {
   return (
-    <button
-      type={type}
-      aria-label={label}
-      title={label}
-      className={cn(
-        'inline-flex size-10 items-center justify-center rounded-control transition-all duration-150 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60',
-        buttonVariants[variant] || buttonVariants.ghost,
-        className
+    <div className="group relative inline-flex">
+      <button
+        type={type}
+        aria-label={label}
+        className={cn(
+          'inline-flex size-10 items-center justify-center rounded-control transition-all duration-150 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60',
+          buttonVariants[variant] || buttonVariants.ghost,
+          className
+        )}
+        {...props}
+      >
+        {Icon && <Icon size={18} />}
+      </button>
+      {tooltip && label && (
+        <span className="pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-gray-900 px-2.5 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 dark:bg-gray-700">
+          {label}
+          <span className="absolute -top-1 left-1/2 size-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-gray-700" />
+        </span>
       )}
-      {...props}
-    >
-      {Icon && <Icon size={18} />}
-    </button>
+    </div>
   );
 }
 
