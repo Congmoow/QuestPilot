@@ -19,6 +19,15 @@
 - 保存/导出统一返回 `{ success, canceled, filePath?, count? }`。
 - Electron 与 Tauri 的返回结构不一致时，必须在 `src/api/runtimeAdapters.js` 中归一化。
 
+## IPC 与数据层边界
+
+- Renderer 传入的 ID、分页、题型、批量 ID 列表必须在 IPC 或数据库入口归一化。
+- Electron 题库、题目、搜索、删除、分页相关 SQL 不得直接拼接 renderer 输入。
+- 动态值必须使用 prepared statement 参数绑定；确实需要动态 SQL 片段时，只能来自白名单或已归一化值。
+- 分页参数统一限制为正整数，`pageSize` 最大值为 `1000`。
+- 题型参数只能使用 `single`、`multiple`、`boolean`、`fill`、`short`。
+- 非法参数应返回稳定中文错误，不能把底层 SQL 异常暴露给页面层。
+
 ## CSV 契约
 
 | 前端 API | Electron 来源 | Tauri 来源 | 页面层返回 |
@@ -68,6 +77,12 @@
 - Tauri 保存对话框原始 `cancelled` 字段在前端出口归一化为 `canceled`。
 - `downloadCsvTemplate()`、`selectCsvFile()`、`exportQuestionBank()` 现在都会经过 `src/api/runtimeAdapters.js`。
 
+## 阶段 2 已加固的边界
+
+- 新增 Electron 数据库参数守卫：`electron/database/queryGuards.cjs`。
+- 题库 ID、题目 ID、批量删除 ID、分页参数、题型参数已在 Electron 稳定运行时归一化。
+- 题库、题目、搜索、删除、分页相关核心 SQL 已增加静态安全测试：`npm run test:electron-db-safety`。
+
 ## 后续约束
 
 新增或修改桌面 API 时必须同步更新：
@@ -76,3 +91,4 @@
 - `src/api/index.js`。
 - 必要的 `src/api/runtimeAdapters.js` 适配逻辑。
 - `scripts/__tests__/runtime-adapters.test.mjs` 或对应契约测试。
+- 涉及 Electron 数据库参数边界时，同步更新 `scripts/__tests__/electron-sql-safety.test.mjs`。

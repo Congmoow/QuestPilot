@@ -3,6 +3,15 @@ const fs = require('fs')
 const path = require('path')
 const { app } = require('electron')
 const { ensureSchemaMigrations } = require('./migrations.cjs')
+const {
+  normalizeIdList,
+  normalizeLimit,
+  normalizeOffset,
+  normalizePositiveInteger,
+  normalizeQuestionType,
+  normalizeSearchKeyword,
+  placeholders
+} = require('./queryGuards.cjs')
 
 let db = null
 let dbPath = null
@@ -91,7 +100,7 @@ async function initDatabase() {
 
   // 初始化表结构
   initializeTables()
-  
+
   return db
 }
 
@@ -218,10 +227,10 @@ function createBank(name, description = '') {
   `)
   stmt.run([name, description])
   stmt.free()
-  
+
   const id = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0]
   saveDatabase()
-  
+
   return getBankById(id)
 }
 
@@ -236,9 +245,9 @@ function getAllBanks() {
     GROUP BY qb.id
     ORDER BY qb.updated_at DESC
   `)
-  
+
   if (!result.length) return []
-  
+
   return result[0].values.map(row => ({
     id: row[0],
     name: row[1],
@@ -253,17 +262,25 @@ function getAllBanks() {
  * 根据ID获取题库
  */
 function getBankById(id) {
-  const result = db.exec(`
+  const safeId = normalizePositiveInteger(id, '题库 ID')
+  const stmt = db.prepare(`
     SELECT qb.*, COUNT(q.id) as question_count
     FROM question_banks qb
     LEFT JOIN questions q ON qb.id = q.bank_id
-    WHERE qb.id = ${id}
+    WHERE qb.id = ?
     GROUP BY qb.id
   `)
-  
-  if (!result.length || !result[0].values.length) return null
-  
-  const row = result[0].values[0]
+  stmt.bind([safeId])
+
+  const rows = []
+  while (stmt.step()) {
+    rows.push(stmt.get())
+  }
+  stmt.free()
+
+  if (!rows.length) return null
+
+  const row = rows[0]
   return {
     id: row[0],
     name: row[1],
@@ -279,14 +296,14 @@ function getBankById(id) {
  */
 function updateBank(id, name, description = '') {
   const stmt = db.prepare(`
-    UPDATE question_banks 
+    UPDATE question_banks
     SET name = ?, description = ?, updated_at = datetime('now')
     WHERE id = ?
   `)
   stmt.run([name, description, id])
   stmt.free()
   saveDatabase()
-  
+
   return getBankById(id)
 }
 
@@ -294,10 +311,11 @@ function updateBank(id, name, description = '') {
  * 删除题库（级联删除所有题目）
  */
 function deleteBank(id) {
+  const safeId = normalizePositiveInteger(id, '题库 ID')
   // 先删除该题库下的所有题目
-  db.run(`DELETE FROM questions WHERE bank_id = ${id}`)
+  db.run('DELETE FROM questions WHERE bank_id = ?', [safeId])
   // 再删除题库
-  db.run(`DELETE FROM question_banks WHERE id = ${id}`)
+  db.run('DELETE FROM question_banks WHERE id = ?', [safeId])
   saveDatabase()
 }
 
@@ -308,22 +326,23 @@ function deleteBank(id) {
  * 创建题目
  */
 function createQuestion(bankId, data) {
+  const safeBankId = normalizePositiveInteger(bankId, '题库 ID')
   const { type, content, options, answer, analysis } = data
   const optionsJson = options ? JSON.stringify(options) : null
-  
+
   const stmt = db.prepare(`
     INSERT INTO questions (bank_id, type, content, options, answer, analysis, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `)
-  stmt.run([bankId, type, content, optionsJson, answer, analysis || null])
+  stmt.run([safeBankId, type, content, optionsJson, answer, analysis || null])
   stmt.free()
-  
+
   const id = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0]
-  
+
   // 更新题库的更新时间
-  db.run(`UPDATE question_banks SET updated_at = datetime('now') WHERE id = ${bankId}`)
+  db.run('UPDATE question_banks SET updated_at = datetime(\'now\') WHERE id = ?', [safeBankId])
   saveDatabase()
-  
+
   return getQuestionById(id)
 }
 
@@ -331,7 +350,7 @@ function createQuestion(bankId, data) {
  * 批量创建题目
  */
 function createQuestionsBatch(bankId, questions) {
-  const safeBankId = Number(bankId)
+  const safeBankId = normalizePositiveInteger(bankId, '题库 ID')
   if (!Number.isFinite(safeBankId) || safeBankId <= 0) {
     throw new Error('题库不存在')
   }
@@ -358,7 +377,7 @@ function createQuestionsBatch(bankId, questions) {
       insertedCount++
     }
 
-    db.run(`UPDATE question_banks SET updated_at = datetime('now') WHERE id = ${safeBankId}`)
+    db.run('UPDATE question_banks SET updated_at = datetime(\'now\') WHERE id = ?', [safeBankId])
     db.run('COMMIT')
   } catch (error) {
     try {
@@ -379,52 +398,71 @@ function createQuestionsBatch(bankId, questions) {
  * 根据题库ID获取题目列表（分页）
  */
 function getQuestionsByBankId(bankId, offset = 0, limit = 20) {
-  const result = db.exec(`
-    SELECT * FROM questions 
-    WHERE bank_id = ${bankId}
+  const safeBankId = normalizePositiveInteger(bankId, '题库 ID')
+  const safeOffset = normalizeOffset(offset)
+  const safeLimit = normalizeLimit(limit)
+  const stmt = db.prepare(`
+    SELECT * FROM questions
+    WHERE bank_id = ?
     ORDER BY created_at DESC
-    LIMIT ${limit} OFFSET ${offset}
+    LIMIT ? OFFSET ?
   `)
-  
-  if (!result.length) return []
-  
-  return result[0].values.map(row => parseQuestionRow(row))
+  stmt.bind([safeBankId, safeLimit, safeOffset])
+
+  const rows = []
+  while (stmt.step()) {
+    rows.push(stmt.get())
+  }
+  stmt.free()
+
+  if (!rows.length) return []
+
+  return rows.map(row => parseQuestionRow(row))
 }
 
 /**
  * 从题库随机抽取题目
  */
 function getRandomQuestions(bankId, limit = 20, type = null) {
-  const safeBankId = Number(bankId)
-  if (!Number.isFinite(safeBankId) || safeBankId <= 0) {
-    return []
+  const safeBankId = normalizePositiveInteger(bankId, '题库 ID')
+  const safeLimit = normalizeLimit(limit)
+  const safeType = normalizeQuestionType(type)
+
+  let sql = 'SELECT * FROM questions WHERE bank_id = ?'
+  const params = [safeBankId]
+
+  if (safeType) {
+    sql += ' AND type = ?'
+    params.push(safeType)
   }
 
-  const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 1000))
-  let sql = `SELECT * FROM questions WHERE bank_id = ${safeBankId}`
+  sql += ' ORDER BY RANDOM() LIMIT ?'
+  params.push(safeLimit)
 
-  if (type) {
-    const escapedType = String(type).replace(/'/g, "''")
-    sql += ` AND type = '${escapedType}'`
+  const stmt = db.prepare(sql)
+  stmt.bind(params)
+
+  const rows = []
+  while (stmt.step()) {
+    rows.push(stmt.get())
   }
+  stmt.free()
 
-  sql += ` ORDER BY RANDOM() LIMIT ${safeLimit}`
-
-  const result = db.exec(sql)
-  if (!result.length) return []
-
-  return result[0].values.map(row => parseQuestionRow(row))
+  return rows.map(row => parseQuestionRow(row))
 }
 
 /**
  * 根据ID获取题目
  */
 function getQuestionById(id) {
-  const result = db.exec(`SELECT * FROM questions WHERE id = ${id}`)
-  
-  if (!result.length || !result[0].values.length) return null
-  
-  return parseQuestionRow(result[0].values[0])
+  const safeId = normalizePositiveInteger(id, '题目 ID')
+  const stmt = db.prepare('SELECT * FROM questions WHERE id = ?')
+  stmt.bind([safeId])
+
+  const row = stmt.step() ? stmt.get() : null
+  stmt.free()
+
+  return row ? parseQuestionRow(row) : null
 }
 
 /**
@@ -448,47 +486,54 @@ function parseQuestionRow(row) {
  * 更新题目
  */
 function updateQuestion(id, data) {
+  const safeId = normalizePositiveInteger(id, '题目 ID')
   const { type, content, options, answer, analysis } = data
   const optionsJson = options ? JSON.stringify(options) : null
-  
+
   const stmt = db.prepare(`
-    UPDATE questions 
+    UPDATE questions
     SET type = ?, content = ?, options = ?, answer = ?, analysis = ?, updated_at = datetime('now')
     WHERE id = ?
   `)
-  stmt.run([type, content, optionsJson, answer, analysis || null, id])
+  stmt.run([type, content, optionsJson, answer, analysis || null, safeId])
   stmt.free()
-  
+
   // 获取题目所属题库并更新其更新时间
-  const question = getQuestionById(id)
+  const question = getQuestionById(safeId)
   if (question) {
-    db.run(`UPDATE question_banks SET updated_at = datetime('now') WHERE id = ${question.bankId}`)
+    db.run('UPDATE question_banks SET updated_at = datetime(\'now\') WHERE id = ?', [question.bankId])
   }
   saveDatabase()
-  
-  return getQuestionById(id)
+
+  return getQuestionById(safeId)
 }
 
 /**
  * 批量删除题目
  */
 function deleteQuestions(ids) {
-  if (!ids || ids.length === 0) return
-  
-  const idList = ids.join(',')
-  
+  const safeIds = normalizeIdList(ids, '题目 ID')
+  const idPlaceholders = placeholders(safeIds.length)
+
   // 获取受影响的题库ID
-  const bankResult = db.exec(`SELECT DISTINCT bank_id FROM questions WHERE id IN (${idList})`)
-  const bankIds = bankResult.length ? bankResult[0].values.map(row => row[0]) : []
-  
+  const bankStmt = db.prepare(`SELECT DISTINCT bank_id FROM questions WHERE id IN (${idPlaceholders})`)
+  bankStmt.bind(safeIds)
+  const bankIds = []
+  while (bankStmt.step()) {
+    bankIds.push(bankStmt.get()[0])
+  }
+  bankStmt.free()
+
   // 删除题目
-  db.run(`DELETE FROM questions WHERE id IN (${idList})`)
-  
+  const deleteStmt = db.prepare(`DELETE FROM questions WHERE id IN (${idPlaceholders})`)
+  deleteStmt.run(safeIds)
+  deleteStmt.free()
+
   // 更新相关题库的更新时间
   bankIds.forEach(bankId => {
-    db.run(`UPDATE question_banks SET updated_at = datetime('now') WHERE id = ${bankId}`)
+    db.run('UPDATE question_banks SET updated_at = datetime(\'now\') WHERE id = ?', [bankId])
   })
-  
+
   saveDatabase()
 }
 
@@ -498,47 +543,67 @@ function deleteQuestions(ids) {
  * 搜索题目
  */
 function searchQuestions(bankId, keyword = '', type = null, offset = 0, limit = 20) {
-  let sql = `SELECT * FROM questions WHERE bank_id = ${bankId}`
-  
-  if (keyword) {
+  const safeBankId = normalizePositiveInteger(bankId, '题库 ID')
+  const safeKeyword = normalizeSearchKeyword(keyword)
+  const safeType = normalizeQuestionType(type)
+  const safeOffset = normalizeOffset(offset)
+  const safeLimit = normalizeLimit(limit)
+  let sql = 'SELECT * FROM questions WHERE bank_id = ?'
+  const params = [safeBankId]
+
+  if (safeKeyword) {
     // 转义特殊字符
-    const escapedKeyword = keyword.replace(/'/g, "''")
-    sql += ` AND content LIKE '%${escapedKeyword}%'`
+    params.push(`%${safeKeyword}%`)
+    sql += ' AND content LIKE ?'
   }
-  
-  if (type) {
-    sql += ` AND type = '${type}'`
+
+  if (safeType) {
+    sql += ' AND type = ?'
+    params.push(safeType)
   }
-  
-  sql += ` ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`
-  
-  const result = db.exec(sql)
-  
-  if (!result.length) return []
-  
-  return result[0].values.map(row => parseQuestionRow(row))
+
+  sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?'
+  params.push(safeLimit, safeOffset)
+
+  const stmt = db.prepare(sql)
+  stmt.bind(params)
+
+  const rows = []
+  while (stmt.step()) {
+    rows.push(stmt.get())
+  }
+  stmt.free()
+
+  return rows.map(row => parseQuestionRow(row))
 }
 
 /**
  * 统计题目数量
  */
 function countQuestions(bankId, keyword = '', type = null) {
-  let sql = `SELECT COUNT(*) as count FROM questions WHERE bank_id = ${bankId}`
-  
-  if (keyword) {
-    const escapedKeyword = keyword.replace(/'/g, "''")
-    sql += ` AND content LIKE '%${escapedKeyword}%'`
+  const safeBankId = normalizePositiveInteger(bankId, '题库 ID')
+  const safeKeyword = normalizeSearchKeyword(keyword)
+  const safeType = normalizeQuestionType(type)
+  let sql = 'SELECT COUNT(*) as count FROM questions WHERE bank_id = ?'
+  const params = [safeBankId]
+
+  if (safeKeyword) {
+    sql += ' AND content LIKE ?'
+    params.push(`%${safeKeyword}%`)
   }
-  
-  if (type) {
-    sql += ` AND type = '${type}'`
+
+  if (safeType) {
+    sql += ' AND type = ?'
+    params.push(safeType)
   }
-  
-  const result = db.exec(sql)
-  
-  if (!result.length) return 0
-  
-  return result[0].values[0][0]
+
+  const stmt = db.prepare(sql)
+  stmt.bind(params)
+
+  const count = stmt.step() ? stmt.get()[0] : 0
+  stmt.free()
+
+  return count
 }
 
 // ==================== 统计功能 ====================
@@ -556,16 +621,23 @@ function getTotalQuestionCount() {
  */
 function getQuestionCountByType(bankId = null) {
   let sql = `SELECT type, COUNT(*) as count FROM questions`
+  const params = []
   if (bankId) {
-    sql += ` WHERE bank_id = ${bankId}`
+    sql += ' WHERE bank_id = ?'
+    params.push(normalizePositiveInteger(bankId, '题库 ID'))
   }
   sql += ` GROUP BY type`
-  
-  const result = db.exec(sql)
-  
-  if (!result.length) return []
-  
-  return result[0].values.map(row => ({
+
+  const stmt = db.prepare(sql)
+  stmt.bind(params)
+
+  const rows = []
+  while (stmt.step()) {
+    rows.push(stmt.get())
+  }
+  stmt.free()
+
+  return rows.map(row => ({
     type: row[0],
     count: row[1]
   }))
@@ -576,7 +648,7 @@ function getQuestionCountByType(bankId = null) {
  */
 function getRecentQuestionCount(days) {
   const result = db.exec(`
-    SELECT COUNT(*) FROM questions 
+    SELECT COUNT(*) FROM questions
     WHERE created_at >= datetime('now', '-${days} days')
   `)
   return result.length ? result[0].values[0][0] : 0
@@ -603,13 +675,13 @@ function addOperationLog(action, detail = '') {
  */
 function getOperationLogs(limit = 10) {
   const result = db.exec(`
-    SELECT * FROM operation_logs 
-    ORDER BY created_at DESC 
+    SELECT * FROM operation_logs
+    ORDER BY created_at DESC
     LIMIT ${limit}
   `)
-  
+
   if (!result.length) return []
-  
+
   return result[0].values.map(row => ({
     id: row[0],
     action: row[1],
@@ -662,9 +734,9 @@ function saveDraft(data) {
  */
 function loadDraft() {
   const result = db.exec('SELECT data, saved_at FROM drafts WHERE id = 1')
-  
+
   if (!result.length || !result[0].values.length) return null
-  
+
   const row = result[0].values[0]
   return {
     ...JSON.parse(row[0]),
@@ -712,10 +784,10 @@ function saveChatHistory(title, messages, promptId = null) {
   `)
   stmt.run([title, messagesJson, promptId])
   stmt.free()
-  
+
   const id = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0]
   saveDatabase()
-  
+
   return getChatHistoryById(id)
 }
 
@@ -726,14 +798,14 @@ function updateChatHistory(id, messages) {
   initChatHistoryTable()
   const messagesJson = JSON.stringify(messages)
   const stmt = db.prepare(`
-    UPDATE chat_history 
+    UPDATE chat_history
     SET messages = ?, updated_at = datetime('now')
     WHERE id = ?
   `)
   stmt.run([messagesJson, id])
   stmt.free()
   saveDatabase()
-  
+
   return getChatHistoryById(id)
 }
 
@@ -743,14 +815,14 @@ function updateChatHistory(id, messages) {
 function getAllChatHistory(limit = 50) {
   initChatHistoryTable()
   const result = db.exec(`
-    SELECT id, title, prompt_id, created_at, updated_at 
-    FROM chat_history 
+    SELECT id, title, prompt_id, created_at, updated_at
+    FROM chat_history
     ORDER BY updated_at DESC
     LIMIT ${limit}
   `)
-  
+
   if (!result.length) return []
-  
+
   return result[0].values.map(row => ({
     id: row[0],
     title: row[1],
@@ -766,9 +838,9 @@ function getAllChatHistory(limit = 50) {
 function getChatHistoryById(id) {
   initChatHistoryTable()
   const result = db.exec(`SELECT * FROM chat_history WHERE id = ${id}`)
-  
+
   if (!result.length || !result[0].values.length) return null
-  
+
   const row = result[0].values[0]
   return {
     id: row[0],
@@ -805,7 +877,7 @@ function initPromptTable() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `)
-  
+
   // 检查是否有默认 prompt，如果没有则创建
   const result = db.exec('SELECT COUNT(*) FROM ai_prompts')
   if (result.length && result[0].values[0][0] === 0) {
@@ -834,9 +906,9 @@ function getAllPrompts() {
   const result = db.exec(`
     SELECT * FROM ai_prompts ORDER BY is_default DESC, created_at DESC
   `)
-  
+
   if (!result.length) return []
-  
+
   return result[0].values.map(row => ({
     id: row[0],
     name: row[1],
@@ -853,9 +925,9 @@ function getAllPrompts() {
 function getPromptById(id) {
   initPromptTable()
   const result = db.exec(`SELECT * FROM ai_prompts WHERE id = ${id}`)
-  
+
   if (!result.length || !result[0].values.length) return null
-  
+
   const row = result[0].values[0]
   return {
     id: row[0],
@@ -878,10 +950,10 @@ function createPrompt(name, content) {
   `)
   stmt.run([name, content])
   stmt.free()
-  
+
   const id = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0]
   saveDatabase()
-  
+
   return getPromptById(id)
 }
 
@@ -891,14 +963,14 @@ function createPrompt(name, content) {
 function updatePrompt(id, name, content) {
   initPromptTable()
   const stmt = db.prepare(`
-    UPDATE ai_prompts 
+    UPDATE ai_prompts
     SET name = ?, content = ?, updated_at = datetime('now')
     WHERE id = ?
   `)
   stmt.run([name, content, id])
   stmt.free()
   saveDatabase()
-  
+
   return getPromptById(id)
 }
 
@@ -912,7 +984,7 @@ function deletePrompt(id) {
   if (prompt && prompt.isDefault) {
     throw new Error('不能删除默认 Prompt')
   }
-  
+
   db.run(`DELETE FROM ai_prompts WHERE id = ${id}`)
   saveDatabase()
 }
@@ -959,16 +1031,23 @@ function savePracticeRecord(record) {
  */
 function getPracticeRecords(bankId, limit = 20) {
   initPracticeTable()
-  const result = db.exec(`
-    SELECT * FROM practice_records 
-    WHERE bank_id = ${bankId}
+  const safeBankId = normalizePositiveInteger(bankId, '题库 ID')
+  const safeLimit = normalizeLimit(limit)
+  const stmt = db.prepare(`
+    SELECT * FROM practice_records
+    WHERE bank_id = ?
     ORDER BY created_at DESC
-    LIMIT ${limit}
+    LIMIT ?
   `)
-  
-  if (!result.length) return []
-  
-  return result[0].values.map(row => ({
+  stmt.bind([safeBankId, safeLimit])
+
+  const rows = []
+  while (stmt.step()) {
+    rows.push(stmt.get())
+  }
+  stmt.free()
+
+  return rows.map(row => ({
     id: row[0],
     bankId: row[1],
     total: row[2],
@@ -989,7 +1068,7 @@ function getPracticeRecords(bankId, limit = 20) {
 function getAllPracticeStats() {
   initPracticeTable()
   const result = db.exec(`
-    SELECT 
+    SELECT
       pr.bank_id,
       qb.name as bank_name,
       COUNT(*) as practice_count,
@@ -1000,9 +1079,9 @@ function getAllPracticeStats() {
     GROUP BY pr.bank_id
     ORDER BY last_practice DESC
   `)
-  
+
   if (!result.length) return []
-  
+
   return result[0].values.map(row => ({
     bankId: row[0],
     bankName: row[1],
@@ -1057,16 +1136,21 @@ function getWrongBookCountsByBank() {
 function countWrongBookItems(bankId = null) {
   cleanupWrongBookOrphans()
   let sql = `SELECT COUNT(*) as count FROM wrong_book`
+  const params = []
   if (bankId) {
-    sql += ` WHERE bank_id = ${bankId}`
+    sql += ' WHERE bank_id = ?'
+    params.push(normalizePositiveInteger(bankId, '题库 ID'))
   }
-  const result = db.exec(sql)
-  if (!result.length || !result[0].values.length) return 0
-  return result[0].values[0][0]
+  const stmt = db.prepare(sql)
+  stmt.bind(params)
+  const count = stmt.step() ? stmt.get()[0] : 0
+  stmt.free()
+  return count
 }
 
 function getWrongBookItems(bankId = null, offset = 0, limit = 20) {
   cleanupWrongBookOrphans()
+  const params = []
   let sql = `
     SELECT
       wb.question_id,
@@ -1088,14 +1172,22 @@ function getWrongBookItems(bankId = null, offset = 0, limit = 20) {
     JOIN questions q ON wb.question_id = q.id
   `
   if (bankId) {
-    sql += ` WHERE wb.bank_id = ${bankId}`
+    sql += ' WHERE wb.bank_id = ?'
+    params.push(normalizePositiveInteger(bankId, '题库 ID'))
   }
-  sql += ` ORDER BY wb.last_wrong_at DESC LIMIT ${limit} OFFSET ${offset}`
+  sql += ' ORDER BY wb.last_wrong_at DESC LIMIT ? OFFSET ?'
+  params.push(normalizeLimit(limit), normalizeOffset(offset))
 
-  const result = db.exec(sql)
-  if (!result.length) return []
+  const stmt = db.prepare(sql)
+  stmt.bind(params)
+  const rows = []
+  while (stmt.step()) {
+    rows.push(stmt.get())
+  }
+  stmt.free()
+  if (!rows.length) return []
 
-  return result[0].values.map(row => {
+  return rows.map(row => {
     const questionRow = row.slice(6)
     return {
       questionId: row[0],
@@ -1111,31 +1203,43 @@ function getWrongBookItems(bankId = null, offset = 0, limit = 20) {
 
 function getRandomWrongQuestions(bankId = null, limit = 20) {
   cleanupWrongBookOrphans()
+  const params = []
   let sql = `
     SELECT q.*
     FROM wrong_book wb
     JOIN questions q ON wb.question_id = q.id
   `
   if (bankId) {
-    sql += ` WHERE wb.bank_id = ${bankId}`
+    sql += ' WHERE wb.bank_id = ?'
+    params.push(normalizePositiveInteger(bankId, '题库 ID'))
   }
-  sql += ` ORDER BY RANDOM() LIMIT ${limit}`
+  sql += ' ORDER BY RANDOM() LIMIT ?'
+  params.push(normalizeLimit(limit))
 
-  const result = db.exec(sql)
-  if (!result.length) return []
-  return result[0].values.map(row => parseQuestionRow(row))
+  const stmt = db.prepare(sql)
+  stmt.bind(params)
+  const rows = []
+  while (stmt.step()) {
+    rows.push(stmt.get())
+  }
+  stmt.free()
+  return rows.map(row => parseQuestionRow(row))
 }
 
 function removeWrongBookItem(questionId) {
   initWrongBookTable()
-  db.run(`DELETE FROM wrong_book WHERE question_id = ${questionId}`)
+  db.run('DELETE FROM wrong_book WHERE question_id = ?', [
+    normalizePositiveInteger(questionId, '题目 ID')
+  ])
   saveDatabase()
 }
 
 function clearWrongBook(bankId = null) {
   initWrongBookTable()
   if (bankId) {
-    db.run(`DELETE FROM wrong_book WHERE bank_id = ${bankId}`)
+    db.run('DELETE FROM wrong_book WHERE bank_id = ?', [
+      normalizePositiveInteger(bankId, '题库 ID')
+    ])
   } else {
     db.run('DELETE FROM wrong_book')
   }
@@ -1200,14 +1304,14 @@ module.exports = {
   closeDatabase,
   saveDatabase,
   getDatabasePath,
-  
+
   // 题库操作
   createBank,
   getAllBanks,
   getBankById,
   updateBank,
   deleteBank,
-  
+
   // 题目操作
   createQuestion,
   createQuestionsBatch,
@@ -1216,29 +1320,29 @@ module.exports = {
   getQuestionById,
   updateQuestion,
   deleteQuestions,
-  
+
   // 搜索和筛选
   searchQuestions,
   countQuestions,
-  
+
   // 统计
   getTotalQuestionCount,
   getQuestionCountByType,
   getRecentQuestionCount,
-  
+
   // 操作日志
   addOperationLog,
   getOperationLogs,
-  
+
   // 设置
   getSetting,
   setSetting,
-  
+
   // 草稿
   saveDraft,
   loadDraft,
   clearDraft,
-  
+
   // 练习记录
   savePracticeRecord,
   getPracticeRecords,
@@ -1251,7 +1355,7 @@ module.exports = {
   updateWrongBookFromPractice,
   removeWrongBookItem,
   clearWrongBook,
-  
+
   // AI Prompt 管理
   getAllPrompts,
   getPromptById,
