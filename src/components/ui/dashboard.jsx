@@ -22,7 +22,7 @@ export function StatCard({ title, value, trend, iconIndex = 0, tone = 'blue' }) 
   const iconSrc = getPublicAssetPath(DASHBOARD_ICONS[iconIndex % DASHBOARD_ICONS.length]);
 
   return (
-    <SurfaceCard hover className="min-h-[120px]" padding="p-0">
+    <SurfaceCard hover className="min-h-[120px] hover:shadow-none [&:hover]:border-transparent" padding="p-0">
       <div className="flex h-[120px] items-center justify-between gap-0">
         <div className="min-w-0 p-5">
           <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">{title}</p>

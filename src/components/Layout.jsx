@@ -158,9 +158,6 @@ const Layout = () => {
             >
               {({ isActive }) => (
                 <>
-                  {isActive && isSidebarOpen && (
-                    <span className="absolute left-0 top-1/2 h-12 w-1.5 -translate-y-1/2 rounded-l-full bg-primary" />
-                  )}
                   <item.icon size={21} className="min-w-[21px]" />
               {isSidebarOpen && (
                     <span className="animate-fade-in whitespace-nowrap">{item.label}</span>

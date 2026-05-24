@@ -5,7 +5,7 @@
   "type": "module",
   "main": "electron/main.cjs",
   "author": {
-    "name": "QuestPilot Team"
+    "name": ""
   },
   "description": "QuestPilot - 一款用于管理和组织考试题目的桌面应用程序",
   "scripts": {

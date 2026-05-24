@@ -93,10 +93,10 @@ const TitleBar = () => {
   };
 
   return (
-    <div data-tauri-drag-region className="app-drag flex h-14 select-none items-center justify-between overflow-hidden rounded-t-xl bg-white shadow-[8px_0_28px_rgba(15,23,42,0.04)] dark:bg-gray-800">
+    <div data-tauri-drag-region className="app-drag flex h-12 select-none items-center justify-between overflow-hidden rounded-t-xl bg-white shadow-[8px_0_28px_rgba(15,23,42,0.04)] dark:bg-gray-800">
       <div className="flex items-center gap-2 px-4">
-        <img src={iconPath} alt="QuestPilot 标志" className="size-8" />
-        <span className="text-[36px] font-bold leading-none text-gray-700 dark:text-gray-200" style={{ fontFamily: `'${BRAND_FONT_FAMILY}', 'Microsoft YaHei', 'PingFang SC', cursive` }}>QuestPilot</span>
+        <img src={iconPath} alt="QuestPilot 标志" className="size-7" />
+        <span className="text-[28px] font-bold leading-none text-gray-700 dark:text-gray-200" style={{ fontFamily: `'${BRAND_FONT_FAMILY}', 'Microsoft YaHei', 'PingFang SC', cursive` }}>QuestPilot</span>
       </div>
       
       <div className="app-no-drag flex h-full items-center">

@@ -514,13 +514,7 @@ const Practice = () => {
         </div>
       )}
 
-      {selectedBankId && (
-        <div className="flex justify-center">
-          <ActionButton icon={loading ? Loader2 : Play} onClick={startPractice} disabled={loading} loading={loading} size="lg">
-            {loading ? '加载中...' : '开始练习'}
-          </ActionButton>
-        </div>
-      )}
+
     </div>
   );
 };

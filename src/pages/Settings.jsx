@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import api from '../api';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { Dialog } from '../components/Dialog';
 import {
   ActionButton,
   AlertBanner,
@@ -357,10 +358,7 @@ const Settings = () => {
         <div className="mt-5 space-y-3">
           {testResult && (
             <AlertBanner type={testResult.success ? 'success' : 'danger'}>
-              <span className="inline-flex items-center gap-2">
-                {testResult.success ? <CheckCircle size={18} /> : <XCircle size={18} />}
-                {testResult.message}
-              </span>
+              {testResult.message}
             </AlertBanner>
           )}
 
@@ -407,42 +405,42 @@ const Settings = () => {
           </ActionButton>
         </div>
 
-        {showPromptForm && (
-          <div className="mb-5 rounded-2xl border border-blue-100 bg-blue-50/50 p-5 dark:border-gray-700 dark:bg-gray-800/80">
-            <h3 className="mb-4 text-sm font-bold text-gray-900 dark:text-white">
-              {editingPrompt ? '编辑 Prompt' : '新建 Prompt'}
-            </h3>
-            <div className="space-y-4">
-              <Field label="名称">
-                <TextInput
-                  value={promptName}
-                  onChange={(e) => setPromptName(e.target.value)}
-                  placeholder="如：英语老师、数学助手"
-                />
-              </Field>
-              <Field label="提示词内容">
-                <TextareaInput
-                  value={promptContent}
-                  onChange={(e) => setPromptContent(e.target.value)}
-                  placeholder="描述 AI 的角色、能力和回答风格..."
-                  rows={6}
-                />
-              </Field>
-              <div className="flex flex-wrap gap-3">
-                <ActionButton
-                  onClick={handleSavePrompt}
-                  disabled={savingPrompt || !promptName.trim() || !promptContent.trim()}
-                  loading={savingPrompt}
-                >
-                  保存
-                </ActionButton>
-                <ActionButton variant="secondary" onClick={resetPromptForm}>
-                  取消
-                </ActionButton>
-              </div>
+        <Dialog
+          open={showPromptForm}
+          onClose={resetPromptForm}
+          title={editingPrompt ? '编辑 Prompt' : '新建 Prompt'}
+          size="lg"
+        >
+          <div className="space-y-4">
+            <Field label="名称">
+              <TextInput
+                value={promptName}
+                onChange={(e) => setPromptName(e.target.value)}
+                placeholder="如：英语老师、数学助手"
+              />
+            </Field>
+            <Field label="提示词内容">
+              <TextareaInput
+                value={promptContent}
+                onChange={(e) => setPromptContent(e.target.value)}
+                placeholder="描述 AI 的角色、能力和回答风格..."
+                rows={8}
+              />
+            </Field>
+            <div className="flex flex-wrap gap-3 pt-2">
+              <ActionButton
+                onClick={handleSavePrompt}
+                disabled={savingPrompt || !promptName.trim() || !promptContent.trim()}
+                loading={savingPrompt}
+              >
+                保存
+              </ActionButton>
+              <ActionButton variant="secondary" onClick={resetPromptForm}>
+                取消
+              </ActionButton>
             </div>
           </div>
-        )}
+        </Dialog>
 
         <div className="grid gap-3">
           {prompts.map((prompt) => (

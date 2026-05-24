@@ -4,7 +4,6 @@ import {
   Code,
   Loader2,
   Save,
-  Sparkles,
   Trash2,
   Wand2,
   XCircle,
@@ -425,7 +424,7 @@ const AiImport = () => {
           <div className="flex flex-wrap gap-3">
             {mode === 'ai' ? (
               <ActionButton
-                icon={Sparkles}
+                icon={Wand2}
                 onClick={handleParse}
                 disabled={parsing || !inputText.trim()}
                 loading={parsing}
