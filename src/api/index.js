@@ -167,8 +167,10 @@ export const getAllQuestionBanks = async () => {
  * @returns {Promise<QuestionBank|null>}
  */
 export const getQuestionBankById = async (id) => {
-  const api = requireElectronApi('questionBank.getById')
-  return api.questionBank.getById(id)
+  const api = getElectronAPI()
+  if (api) return api.questionBank.getById(id)
+  if (isTauriRuntime()) return invokeTauriCommand('question_bank_get_by_id', { id })
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -178,8 +180,10 @@ export const getQuestionBankById = async (id) => {
  * @returns {Promise<QuestionBank>}
  */
 export const updateQuestionBank = async (id, data) => {
-  const api = requireElectronApi('questionBank.update')
-  return api.questionBank.update(id, data)
+  const api = getElectronAPI()
+  if (api) return api.questionBank.update(id, data)
+  if (isTauriRuntime()) return invokeTauriCommand('question_bank_update', { id, data })
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -188,8 +192,10 @@ export const updateQuestionBank = async (id, data) => {
  * @returns {Promise<void>}
  */
 export const deleteQuestionBank = async (id) => {
-  const api = requireElectronApi('questionBank.delete')
-  return api.questionBank.delete(id)
+  const api = getElectronAPI()
+  if (api) return api.questionBank.delete(id)
+  if (isTauriRuntime()) return invokeTauriCommand('question_bank_delete', { id })
+  throw getDesktopApiUnavailableError()
 }
 
 
@@ -201,8 +207,14 @@ export const deleteQuestionBank = async (id) => {
  * @returns {Promise<Question>}
  */
 export const createQuestion = async (data) => {
-  const api = requireElectronApi('question.create')
-  return api.question.create(data)
+  const api = getElectronAPI()
+  if (api) return api.question.create(data)
+  if (isTauriRuntime()) {
+    const { bankId, ...questionData } = data
+    return invokeTauriCommand('question_create', { bankId, data: questionData })
+  }
+
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -228,8 +240,18 @@ export const createQuestionsBatch = async (bankId, questions) => {
  * @returns {Promise<PaginatedResult<Question>>}
  */
 export const getQuestionsByBankId = async (bankId, options = {}) => {
-  const api = requireElectronApi('question.getByBankId')
-  return api.question.getByBankId(bankId, options)
+  const api = getElectronAPI()
+  if (api) return api.question.getByBankId(bankId, options)
+  if (isTauriRuntime()) {
+    return invokeTauriCommand('question_get_by_bank_id', {
+      bankId,
+      page: options.page,
+      pageSize: options.pageSize,
+      questionType: options.type,
+    })
+  }
+
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -258,8 +280,10 @@ export const getRandomQuestions = async (bankId, options = {}) => {
  * @returns {Promise<Question|null>}
  */
 export const getQuestionById = async (id) => {
-  const api = requireElectronApi('question.getById')
-  return api.question.getById(id)
+  const api = getElectronAPI()
+  if (api) return api.question.getById(id)
+  if (isTauriRuntime()) return invokeTauriCommand('question_get_by_id', { id })
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -269,8 +293,10 @@ export const getQuestionById = async (id) => {
  * @returns {Promise<Question>}
  */
 export const updateQuestion = async (id, data) => {
-  const api = requireElectronApi('question.update')
-  return api.question.update(id, data)
+  const api = getElectronAPI()
+  if (api) return api.question.update(id, data)
+  if (isTauriRuntime()) return invokeTauriCommand('question_update', { id, data })
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -279,8 +305,10 @@ export const updateQuestion = async (id, data) => {
  * @returns {Promise<void>}
  */
 export const deleteQuestions = async (ids) => {
-  const api = requireElectronApi('question.delete')
-  return api.question.delete(ids)
+  const api = getElectronAPI()
+  if (api) return api.question.delete(ids)
+  if (isTauriRuntime()) return invokeTauriCommand('question_delete', { ids })
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -291,8 +319,19 @@ export const deleteQuestions = async (ids) => {
  * @returns {Promise<PaginatedResult<Question>>}
  */
 export const searchQuestions = async (bankId, keyword, options = {}) => {
-  const api = requireElectronApi('question.search')
-  return api.question.search(bankId, keyword, options)
+  const api = getElectronAPI()
+  if (api) return api.question.search(bankId, keyword, options)
+  if (isTauriRuntime()) {
+    return invokeTauriCommand('question_search', {
+      bankId,
+      keyword,
+      page: options.page,
+      pageSize: options.pageSize,
+      questionType: options.type,
+    })
+  }
+
+  throw getDesktopApiUnavailableError()
 }
 
 // ==================== CSV API ====================
@@ -302,8 +341,10 @@ export const searchQuestions = async (bankId, keyword, options = {}) => {
  * @returns {Promise<void>}
  */
 export const downloadCsvTemplate = async () => {
-  const api = requireElectronApi('csv.downloadTemplate')
-  return api.csv.downloadTemplate()
+  const api = getElectronAPI()
+  if (api) return api.csv.downloadTemplate()
+  if (isTauriRuntime()) return invokeTauriCommand('csv_download_template')
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -336,8 +377,10 @@ export const parseCsvFile = async (filePath) => {
  * @returns {Promise<ImportResult>}
  */
 export const importQuestions = async (bankId, questions) => {
-  const api = requireElectronApi('csv.importQuestions')
-  return api.csv.importQuestions(bankId, questions)
+  const api = getElectronAPI()
+  if (api) return api.csv.importQuestions(bankId, questions)
+  if (isTauriRuntime()) return invokeTauriCommand('csv_import', { bankId, questions })
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -346,8 +389,10 @@ export const importQuestions = async (bankId, questions) => {
  * @returns {Promise<void>}
  */
 export const exportQuestionBank = async (bankId) => {
-  const api = requireElectronApi('csv.exportBank')
-  return api.csv.exportBank(bankId)
+  const api = getElectronAPI()
+  if (api) return api.csv.exportBank(bankId)
+  if (isTauriRuntime()) return invokeTauriCommand('csv_export', { bankId })
+  throw getDesktopApiUnavailableError()
 }
 
 
@@ -360,14 +405,7 @@ export const exportQuestionBank = async (bankId) => {
 export const getDashboardStats = async () => {
   const api = getElectronAPI()
   if (api) return api.stats.getDashboardStats()
-  if (isTauriRuntime()) {
-    return {
-      totalQuestions: 0,
-      todayQuestions: 0,
-      weekQuestions: 0,
-      typeDistribution: [],
-    }
-  }
+  if (isTauriRuntime()) return invokeTauriCommand('stats_get_dashboard')
 
   throw getDesktopApiUnavailableError()
 }
@@ -380,7 +418,7 @@ export const getDashboardStats = async () => {
 export const getOperationLogs = async (limit = 10) => {
   const api = getElectronAPI()
   if (api) return api.stats.getOperationLogs(limit)
-  if (isTauriRuntime()) return []
+  if (isTauriRuntime()) return invokeTauriCommand('stats_get_operation_logs', { limit })
   throw getDesktopApiUnavailableError()
 }
 
@@ -392,7 +430,7 @@ export const getOperationLogs = async (limit = 10) => {
 export const getTypeDistribution = async (bankId = null) => {
   const api = getElectronAPI()
   if (api) return api.stats.getTypeDistribution(bankId)
-  if (isTauriRuntime()) return []
+  if (isTauriRuntime()) return invokeTauriCommand('stats_get_type_distribution', { bankId })
   throw getDesktopApiUnavailableError()
 }
 
@@ -422,13 +460,17 @@ export const setTheme = async (theme) => {
 }
 
 export const getWrongBookThreshold = async () => {
-  const api = requireElectronApi('settings.getWrongBookThreshold')
-  return api.settings.getWrongBookThreshold()
+  const api = getElectronAPI()
+  if (api) return api.settings.getWrongBookThreshold()
+  if (isTauriRuntime()) return invokeTauriCommand('settings_get_wrong_book_threshold')
+  throw getDesktopApiUnavailableError()
 }
 
 export const setWrongBookThreshold = async (threshold) => {
-  const api = requireElectronApi('settings.setWrongBookThreshold')
-  return api.settings.setWrongBookThreshold(threshold)
+  const api = getElectronAPI()
+  if (api) return api.settings.setWrongBookThreshold(threshold)
+  if (isTauriRuntime()) return invokeTauriCommand('settings_set_wrong_book_threshold', { threshold })
+  throw getDesktopApiUnavailableError()
 }
 
 // ==================== 草稿 API ====================
@@ -439,8 +481,10 @@ export const setWrongBookThreshold = async (threshold) => {
  * @returns {Promise<void>}
  */
 export const saveDraft = async (data) => {
-  const api = requireElectronApi('draft.save')
-  return api.draft.save(data)
+  const api = getElectronAPI()
+  if (api) return api.draft.save(data)
+  if (isTauriRuntime()) return invokeTauriCommand('draft_save', { data })
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -448,8 +492,10 @@ export const saveDraft = async (data) => {
  * @returns {Promise<DraftData|null>}
  */
 export const loadDraft = async () => {
-  const api = requireElectronApi('draft.load')
-  return api.draft.load()
+  const api = getElectronAPI()
+  if (api) return api.draft.load()
+  if (isTauriRuntime()) return invokeTauriCommand('draft_load')
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -457,8 +503,10 @@ export const loadDraft = async () => {
  * @returns {Promise<void>}
  */
 export const clearDraft = async () => {
-  const api = requireElectronApi('draft.clear')
-  return api.draft.clear()
+  const api = getElectronAPI()
+  if (api) return api.draft.clear()
+  if (isTauriRuntime()) return invokeTauriCommand('draft_clear')
+  throw getDesktopApiUnavailableError()
 }
 
 // ==================== 设置扩展 API ====================
@@ -468,8 +516,10 @@ export const clearDraft = async () => {
  * @returns {Promise<{apiKey: string, apiUrl: string, modelId: string}>}
  */
 export const getApiConfig = async () => {
-  const api = requireElectronApi('settings.getApiConfig')
-  return api.settings.getApiConfig()
+  const api = getElectronAPI()
+  if (api) return api.settings.getApiConfig()
+  if (isTauriRuntime()) return invokeTauriCommand('settings_get_api_config')
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -478,8 +528,10 @@ export const getApiConfig = async () => {
  * @returns {Promise<void>}
  */
 export const setApiConfig = async (config) => {
-  const api = requireElectronApi('settings.setApiConfig')
-  return api.settings.setApiConfig(config)
+  const api = getElectronAPI()
+  if (api) return api.settings.setApiConfig(config)
+  if (isTauriRuntime()) return invokeTauriCommand('settings_set_api_config', { config })
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -487,8 +539,10 @@ export const setApiConfig = async (config) => {
  * @returns {Promise<{success: boolean, message: string}>}
  */
 export const testApiConnection = async () => {
-  const api = requireElectronApi('settings.testApiConnection')
-  return api.settings.testApiConnection()
+  const api = getElectronAPI()
+  if (api) return api.settings.testApiConnection()
+  if (isTauriRuntime()) return invokeTauriCommand('settings_test_api_connection')
+  throw getDesktopApiUnavailableError()
 }
 
 // ==================== AI API ====================
@@ -499,8 +553,91 @@ export const testApiConnection = async () => {
  * @returns {Promise<{questions: CreateQuestionInput[]}>}
  */
 export const parseQuestionsWithAI = async (content) => {
-  const api = requireElectronApi('ai.parseQuestions')
-  return api.ai.parseQuestions(content)
+  const api = getElectronAPI()
+  if (api) return api.ai.parseQuestions(content)
+  if (isTauriRuntime()) return invokeTauriCommand('ai_parse_questions', { content })
+  throw getDesktopApiUnavailableError()
+}
+
+export const chatWithAI = async (messages, promptId) => {
+  const api = getElectronAPI()
+  if (api) return api.ai.chat(messages, promptId)
+  if (isTauriRuntime()) return invokeTauriCommand('ai_chat', { messages, promptId })
+  throw getDesktopApiUnavailableError()
+}
+
+// ==================== Prompt API ====================
+
+export const getAllPrompts = async () => {
+  const api = getElectronAPI()
+  if (api) return api.prompt.getAll()
+  if (isTauriRuntime()) return invokeTauriCommand('prompt_get_all')
+  throw getDesktopApiUnavailableError()
+}
+
+export const getPromptById = async (id) => {
+  const api = getElectronAPI()
+  if (api) return api.prompt.getById(id)
+  if (isTauriRuntime()) return invokeTauriCommand('prompt_get_by_id', { id })
+  throw getDesktopApiUnavailableError()
+}
+
+export const createPrompt = async (data) => {
+  const api = getElectronAPI()
+  if (api) return api.prompt.create(data)
+  if (isTauriRuntime()) return invokeTauriCommand('prompt_create', { data })
+  throw getDesktopApiUnavailableError()
+}
+
+export const updatePrompt = async (id, data) => {
+  const api = getElectronAPI()
+  if (api) return api.prompt.update(id, data)
+  if (isTauriRuntime()) return invokeTauriCommand('prompt_update', { id, data })
+  throw getDesktopApiUnavailableError()
+}
+
+export const deletePrompt = async (id) => {
+  const api = getElectronAPI()
+  if (api) return api.prompt.delete(id)
+  if (isTauriRuntime()) return invokeTauriCommand('prompt_delete', { id })
+  throw getDesktopApiUnavailableError()
+}
+
+// ==================== 聊天历史 API ====================
+
+export const saveChatHistory = async (data) => {
+  const api = getElectronAPI()
+  if (api) return api.chatHistory.save(data)
+  if (isTauriRuntime()) return invokeTauriCommand('chat_history_save', { data })
+  throw getDesktopApiUnavailableError()
+}
+
+export const updateChatHistory = async (id, messages) => {
+  const api = getElectronAPI()
+  if (api) return api.chatHistory.update(id, messages)
+  if (isTauriRuntime()) return invokeTauriCommand('chat_history_update', { id, messages })
+  throw getDesktopApiUnavailableError()
+}
+
+export const getAllChatHistory = async (limit = 50) => {
+  const api = getElectronAPI()
+  if (api) return api.chatHistory.getAll(limit)
+  if (isTauriRuntime()) return invokeTauriCommand('chat_history_get_all', { limit })
+  throw getDesktopApiUnavailableError()
+}
+
+export const getChatHistoryById = async (id) => {
+  const api = getElectronAPI()
+  if (api) return api.chatHistory.getById(id)
+  if (isTauriRuntime()) return invokeTauriCommand('chat_history_get_by_id', { id })
+  throw getDesktopApiUnavailableError()
+}
+
+export const deleteChatHistory = async (id) => {
+  const api = getElectronAPI()
+  if (api) return api.chatHistory.delete(id)
+  if (isTauriRuntime()) return invokeTauriCommand('chat_history_delete', { id })
+  throw getDesktopApiUnavailableError()
 }
 
 // ==================== 默认导出 ====================
@@ -558,49 +695,86 @@ export default {
   // AI
   ai: {
     parseQuestions: parseQuestionsWithAI,
+    chat: chatWithAI,
+  },
+  prompt: {
+    getAll: getAllPrompts,
+    getById: getPromptById,
+    create: createPrompt,
+    update: updatePrompt,
+    delete: deletePrompt,
+  },
+  chatHistory: {
+    save: saveChatHistory,
+    update: updateChatHistory,
+    getAll: getAllChatHistory,
+    getById: getChatHistoryById,
+    delete: deleteChatHistory,
   },
   // 练习
   practice: {
     saveRecord: async (record) => {
-      const api = requireElectronApi('practice.saveRecord')
-      return api.practice.saveRecord(record)
+      const api = getElectronAPI()
+      if (api) return api.practice.saveRecord(record)
+      if (isTauriRuntime()) return invokeTauriCommand('practice_save_record', { record })
+      throw getDesktopApiUnavailableError()
     },
     getRecords: async (bankId, limit = 20) => {
-      const api = requireElectronApi('practice.getRecords')
-      return api.practice.getRecords(bankId, limit)
+      const api = getElectronAPI()
+      if (api) return api.practice.getRecords(bankId, limit)
+      if (isTauriRuntime()) return invokeTauriCommand('practice_get_records', { bankId, limit })
+      throw getDesktopApiUnavailableError()
     },
     getAllStats: async () => {
       const api = getElectronAPI()
       if (api) return api.practice.getAllStats()
-      if (isTauriRuntime()) return []
+      if (isTauriRuntime()) return invokeTauriCommand('practice_get_all_stats')
       throw getDesktopApiUnavailableError()
     },
   },
 
   wrongBook: {
     getCountsByBank: async () => {
-      const api = requireElectronApi('wrongBook.getCountsByBank')
-      return api.wrongBook.getCountsByBank()
+      const api = getElectronAPI()
+      if (api) return api.wrongBook.getCountsByBank()
+      if (isTauriRuntime()) return invokeTauriCommand('wrong_book_get_counts_by_bank')
+      throw getDesktopApiUnavailableError()
     },
     getItems: async (bankId, options = {}) => {
-      const api = requireElectronApi('wrongBook.getItems')
-      return api.wrongBook.getItems(bankId, options)
+      const api = getElectronAPI()
+      if (api) return api.wrongBook.getItems(bankId, options)
+      if (isTauriRuntime()) {
+        return invokeTauriCommand('wrong_book_get_items', {
+          bankId,
+          page: options.page,
+          pageSize: options.pageSize,
+        })
+      }
+      throw getDesktopApiUnavailableError()
     },
     getRandomQuestions: async (bankId, limit = 20) => {
-      const api = requireElectronApi('wrongBook.getRandomQuestions')
-      return api.wrongBook.getRandomQuestions(bankId, limit)
+      const api = getElectronAPI()
+      if (api) return api.wrongBook.getRandomQuestions(bankId, limit)
+      if (isTauriRuntime()) return invokeTauriCommand('wrong_book_get_random_questions', { bankId, limit })
+      throw getDesktopApiUnavailableError()
     },
     updateFromPractice: async (results, threshold) => {
-      const api = requireElectronApi('wrongBook.updateFromPractice')
-      return api.wrongBook.updateFromPractice(results, threshold)
+      const api = getElectronAPI()
+      if (api) return api.wrongBook.updateFromPractice(results, threshold)
+      if (isTauriRuntime()) return invokeTauriCommand('wrong_book_update_from_practice', { results, threshold })
+      throw getDesktopApiUnavailableError()
     },
     removeItem: async (questionId) => {
-      const api = requireElectronApi('wrongBook.removeItem')
-      return api.wrongBook.removeItem(questionId)
+      const api = getElectronAPI()
+      if (api) return api.wrongBook.removeItem(questionId)
+      if (isTauriRuntime()) return invokeTauriCommand('wrong_book_remove_item', { questionId })
+      throw getDesktopApiUnavailableError()
     },
     clear: async (bankId) => {
-      const api = requireElectronApi('wrongBook.clear')
-      return api.wrongBook.clear(bankId)
+      const api = getElectronAPI()
+      if (api) return api.wrongBook.clear(bankId)
+      if (isTauriRuntime()) return invokeTauriCommand('wrong_book_clear', { bankId })
+      throw getDesktopApiUnavailableError()
     },
   },
 }
