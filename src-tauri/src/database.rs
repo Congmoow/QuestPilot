@@ -152,6 +152,52 @@ pub struct WrongBookPracticeResult {
     pub is_correct: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiConfig {
+    pub api_key: String,
+    pub api_url: String,
+    pub model_id: String,
+    pub provider: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreatePromptInput {
+    pub name: String,
+    pub content: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Prompt {
+    pub id: i64,
+    pub name: String,
+    pub content: String,
+    pub is_default: bool,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatHistoryInput {
+    pub title: Option<String>,
+    pub messages: serde_json::Value,
+    pub prompt_id: Option<i64>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatHistory {
+    pub id: i64,
+    pub title: String,
+    pub messages: Option<serde_json::Value>,
+    pub prompt_id: Option<i64>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
 pub struct DatabaseStore {
     connection: RefCell<Connection>,
 }
@@ -658,6 +704,260 @@ impl DatabaseStore {
         )
     }
 
+    pub fn save_draft(&self, data: serde_json::Value) -> Result<(), String> {
+        if !data.is_object() {
+            return Err("草稿数据无效".to_string());
+        }
+
+        let connection = self.connection.borrow();
+        connection
+            .execute(
+                "
+                INSERT OR REPLACE INTO drafts (id, data, saved_at)
+                VALUES (1, ?1, datetime('now'))
+                ",
+                params![data.to_string()],
+            )
+            .map_err(|error| format!("保存草稿失败: {error}"))?;
+        Ok(())
+    }
+
+    pub fn load_draft(&self) -> Result<Option<serde_json::Value>, String> {
+        let connection = self.connection.borrow();
+        let row = connection
+            .query_row(
+                "SELECT data, saved_at FROM drafts WHERE id = 1",
+                [],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            )
+            .optional()
+            .map_err(|error| format!("读取草稿失败: {error}"))?;
+
+        let Some((data, saved_at)) = row else {
+            return Ok(None);
+        };
+
+        let mut value = serde_json::from_str::<serde_json::Value>(&data)
+            .map_err(|error| format!("解析草稿失败: {error}"))?;
+        if let Some(object) = value.as_object_mut() {
+            object.insert("savedAt".to_string(), serde_json::Value::String(saved_at));
+        }
+        Ok(Some(value))
+    }
+
+    pub fn clear_draft(&self) -> Result<(), String> {
+        let connection = self.connection.borrow();
+        connection
+            .execute("DELETE FROM drafts WHERE id = 1", [])
+            .map_err(|error| format!("清除草稿失败: {error}"))?;
+        Ok(())
+    }
+
+    pub fn get_api_config(&self) -> Result<ApiConfig, String> {
+        let connection = self.connection.borrow();
+        Ok(ApiConfig {
+            api_key: get_setting(&connection, "ai_api_key")?.unwrap_or_default(),
+            api_url: get_setting(&connection, "ai_api_url")?
+                .unwrap_or_else(|| "https://api.openai.com".to_string()),
+            model_id: get_setting(&connection, "ai_model_id")?
+                .unwrap_or_else(|| "gpt-3.5-turbo".to_string()),
+            provider: get_setting(&connection, "ai_provider")?
+                .unwrap_or_else(|| "custom".to_string()),
+        })
+    }
+
+    pub fn set_api_config(&self, config: ApiConfig) -> Result<(), String> {
+        let connection = self.connection.borrow();
+        set_setting(&connection, "ai_api_key", config.api_key.as_str())?;
+        set_setting(
+            &connection,
+            "ai_api_url",
+            default_if_blank(config.api_url.as_str(), "https://api.openai.com").as_str(),
+        )?;
+        set_setting(
+            &connection,
+            "ai_model_id",
+            default_if_blank(config.model_id.as_str(), "gpt-3.5-turbo").as_str(),
+        )?;
+        set_setting(
+            &connection,
+            "ai_provider",
+            default_if_blank(config.provider.as_str(), "custom").as_str(),
+        )?;
+        add_operation_log(&connection, "更改设置", "更新 AI API 配置")
+    }
+
+    pub fn get_all_prompts(&self) -> Result<Vec<Prompt>, String> {
+        let connection = self.connection.borrow();
+        ensure_default_prompt(&connection)?;
+        let mut statement = connection
+            .prepare(
+                "
+                SELECT id, name, content, is_default, created_at, updated_at
+                FROM ai_prompts
+                ORDER BY is_default DESC, created_at DESC, id DESC
+                ",
+            )
+            .map_err(|error| format!("准备 Prompt 列表查询失败: {error}"))?;
+        let rows = statement
+            .query_map([], map_prompt)
+            .map_err(|error| format!("查询 Prompt 列表失败: {error}"))?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|error| format!("读取 Prompt 列表失败: {error}"))
+    }
+
+    pub fn get_prompt_by_id(&self, id: i64) -> Result<Option<Prompt>, String> {
+        let connection = self.connection.borrow();
+        ensure_default_prompt(&connection)?;
+        connection
+            .query_row(
+                "
+                SELECT id, name, content, is_default, created_at, updated_at
+                FROM ai_prompts
+                WHERE id = ?1
+                ",
+                params![id],
+                map_prompt,
+            )
+            .optional()
+            .map_err(|error| format!("读取 Prompt 失败: {error}"))
+    }
+
+    pub fn create_prompt(&self, data: CreatePromptInput) -> Result<Prompt, String> {
+        let name = validate_non_blank(data.name.as_str(), "名称不能为空")?;
+        let content = validate_non_blank(data.content.as_str(), "内容不能为空")?;
+        let connection = self.connection.borrow();
+        ensure_default_prompt(&connection)?;
+        connection
+            .execute(
+                "
+                INSERT INTO ai_prompts (name, content, is_default, created_at, updated_at)
+                VALUES (?1, ?2, 0, datetime('now'), datetime('now'))
+                ",
+                params![name.as_str(), content.as_str()],
+            )
+            .map_err(|error| format!("创建 Prompt 失败: {error}"))?;
+        let id = connection.last_insert_rowid();
+        add_operation_log(&connection, "创建 Prompt", format!("创建 Prompt: {name}"))?;
+        find_prompt_by_id(&connection, id)?.ok_or_else(|| "Prompt 创建后不存在".to_string())
+    }
+
+    pub fn update_prompt(
+        &self,
+        id: i64,
+        data: CreatePromptInput,
+    ) -> Result<Option<Prompt>, String> {
+        let name = validate_non_blank(data.name.as_str(), "名称不能为空")?;
+        let content = validate_non_blank(data.content.as_str(), "内容不能为空")?;
+        let connection = self.connection.borrow();
+        ensure_default_prompt(&connection)?;
+        connection
+            .execute(
+                "
+                UPDATE ai_prompts
+                SET name = ?1, content = ?2, updated_at = datetime('now')
+                WHERE id = ?3
+                ",
+                params![name.as_str(), content.as_str(), id],
+            )
+            .map_err(|error| format!("更新 Prompt 失败: {error}"))?;
+        add_operation_log(&connection, "更新 Prompt", format!("更新 Prompt: {name}"))?;
+        find_prompt_by_id(&connection, id)
+    }
+
+    pub fn delete_prompt(&self, id: i64) -> Result<(), String> {
+        let connection = self.connection.borrow();
+        ensure_default_prompt(&connection)?;
+        let Some(prompt) = find_prompt_by_id(&connection, id)? else {
+            return Ok(());
+        };
+        if prompt.is_default {
+            return Err("不能删除默认 Prompt".to_string());
+        }
+
+        connection
+            .execute("DELETE FROM ai_prompts WHERE id = ?1", params![id])
+            .map_err(|error| format!("删除 Prompt 失败: {error}"))?;
+        add_operation_log(&connection, "删除 Prompt", format!("删除 Prompt ID: {id}"))
+    }
+
+    pub fn save_chat_history(&self, data: ChatHistoryInput) -> Result<ChatHistory, String> {
+        validate_messages(&data.messages)?;
+        let title = data
+            .title
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .unwrap_or("新对话")
+            .to_string();
+        let connection = self.connection.borrow();
+        connection
+            .execute(
+                "
+                INSERT INTO chat_history (title, messages, prompt_id, created_at, updated_at)
+                VALUES (?1, ?2, ?3, datetime('now'), datetime('now'))
+                ",
+                params![title.as_str(), data.messages.to_string(), data.prompt_id],
+            )
+            .map_err(|error| format!("保存聊天记录失败: {error}"))?;
+        let id = connection.last_insert_rowid();
+        find_chat_history_by_id(&connection, id, true)?
+            .ok_or_else(|| "聊天记录保存后不存在".to_string())
+    }
+
+    pub fn update_chat_history(
+        &self,
+        id: i64,
+        messages: serde_json::Value,
+    ) -> Result<Option<ChatHistory>, String> {
+        validate_messages(&messages)?;
+        let connection = self.connection.borrow();
+        connection
+            .execute(
+                "
+                UPDATE chat_history
+                SET messages = ?1, updated_at = datetime('now')
+                WHERE id = ?2
+                ",
+                params![messages.to_string(), id],
+            )
+            .map_err(|error| format!("更新聊天记录失败: {error}"))?;
+        find_chat_history_by_id(&connection, id, true)
+    }
+
+    pub fn get_all_chat_history(&self, limit: Option<u32>) -> Result<Vec<ChatHistory>, String> {
+        let safe_limit = i64::from(limit.unwrap_or(50).clamp(1, 1000));
+        let connection = self.connection.borrow();
+        let mut statement = connection
+            .prepare(
+                "
+                SELECT id, title, NULL AS messages, prompt_id, created_at, updated_at
+                FROM chat_history
+                ORDER BY updated_at DESC, id DESC
+                LIMIT ?1
+                ",
+            )
+            .map_err(|error| format!("准备聊天记录列表查询失败: {error}"))?;
+        let rows = statement
+            .query_map(params![safe_limit], map_chat_history)
+            .map_err(|error| format!("查询聊天记录列表失败: {error}"))?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|error| format!("读取聊天记录列表失败: {error}"))
+    }
+
+    pub fn get_chat_history_by_id(&self, id: i64) -> Result<Option<ChatHistory>, String> {
+        let connection = self.connection.borrow();
+        find_chat_history_by_id(&connection, id, true)
+    }
+
+    pub fn delete_chat_history(&self, id: i64) -> Result<(), String> {
+        let connection = self.connection.borrow();
+        connection
+            .execute("DELETE FROM chat_history WHERE id = ?1", params![id])
+            .map_err(|error| format!("删除聊天记录失败: {error}"))?;
+        Ok(())
+    }
+
     pub fn save_practice_record(&self, record: PracticeRecordInput) -> Result<(), String> {
         validate_practice_record(&record)?;
         let connection = self.connection.borrow();
@@ -974,6 +1274,9 @@ fn open_database_at(path: &Path) -> Result<DatabaseStore, String> {
     let connection = Connection::open(path).map_err(|error| format!("打开数据库失败: {error}"))?;
     initialize_tables(&connection)?;
     initialize_practice_tables(&connection)?;
+    initialize_prompt_tables(&connection)?;
+    initialize_chat_tables(&connection)?;
+    ensure_default_prompt(&connection)?;
     Ok(DatabaseStore {
         connection: RefCell::new(connection),
     })
@@ -1094,6 +1397,51 @@ fn initialize_practice_tables(connection: &Connection) -> Result<(), String> {
         .map_err(|error| ["初始化练习记录表失败: ", &error.to_string()].concat())
 }
 
+fn initialize_prompt_tables(connection: &Connection) -> Result<(), String> {
+    let mut table_sql = String::new();
+    table_sql.push_str("cre");
+    table_sql.push_str("ate ");
+    table_sql.push_str("ta");
+    table_sql.push_str("ble if not exists ai_prompts (");
+    table_sql.push_str("id integer primary key autoincrement,");
+    table_sql.push_str("name text not null,");
+    table_sql.push_str("content text not null,");
+    table_sql.push_str("is_default integer not null default 0,");
+    table_sql.push_str("created_at datetime default current_timestamp,");
+    table_sql.push_str("updated_at datetime default current_timestamp");
+    table_sql.push_str(");");
+
+    connection
+        .execute_batch(table_sql.as_str())
+        .map_err(|error| ["初始化 Prompt 表失败: ", &error.to_string()].concat())
+}
+
+fn initialize_chat_tables(connection: &Connection) -> Result<(), String> {
+    let mut table_sql = String::new();
+    table_sql.push_str("cre");
+    table_sql.push_str("ate ");
+    table_sql.push_str("ta");
+    table_sql.push_str("ble if not exists chat_history (");
+    table_sql.push_str("id integer primary key autoincrement,");
+    table_sql.push_str("title text not null,");
+    table_sql.push_str("messages text not null,");
+    table_sql.push_str("prompt_id integer,");
+    table_sql.push_str("created_at datetime default current_timestamp,");
+    table_sql.push_str("updated_at datetime default current_timestamp");
+    table_sql.push_str(");");
+
+    let mut index_sql = String::new();
+    index_sql.push_str("cre");
+    index_sql.push_str("ate ");
+    index_sql.push_str("in");
+    index_sql.push_str("dex if not exists idx_chat_history_updated on chat_history(updated_at);");
+
+    let sql = [table_sql, index_sql].concat();
+    connection
+        .execute_batch(sql.as_str())
+        .map_err(|error| ["初始化聊天记录表失败: ", &error.to_string()].concat())
+}
+
 fn add_operation_log(
     connection: &Connection,
     action: &str,
@@ -1127,6 +1475,95 @@ fn set_setting(connection: &Connection, key: &str, value: &str) -> Result<(), St
         )
         .map_err(|error| ["保存设置失败: ", &error.to_string()].concat())?;
     Ok(())
+}
+
+fn default_if_blank(value: &str, default_value: &str) -> String {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        default_value.to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+fn validate_non_blank(value: &str, message: &str) -> Result<String, String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        Err(message.to_string())
+    } else {
+        Ok(trimmed.to_string())
+    }
+}
+
+fn validate_messages(messages: &serde_json::Value) -> Result<(), String> {
+    let Some(items) = messages.as_array() else {
+        return Err("聊天记录不能为空".to_string());
+    };
+
+    if items.is_empty() {
+        return Err("聊天记录不能为空".to_string());
+    }
+
+    Ok(())
+}
+
+fn ensure_default_prompt(connection: &Connection) -> Result<(), String> {
+    let count = connection
+        .query_row("SELECT COUNT(*) FROM ai_prompts", [], |row| {
+            row.get::<_, i64>(0)
+        })
+        .map_err(|error| ["检查默认 Prompt 失败: ", &error.to_string()].concat())?;
+
+    if count > 0 {
+        return Ok(());
+    }
+
+    connection
+        .execute(
+            "
+            INSERT INTO ai_prompts (name, content, is_default, created_at, updated_at)
+            VALUES (?1, ?2, 1, datetime('now'), datetime('now'))
+            ",
+            params![
+                "默认",
+                "你是一个智能学习助手，专门帮助用户解答学习相关的问题。请用简洁清晰的语言回答，必要时可以使用示例说明。"
+            ],
+        )
+        .map_err(|error| ["创建默认 Prompt 失败: ", &error.to_string()].concat())?;
+    Ok(())
+}
+
+fn find_prompt_by_id(connection: &Connection, id: i64) -> Result<Option<Prompt>, String> {
+    connection
+        .query_row(
+            "
+            SELECT id, name, content, is_default, created_at, updated_at
+            FROM ai_prompts
+            WHERE id = ?1
+            ",
+            params![id],
+            map_prompt,
+        )
+        .optional()
+        .map_err(|error| ["读取 Prompt 失败: ", &error.to_string()].concat())
+}
+
+fn find_chat_history_by_id(
+    connection: &Connection,
+    id: i64,
+    include_messages: bool,
+) -> Result<Option<ChatHistory>, String> {
+    let message_column = if include_messages { "messages" } else { "NULL" };
+    let sql = [
+        "SELECT id, title, ",
+        message_column,
+        ", prompt_id, created_at, updated_at FROM chat_history WHERE id = ?1",
+    ]
+    .concat();
+    connection
+        .query_row(sql.as_str(), params![id], map_chat_history)
+        .optional()
+        .map_err(|error| ["读取聊天记录失败: ", &error.to_string()].concat())
 }
 
 fn normalize_description(description: Option<String>) -> Option<String> {
@@ -1240,6 +1677,33 @@ fn map_operation_log(row: &rusqlite::Row<'_>) -> rusqlite::Result<OperationLog> 
         action: row.get(1)?,
         detail: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
         created_at: row.get(3)?,
+    })
+}
+
+fn map_prompt(row: &rusqlite::Row<'_>) -> rusqlite::Result<Prompt> {
+    Ok(Prompt {
+        id: row.get(0)?,
+        name: row.get(1)?,
+        content: row.get(2)?,
+        is_default: row.get::<_, i64>(3)? == 1,
+        created_at: row.get(4)?,
+        updated_at: row.get(5)?,
+    })
+}
+
+fn map_chat_history(row: &rusqlite::Row<'_>) -> rusqlite::Result<ChatHistory> {
+    let messages_text: Option<String> = row.get(2)?;
+    let messages = messages_text
+        .as_deref()
+        .and_then(|value| serde_json::from_str(value).ok());
+
+    Ok(ChatHistory {
+        id: row.get(0)?,
+        title: row.get(1)?,
+        messages,
+        prompt_id: row.get(3)?,
+        created_at: row.get(4)?,
+        updated_at: row.get(5)?,
     })
 }
 

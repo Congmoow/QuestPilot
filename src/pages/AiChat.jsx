@@ -156,7 +156,7 @@ const AiChat = () => {
   useEffect(() => {
     const loadPrompts = async () => {
       try {
-        const list = await window.electronAPI.prompt.getAll();
+        const list = await api.prompt.getAll();
         setPrompts(list);
         if (list.length > 0) {
           const defaultPrompt = list.find(p => p.isDefault) || list[0];
@@ -175,7 +175,7 @@ const AiChat = () => {
 
   const loadChatHistory = async () => {
     try {
-      const list = await window.electronAPI.chatHistory.getAll(50);
+      const list = await api.chatHistory.getAll(50);
       setChatHistoryList(list);
     } catch (err) {
       console.error('加载聊天记录失败:', err);
@@ -245,9 +245,9 @@ const AiChat = () => {
       const title = firstUserMsg ? firstUserMsg.content.slice(0, 30) + (firstUserMsg.content.length > 30 ? '...' : '') : '新对话';
 
       if (currentChatId) {
-        await window.electronAPI.chatHistory.update(currentChatId, msgs);
+        await api.chatHistory.update(currentChatId, msgs);
       } else {
-        const saved = await window.electronAPI.chatHistory.save({
+        const saved = await api.chatHistory.save({
           title,
           messages: msgs,
           promptId: selectedPrompt?.id,
@@ -262,7 +262,7 @@ const AiChat = () => {
 
   const loadChat = async (chatId) => {
     try {
-      const chat = await window.electronAPI.chatHistory.getById(chatId);
+      const chat = await api.chatHistory.getById(chatId);
       if (chat) {
         setMessages(chat.messages);
         setCurrentChatId(chat.id);
@@ -280,7 +280,7 @@ const AiChat = () => {
   const deleteChat = async (chatId, e) => {
     e.stopPropagation();
     try {
-      await window.electronAPI.chatHistory.delete(chatId);
+      await api.chatHistory.delete(chatId);
       await loadChatHistory();
       if (chatId === currentChatId) {
         setMessages([]);

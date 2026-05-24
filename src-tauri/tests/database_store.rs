@@ -1,6 +1,6 @@
 use questpilot_tauri_lib::database::{
-    CreateQuestionBankInput, CreateQuestionInput, DatabaseStore, PracticeRecordInput,
-    WrongBookPracticeResult,
+    ApiConfig, ChatHistoryInput, CreatePromptInput, CreateQuestionBankInput, CreateQuestionInput,
+    DatabaseStore, PracticeRecordInput, WrongBookPracticeResult,
 };
 use serde_json::json;
 use tempfile::tempdir;
@@ -41,12 +41,14 @@ fn database_store_initializes_core_tables() {
             "operation_logs",
             "settings",
             "drafts",
+            "ai_prompts",
+            "chat_history",
             "wrong_book",
             "practice_records",
         ])
         .expect("应能统计核心表");
 
-    assert_eq!(table_count, 7);
+    assert_eq!(table_count, 9);
 }
 
 #[test]
@@ -446,4 +448,183 @@ fn database_store_supports_wrong_book_workflow() {
             .expect("清空后统计不应失败"),
         0
     );
+}
+
+#[test]
+fn database_store_supports_draft_and_api_config() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let db_path = temp_dir.path().join("questpilot.db");
+    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
+
+    assert!(store.load_draft().expect("读取空草稿不应失败").is_none());
+
+    store
+        .save_draft(json!({
+            "type": "single",
+            "content": "CPU 的基本组成包括什么？",
+            "answer": "运算器|控制器"
+        }))
+        .expect("应能保存草稿");
+    let draft = store
+        .load_draft()
+        .expect("应能读取草稿")
+        .expect("草稿应存在");
+    assert_eq!(draft["type"], "single");
+    assert_eq!(draft["content"], "CPU 的基本组成包括什么？");
+    assert!(draft
+        .get("savedAt")
+        .and_then(|value| value.as_str())
+        .is_some());
+
+    store.clear_draft().expect("应能清除草稿");
+    assert!(store.load_draft().expect("清除后读取不应失败").is_none());
+
+    let default_config = store.get_api_config().expect("应能读取默认 API 配置");
+    assert_eq!(default_config.api_url, "https://api.openai.com");
+    assert_eq!(default_config.model_id, "gpt-3.5-turbo");
+    assert_eq!(default_config.provider, "custom");
+    assert_eq!(default_config.api_key, "");
+
+    store
+        .set_api_config(ApiConfig {
+            api_key: "sk-test".to_string(),
+            api_url: "https://api.example.com".to_string(),
+            model_id: "model-x".to_string(),
+            provider: "openai".to_string(),
+        })
+        .expect("应能保存 API 配置");
+    let saved_config = store.get_api_config().expect("应能读取保存后的 API 配置");
+    assert_eq!(saved_config.api_key, "sk-test");
+    assert_eq!(saved_config.api_url, "https://api.example.com");
+    assert_eq!(saved_config.model_id, "model-x");
+    assert_eq!(saved_config.provider, "openai");
+}
+
+#[test]
+fn database_store_supports_prompt_crud_with_default_prompt_guard() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let db_path = temp_dir.path().join("questpilot.db");
+    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
+
+    let prompts = store.get_all_prompts().expect("应能读取 Prompt 列表");
+    assert_eq!(prompts.len(), 1);
+    assert!(prompts[0].is_default);
+    assert_eq!(prompts[0].name, "默认");
+
+    let created = store
+        .create_prompt(CreatePromptInput {
+            name: "  考研导师  ".to_string(),
+            content: "  先诊断用户哪里没懂，再回答。  ".to_string(),
+        })
+        .expect("应能创建 Prompt");
+    assert_eq!(created.name, "考研导师");
+    assert_eq!(created.content, "先诊断用户哪里没懂，再回答。");
+    assert!(!created.is_default);
+
+    let updated = store
+        .update_prompt(
+            created.id,
+            CreatePromptInput {
+                name: "408 导师".to_string(),
+                content: "用 408 复习视角回答。".to_string(),
+            },
+        )
+        .expect("应能更新 Prompt")
+        .expect("Prompt 应存在");
+    assert_eq!(updated.name, "408 导师");
+
+    let by_id = store
+        .get_prompt_by_id(created.id)
+        .expect("按 ID 读取 Prompt 不应失败")
+        .expect("Prompt 应存在");
+    assert_eq!(by_id.content, "用 408 复习视角回答。");
+
+    let default_prompt = prompts
+        .into_iter()
+        .find(|prompt| prompt.is_default)
+        .unwrap();
+    assert!(store.delete_prompt(default_prompt.id).is_err());
+
+    store
+        .delete_prompt(created.id)
+        .expect("应能删除非默认 Prompt");
+    assert!(store
+        .get_prompt_by_id(created.id)
+        .expect("删除后查询不应失败")
+        .is_none());
+}
+
+#[test]
+fn database_store_supports_chat_history_crud() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let db_path = temp_dir.path().join("questpilot.db");
+    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
+    let prompt = store
+        .create_prompt(CreatePromptInput {
+            name: "答疑 Prompt".to_string(),
+            content: "保持简洁。".to_string(),
+        })
+        .expect("应能创建 Prompt");
+
+    let saved = store
+        .save_chat_history(ChatHistoryInput {
+            title: Some("  二叉树问题  ".to_string()),
+            messages: json!([
+                { "role": "user", "content": "什么是满二叉树？" },
+                { "role": "assistant", "content": "所有分支结点都有两个孩子。" }
+            ]),
+            prompt_id: Some(prompt.id),
+        })
+        .expect("应能保存聊天记录");
+    assert_eq!(saved.title, "二叉树问题");
+    assert_eq!(saved.prompt_id, Some(prompt.id));
+    assert!(
+        saved
+            .messages
+            .as_ref()
+            .expect("保存结果应包含消息")
+            .as_array()
+            .expect("消息应为数组")
+            .len()
+            == 2
+    );
+
+    let list = store
+        .get_all_chat_history(Some(50))
+        .expect("应能读取聊天记录列表");
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0].id, saved.id);
+    assert!(list[0].messages.is_none());
+
+    let updated = store
+        .update_chat_history(
+            saved.id,
+            json!([
+                { "role": "user", "content": "更新后的问题" },
+                { "role": "assistant", "content": "更新后的回答" }
+            ]),
+        )
+        .expect("应能更新聊天记录")
+        .expect("聊天记录应存在");
+    assert_eq!(
+        updated.messages.as_ref().expect("更新结果应包含消息")[0]["content"],
+        "更新后的问题"
+    );
+
+    let by_id = store
+        .get_chat_history_by_id(saved.id)
+        .expect("按 ID 读取聊天记录不应失败")
+        .expect("聊天记录应存在");
+    assert_eq!(
+        by_id.messages.as_ref().expect("详情应包含消息")[1]["content"],
+        "更新后的回答"
+    );
+
+    store
+        .delete_chat_history(saved.id)
+        .expect("应能删除聊天记录");
+    assert!(store
+        .get_chat_history_by_id(saved.id)
+        .expect("删除后查询不应失败")
+        .is_none());
 }

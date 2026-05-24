@@ -118,7 +118,7 @@ const Settings = () => {
 
   const loadPrompts = async () => {
     try {
-      const list = await window.electronAPI.prompt.getAll();
+      const list = await api.prompt.getAll();
       setPrompts(list);
     } catch (error) {
       console.error('加载 Prompt 列表失败:', error);
@@ -150,12 +150,12 @@ const Settings = () => {
     setSavingPrompt(true);
     try {
       if (editingPrompt) {
-        await window.electronAPI.prompt.update(editingPrompt.id, {
+        await api.prompt.update(editingPrompt.id, {
           name: promptName,
           content: promptContent,
         });
       } else {
-        await window.electronAPI.prompt.create({
+        await api.prompt.create({
           name: promptName,
           content: promptContent,
         });
@@ -191,7 +191,7 @@ const Settings = () => {
 
     setDeletingPromptLoading(true);
     try {
-      await window.electronAPI.prompt.delete(deletingPrompt.id);
+      await api.prompt.delete(deletingPrompt.id);
       await loadPrompts();
       if (editingPrompt?.id === deletingPrompt.id) {
         resetPromptForm();

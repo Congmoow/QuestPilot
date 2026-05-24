@@ -287,6 +287,109 @@ fn settings_set_wrong_book_threshold(app: AppHandle, threshold: i64) -> Result<(
 }
 
 #[tauri::command(rename_all = "camelCase")]
+fn settings_get_api_config(app: AppHandle) -> Result<database::ApiConfig, String> {
+    open_store(&app)?.get_api_config()
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn settings_set_api_config(
+    app: AppHandle,
+    config: database::ApiConfig,
+) -> Result<serde_json::Value, String> {
+    open_store(&app)?.set_api_config(config)?;
+    Ok(serde_json::json!({ "success": true }))
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn draft_save(app: AppHandle, data: serde_json::Value) -> Result<serde_json::Value, String> {
+    open_store(&app)?.save_draft(data)?;
+    Ok(serde_json::json!({ "success": true }))
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn draft_load(app: AppHandle) -> Result<Option<serde_json::Value>, String> {
+    open_store(&app)?.load_draft()
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn draft_clear(app: AppHandle) -> Result<serde_json::Value, String> {
+    open_store(&app)?.clear_draft()?;
+    Ok(serde_json::json!({ "success": true }))
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn prompt_get_all(app: AppHandle) -> Result<Vec<database::Prompt>, String> {
+    open_store(&app)?.get_all_prompts()
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn prompt_get_by_id(app: AppHandle, id: i64) -> Result<Option<database::Prompt>, String> {
+    open_store(&app)?.get_prompt_by_id(id)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn prompt_create(
+    app: AppHandle,
+    data: database::CreatePromptInput,
+) -> Result<database::Prompt, String> {
+    open_store(&app)?.create_prompt(data)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn prompt_update(
+    app: AppHandle,
+    id: i64,
+    data: database::CreatePromptInput,
+) -> Result<Option<database::Prompt>, String> {
+    open_store(&app)?.update_prompt(id, data)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn prompt_delete(app: AppHandle, id: i64) -> Result<serde_json::Value, String> {
+    open_store(&app)?.delete_prompt(id)?;
+    Ok(serde_json::json!({ "success": true }))
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn chat_history_save(
+    app: AppHandle,
+    data: database::ChatHistoryInput,
+) -> Result<database::ChatHistory, String> {
+    open_store(&app)?.save_chat_history(data)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn chat_history_update(
+    app: AppHandle,
+    id: i64,
+    messages: serde_json::Value,
+) -> Result<Option<database::ChatHistory>, String> {
+    open_store(&app)?.update_chat_history(id, messages)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn chat_history_get_all(
+    app: AppHandle,
+    limit: Option<u32>,
+) -> Result<Vec<database::ChatHistory>, String> {
+    open_store(&app)?.get_all_chat_history(limit)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn chat_history_get_by_id(
+    app: AppHandle,
+    id: i64,
+) -> Result<Option<database::ChatHistory>, String> {
+    open_store(&app)?.get_chat_history_by_id(id)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn chat_history_delete(app: AppHandle, id: i64) -> Result<serde_json::Value, String> {
+    open_store(&app)?.delete_chat_history(id)?;
+    Ok(serde_json::json!({ "success": true }))
+}
+
+#[tauri::command(rename_all = "camelCase")]
 fn practice_save_record(
     app: AppHandle,
     record: database::PracticeRecordInput,
@@ -421,8 +524,23 @@ pub fn run() {
             stats_get_type_distribution,
             settings_get_theme,
             settings_set_theme,
+            settings_get_api_config,
+            settings_set_api_config,
             settings_get_wrong_book_threshold,
             settings_set_wrong_book_threshold,
+            draft_save,
+            draft_load,
+            draft_clear,
+            prompt_get_all,
+            prompt_get_by_id,
+            prompt_create,
+            prompt_update,
+            prompt_delete,
+            chat_history_save,
+            chat_history_update,
+            chat_history_get_all,
+            chat_history_get_by_id,
+            chat_history_delete,
             practice_save_record,
             practice_get_records,
             practice_get_all_stats,

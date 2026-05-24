@@ -475,8 +475,10 @@ export const setWrongBookThreshold = async (threshold) => {
  * @returns {Promise<void>}
  */
 export const saveDraft = async (data) => {
-  const api = requireElectronApi('draft.save')
-  return api.draft.save(data)
+  const api = getElectronAPI()
+  if (api) return api.draft.save(data)
+  if (isTauriRuntime()) return invokeTauriCommand('draft_save', { data })
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -484,8 +486,10 @@ export const saveDraft = async (data) => {
  * @returns {Promise<DraftData|null>}
  */
 export const loadDraft = async () => {
-  const api = requireElectronApi('draft.load')
-  return api.draft.load()
+  const api = getElectronAPI()
+  if (api) return api.draft.load()
+  if (isTauriRuntime()) return invokeTauriCommand('draft_load')
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -493,8 +497,10 @@ export const loadDraft = async () => {
  * @returns {Promise<void>}
  */
 export const clearDraft = async () => {
-  const api = requireElectronApi('draft.clear')
-  return api.draft.clear()
+  const api = getElectronAPI()
+  if (api) return api.draft.clear()
+  if (isTauriRuntime()) return invokeTauriCommand('draft_clear')
+  throw getDesktopApiUnavailableError()
 }
 
 // ==================== 设置扩展 API ====================
@@ -504,8 +510,10 @@ export const clearDraft = async () => {
  * @returns {Promise<{apiKey: string, apiUrl: string, modelId: string}>}
  */
 export const getApiConfig = async () => {
-  const api = requireElectronApi('settings.getApiConfig')
-  return api.settings.getApiConfig()
+  const api = getElectronAPI()
+  if (api) return api.settings.getApiConfig()
+  if (isTauriRuntime()) return invokeTauriCommand('settings_get_api_config')
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -514,8 +522,10 @@ export const getApiConfig = async () => {
  * @returns {Promise<void>}
  */
 export const setApiConfig = async (config) => {
-  const api = requireElectronApi('settings.setApiConfig')
-  return api.settings.setApiConfig(config)
+  const api = getElectronAPI()
+  if (api) return api.settings.setApiConfig(config)
+  if (isTauriRuntime()) return invokeTauriCommand('settings_set_api_config', { config })
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -537,6 +547,80 @@ export const testApiConnection = async () => {
 export const parseQuestionsWithAI = async (content) => {
   const api = requireElectronApi('ai.parseQuestions')
   return api.ai.parseQuestions(content)
+}
+
+// ==================== Prompt API ====================
+
+export const getAllPrompts = async () => {
+  const api = getElectronAPI()
+  if (api) return api.prompt.getAll()
+  if (isTauriRuntime()) return invokeTauriCommand('prompt_get_all')
+  throw getDesktopApiUnavailableError()
+}
+
+export const getPromptById = async (id) => {
+  const api = getElectronAPI()
+  if (api) return api.prompt.getById(id)
+  if (isTauriRuntime()) return invokeTauriCommand('prompt_get_by_id', { id })
+  throw getDesktopApiUnavailableError()
+}
+
+export const createPrompt = async (data) => {
+  const api = getElectronAPI()
+  if (api) return api.prompt.create(data)
+  if (isTauriRuntime()) return invokeTauriCommand('prompt_create', { data })
+  throw getDesktopApiUnavailableError()
+}
+
+export const updatePrompt = async (id, data) => {
+  const api = getElectronAPI()
+  if (api) return api.prompt.update(id, data)
+  if (isTauriRuntime()) return invokeTauriCommand('prompt_update', { id, data })
+  throw getDesktopApiUnavailableError()
+}
+
+export const deletePrompt = async (id) => {
+  const api = getElectronAPI()
+  if (api) return api.prompt.delete(id)
+  if (isTauriRuntime()) return invokeTauriCommand('prompt_delete', { id })
+  throw getDesktopApiUnavailableError()
+}
+
+// ==================== 聊天历史 API ====================
+
+export const saveChatHistory = async (data) => {
+  const api = getElectronAPI()
+  if (api) return api.chatHistory.save(data)
+  if (isTauriRuntime()) return invokeTauriCommand('chat_history_save', { data })
+  throw getDesktopApiUnavailableError()
+}
+
+export const updateChatHistory = async (id, messages) => {
+  const api = getElectronAPI()
+  if (api) return api.chatHistory.update(id, messages)
+  if (isTauriRuntime()) return invokeTauriCommand('chat_history_update', { id, messages })
+  throw getDesktopApiUnavailableError()
+}
+
+export const getAllChatHistory = async (limit = 50) => {
+  const api = getElectronAPI()
+  if (api) return api.chatHistory.getAll(limit)
+  if (isTauriRuntime()) return invokeTauriCommand('chat_history_get_all', { limit })
+  throw getDesktopApiUnavailableError()
+}
+
+export const getChatHistoryById = async (id) => {
+  const api = getElectronAPI()
+  if (api) return api.chatHistory.getById(id)
+  if (isTauriRuntime()) return invokeTauriCommand('chat_history_get_by_id', { id })
+  throw getDesktopApiUnavailableError()
+}
+
+export const deleteChatHistory = async (id) => {
+  const api = getElectronAPI()
+  if (api) return api.chatHistory.delete(id)
+  if (isTauriRuntime()) return invokeTauriCommand('chat_history_delete', { id })
+  throw getDesktopApiUnavailableError()
 }
 
 // ==================== 默认导出 ====================
@@ -594,6 +678,20 @@ export default {
   // AI
   ai: {
     parseQuestions: parseQuestionsWithAI,
+  },
+  prompt: {
+    getAll: getAllPrompts,
+    getById: getPromptById,
+    create: createPrompt,
+    update: updatePrompt,
+    delete: deletePrompt,
+  },
+  chatHistory: {
+    save: saveChatHistory,
+    update: updateChatHistory,
+    getAll: getAllChatHistory,
+    getById: getChatHistoryById,
+    delete: deleteChatHistory,
   },
   // 练习
   practice: {
