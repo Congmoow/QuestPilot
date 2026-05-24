@@ -14,7 +14,9 @@ fn read_schema_migrations(db_path: &Path) -> Vec<(i64, String)> {
         .expect("应能读取迁移元数据");
 
     statement
-        .query_map([], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)))
+        .query_map([], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+        })
         .expect("应能查询迁移元数据")
         .map(|row| row.expect("应能解析迁移元数据行"))
         .collect()
@@ -82,6 +84,37 @@ fn database_store_records_current_schema_migration_once() {
 
     let reopened = DatabaseStore::open(&db_path).expect("应能重复打开数据库");
     drop(reopened);
+
+    assert_eq!(
+        read_schema_migrations(&db_path),
+        vec![(1, "001_initial_schema".to_string())]
+    );
+}
+
+#[test]
+fn database_store_upgrades_file_without_schema_migration_metadata() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let db_path = temp_dir.path().join("questpilot.db");
+
+    {
+        let connection = Connection::open(&db_path).expect("应能创建旧数据库文件");
+        connection
+            .execute_batch(
+                "
+                CREATE TABLE question_banks (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  name TEXT NOT NULL,
+                  description TEXT,
+                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                ",
+            )
+            .expect("应能创建旧版题库表");
+    }
+
+    let upgraded = DatabaseStore::open(&db_path).expect("应能升级旧数据库文件");
+    drop(upgraded);
 
     assert_eq!(
         read_schema_migrations(&db_path),

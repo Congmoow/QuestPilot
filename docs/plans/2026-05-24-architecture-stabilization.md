@@ -61,11 +61,13 @@
 
 后续执行本计划时应按小步提交推进。每个阶段完成后至少执行对应验证命令，并把结果补回本文件。
 
+**阶段推进规则：** 阶段 2 起，每个阶段必须完成验证、提交并推送成功后，才允许进入下一阶段。当前只收尾到阶段 3，阶段 4-7 暂停。
+
 ### 阶段 2：Electron 数据层与 IPC 边界加固
 
 **目标：** 阻断 renderer 参数直接进入拼接 SQL 或未校验 IPC handler，先保护当前稳定运行时。
 
-**当前状态：** 已完成并等待提交推送后进入阶段 3。
+**当前状态：** 已完成并已提交推送。
 
 **涉及文件：**
 
@@ -113,10 +115,14 @@
 - 新增脚本：`npm run test:electron-db-safety`。
 - Electron 题库、题目、搜索、删除、分页相关核心路径已切到归一化参数或 prepared statement。
 - `docs/architecture/desktop-api-contract.md` 已补充 IPC 与数据层边界。
+- 提交：`b91ef55 fix(electron): 加固数据库参数边界`。
+- 推送：`origin/codex/architecture-stabilization`。
 
 ### 阶段 3 后续：数据库迁移机制完善
 
 **目标：** 把当前 `schema_migrations` 基线扩展为可持续维护的迁移执行器。
+
+**当前状态：** 已完成，阶段 4-7 暂停。
 
 **涉及文件：**
 
@@ -153,6 +159,26 @@
 - Electron 与 Tauri 使用同一版本号、同一迁移名称。
 - 重复启动不会重复写入迁移记录。
 - 新增结构变更有明确测试和文档入口。
+
+**已完成记录：**
+
+- Electron 迁移已改为显式 `MIGRATIONS` 列表，迁移项包含 `version`、`name`、`up(database)`。
+- Electron `runPendingMigrations` 只执行未记录迁移，并在成功后写入 `schema_migrations`。
+- Tauri 已引入 `SCHEMA_MIGRATIONS`，数据库打开时按同一版本语义记录基线迁移。
+- 新增 Electron 迁移列表与未执行迁移测试。
+- 新增 Tauri 旧库升级测试，覆盖没有 `schema_migrations` 的旧数据库文件。
+- `docs/architecture/database-migrations.md` 已补充新增迁移步骤和回滚策略。
+
+**已验证：**
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run test:db-migrations` | 通过，3 个迁移测试通过。 |
+| `cargo test` | 通过，新增 2 个迁移单元测试、数据库集成测试 13 个通过，Rust 全量测试通过。 |
+| `npm run test:api-contract` | 通过，5 个契约测试通过。 |
+| `npm run test:electron-db-safety` | 通过，5 个数据边界测试通过。 |
+| `npm run build` | 通过，Vite 生产构建成功。 |
+| Electron 8 秒启动 smoke | 通过启动观察；Windows 仍有既有 `WSALookupServiceBegin failed with: 10108` 告警，未导致启动退出。 |
 
 ### 阶段 4：AI Key 与配置安全收口
 
