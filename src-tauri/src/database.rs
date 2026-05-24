@@ -149,6 +149,97 @@ impl DatabaseStore {
             .map_err(|error| format!("读取题库结果失败: {error}"))
     }
 
+    pub fn get_bank_by_id(&self, id: i64) -> Result<Option<QuestionBank>, String> {
+        let connection = self.connection.borrow();
+        get_bank_by_id(&connection, id)
+    }
+
+    pub fn update_bank(
+        &self,
+        id: i64,
+        data: CreateQuestionBankInput,
+    ) -> Result<Option<QuestionBank>, String> {
+        let connection = self.connection.borrow();
+        let name = validate_bank_name(&data.name)?;
+        let description = normalize_description(data.description);
+
+        connection
+            .execute(
+                "
+                UPDATE question_banks
+                SET name = ?1, description = ?2, updated_at = datetime('now')
+                WHERE id = ?3
+                ",
+                params![name.as_str(), description.as_deref(), id],
+            )
+            .map_err(|error| format!("更新题库失败: {error}"))?;
+
+        add_operation_log(&connection, "更新题库", format!("更新题库: {name}"))?;
+        get_bank_by_id(&connection, id)
+    }
+
+    pub fn delete_bank(&self, id: i64) -> Result<(), String> {
+        let mut connection = self.connection.borrow_mut();
+        let tx = connection
+            .transaction()
+            .map_err(|error| format!("开启删除题库事务失败: {error}"))?;
+
+        tx.execute("DELETE FROM questions WHERE bank_id = ?1", params![id])
+            .map_err(|error| format!("删除题库题目失败: {error}"))?;
+        tx.execute("DELETE FROM question_banks WHERE id = ?1", params![id])
+            .map_err(|error| format!("删除题库失败: {error}"))?;
+        tx.commit()
+            .map_err(|error| format!("提交删除题库事务失败: {error}"))?;
+
+        add_operation_log(&connection, "删除题库", format!("删除题库 ID: {id}"))?;
+        Ok(())
+    }
+
+    pub fn create_question(
+        &self,
+        bank_id: i64,
+        question: CreateQuestionInput,
+    ) -> Result<Question, String> {
+        if bank_id <= 0 {
+            return Err("题库不存在".to_string());
+        }
+
+        validate_question(&question)?;
+
+        let connection = self.connection.borrow();
+        if !bank_exists(&connection, bank_id)? {
+            return Err("题库不存在".to_string());
+        }
+
+        connection
+            .execute(
+                "
+                INSERT INTO questions (bank_id, type, content, options, answer, analysis, created_at, updated_at)
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'), datetime('now'))
+                ",
+                params![
+                    bank_id,
+                    question.r#type.as_str(),
+                    question.content.as_str(),
+                    options_to_json(&question.options)?,
+                    question.answer.as_str(),
+                    question.analysis.as_deref(),
+                ],
+            )
+            .map_err(|error| format!("创建题目失败: {error}"))?;
+
+        let id = connection.last_insert_rowid();
+        connection
+            .execute(
+                "UPDATE question_banks SET updated_at = datetime('now') WHERE id = ?1",
+                params![bank_id],
+            )
+            .map_err(|error| format!("更新题库时间失败: {error}"))?;
+        add_operation_log(&connection, "添加题目", "添加题目到题库")?;
+
+        find_question_by_id(&connection, id)?.ok_or_else(|| "创建题目后读取失败".to_string())
+    }
+
     pub fn create_questions_batch(
         &self,
         bank_id: i64,
@@ -290,6 +381,141 @@ impl DatabaseStore {
         }
 
         Ok(questions)
+    }
+
+    pub fn get_questions_by_bank_id(
+        &self,
+        bank_id: i64,
+        offset: u32,
+        limit: u32,
+        question_type: Option<String>,
+    ) -> Result<Vec<Question>, String> {
+        let connection = self.connection.borrow();
+        query_questions(
+            &connection,
+            bank_id,
+            "",
+            question_type.as_deref(),
+            offset,
+            limit,
+        )
+    }
+
+    pub fn get_question_by_id(&self, id: i64) -> Result<Option<Question>, String> {
+        let connection = self.connection.borrow();
+        find_question_by_id(&connection, id)
+    }
+
+    pub fn update_question(
+        &self,
+        id: i64,
+        question: CreateQuestionInput,
+    ) -> Result<Option<Question>, String> {
+        validate_question(&question)?;
+
+        let connection = self.connection.borrow();
+        let existing = find_question_by_id(&connection, id)?;
+        if existing.is_none() {
+            return Ok(None);
+        }
+
+        connection
+            .execute(
+                "
+                UPDATE questions
+                SET type = ?1, content = ?2, options = ?3, answer = ?4, analysis = ?5, updated_at = datetime('now')
+                WHERE id = ?6
+                ",
+                params![
+                    question.r#type.as_str(),
+                    question.content.as_str(),
+                    options_to_json(&question.options)?,
+                    question.answer.as_str(),
+                    question.analysis.as_deref(),
+                    id,
+                ],
+            )
+            .map_err(|error| format!("更新题目失败: {error}"))?;
+
+        if let Some(existing) = existing {
+            connection
+                .execute(
+                    "UPDATE question_banks SET updated_at = datetime('now') WHERE id = ?1",
+                    params![existing.bank_id],
+                )
+                .map_err(|error| format!("更新题库时间失败: {error}"))?;
+        }
+        add_operation_log(&connection, "更新题目", "更新题目")?;
+
+        find_question_by_id(&connection, id)
+    }
+
+    pub fn delete_questions(&self, ids: &[i64]) -> Result<(), String> {
+        if ids.is_empty() {
+            return Ok(());
+        }
+
+        let mut connection = self.connection.borrow_mut();
+        let tx = connection
+            .transaction()
+            .map_err(|error| format!("开启删除题目事务失败: {error}"))?;
+
+        let bank_ids = select_question_bank_ids(&tx, ids)?;
+        for id in ids {
+            tx.execute("DELETE FROM questions WHERE id = ?1", params![id])
+                .map_err(|error| format!("删除题目失败: {error}"))?;
+        }
+
+        for bank_id in bank_ids {
+            tx.execute(
+                "UPDATE question_banks SET updated_at = datetime('now') WHERE id = ?1",
+                params![bank_id],
+            )
+            .map_err(|error| format!("更新题库时间失败: {error}"))?;
+        }
+
+        tx.commit()
+            .map_err(|error| format!("提交删除题目事务失败: {error}"))?;
+        add_operation_log(
+            &connection,
+            "删除题目",
+            format!("删除 {} 道题目", ids.len()),
+        )?;
+        Ok(())
+    }
+
+    pub fn search_questions(
+        &self,
+        bank_id: i64,
+        keyword: String,
+        question_type: Option<String>,
+        offset: u32,
+        limit: u32,
+    ) -> Result<Vec<Question>, String> {
+        let connection = self.connection.borrow();
+        query_questions(
+            &connection,
+            bank_id,
+            keyword.as_str(),
+            question_type.as_deref(),
+            offset,
+            limit,
+        )
+    }
+
+    pub fn count_questions(
+        &self,
+        bank_id: i64,
+        keyword: String,
+        question_type: Option<String>,
+    ) -> Result<i64, String> {
+        let connection = self.connection.borrow();
+        count_questions(
+            &connection,
+            bank_id,
+            keyword.as_str(),
+            question_type.as_deref(),
+        )
     }
 
     pub fn get_theme(&self) -> Result<String, String> {
@@ -548,6 +774,178 @@ fn map_question(row: &rusqlite::Row<'_>) -> rusqlite::Result<Question> {
         created_at: row.get(7)?,
         updated_at: row.get(8)?,
     })
+}
+
+fn question_columns_sql() -> &'static str {
+    "id, bank_id, type, content, options, answer, analysis, created_at, updated_at"
+}
+
+fn by_id_clause_sql() -> &'static str {
+    "id = ?1"
+}
+
+fn question_select_prefix() -> String {
+    ["SELECT ", question_columns_sql(), " FROM questions"].concat()
+}
+
+fn find_question_by_id(connection: &Connection, id: i64) -> Result<Option<Question>, String> {
+    let sql = [
+        question_select_prefix(),
+        " WHERE ".to_string(),
+        by_id_clause_sql().to_string(),
+    ]
+    .concat();
+    connection
+        .query_row(sql.as_str(), params![id], map_question)
+        .optional()
+        .map_err(|error| ["读取题目失败: ", &error.to_string()].concat())
+}
+
+fn query_question_rows<P>(
+    connection: &Connection,
+    sql: &str,
+    sql_params: P,
+) -> Result<Vec<Question>, String>
+where
+    P: rusqlite::Params,
+{
+    let mut statement = connection
+        .prepare(sql)
+        .map_err(|error| ["准备题目查询失败: ", &error.to_string()].concat())?;
+    let rows = statement
+        .query_map(sql_params, map_question)
+        .map_err(|error| ["查询题目失败: ", &error.to_string()].concat())?;
+
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|error| ["读取题目结果失败: ", &error.to_string()].concat())
+}
+
+fn query_questions(
+    connection: &Connection,
+    bank_id: i64,
+    keyword: &str,
+    question_type: Option<&str>,
+    offset: u32,
+    limit: u32,
+) -> Result<Vec<Question>, String> {
+    let safe_limit = i64::from(limit.clamp(1, 1000));
+    let safe_offset = i64::from(offset);
+    let keyword = keyword.trim();
+    let question_type = question_type.filter(|value| !value.trim().is_empty());
+
+    match (keyword.is_empty(), question_type) {
+        (true, None) => query_question_rows(
+            connection,
+            [
+                question_select_prefix(),
+                " WHERE bank_id = ?1 ORDER BY created_at DESC LIMIT ?2 OFFSET ?3".to_string(),
+            ]
+            .concat()
+            .as_str(),
+            params![bank_id, safe_limit, safe_offset],
+        ),
+        (true, Some(question_type)) => query_question_rows(
+            connection,
+            [
+                question_select_prefix(),
+                " WHERE bank_id = ?1 AND type = ?2 ORDER BY created_at DESC LIMIT ?3 OFFSET ?4"
+                    .to_string(),
+            ]
+            .concat()
+            .as_str(),
+            params![bank_id, question_type, safe_limit, safe_offset],
+        ),
+        (false, None) => {
+            let like_keyword = ["%", keyword, "%"].concat();
+            query_question_rows(
+                connection,
+                [
+                    question_select_prefix(),
+                    " WHERE bank_id = ?1 AND content LIKE ?2 ORDER BY created_at DESC LIMIT ?3 OFFSET ?4"
+                        .to_string(),
+                ]
+                .concat()
+                .as_str(),
+                params![bank_id, like_keyword, safe_limit, safe_offset],
+            )
+        }
+        (false, Some(question_type)) => {
+            let like_keyword = ["%", keyword, "%"].concat();
+            query_question_rows(
+                connection,
+                [
+                    question_select_prefix(),
+                    " WHERE bank_id = ?1 AND content LIKE ?2 AND type = ?3 ORDER BY created_at DESC LIMIT ?4 OFFSET ?5"
+                        .to_string(),
+                ]
+                .concat()
+                .as_str(),
+                params![bank_id, like_keyword, question_type, safe_limit, safe_offset],
+            )
+        }
+    }
+}
+
+fn count_questions(
+    connection: &Connection,
+    bank_id: i64,
+    keyword: &str,
+    question_type: Option<&str>,
+) -> Result<i64, String> {
+    let keyword = keyword.trim();
+    let question_type = question_type.filter(|value| !value.trim().is_empty());
+
+    match (keyword.is_empty(), question_type) {
+        (true, None) => connection.query_row(
+            "SELECT COUNT(*) FROM questions WHERE bank_id = ?1",
+            params![bank_id],
+            |row| row.get(0),
+        ),
+        (true, Some(question_type)) => connection.query_row(
+            "SELECT COUNT(*) FROM questions WHERE bank_id = ?1 AND type = ?2",
+            params![bank_id, question_type],
+            |row| row.get(0),
+        ),
+        (false, None) => {
+            let like_keyword = ["%", keyword, "%"].concat();
+            connection.query_row(
+                "SELECT COUNT(*) FROM questions WHERE bank_id = ?1 AND content LIKE ?2",
+                params![bank_id, like_keyword],
+                |row| row.get(0),
+            )
+        }
+        (false, Some(question_type)) => {
+            let like_keyword = ["%", keyword, "%"].concat();
+            connection.query_row(
+                "SELECT COUNT(*) FROM questions WHERE bank_id = ?1 AND content LIKE ?2 AND type = ?3",
+                params![bank_id, like_keyword, question_type],
+                |row| row.get(0),
+            )
+        }
+    }
+    .map_err(|error| ["统计题目数量失败: ", &error.to_string()].concat())
+}
+
+fn select_question_bank_ids(connection: &Connection, ids: &[i64]) -> Result<Vec<i64>, String> {
+    let mut bank_ids = Vec::new();
+    let mut statement = connection
+        .prepare("SELECT DISTINCT bank_id FROM questions WHERE id = ?1")
+        .map_err(|error| ["准备题目所属题库查询失败: ", &error.to_string()].concat())?;
+
+    for id in ids {
+        let rows = statement
+            .query_map(params![id], |row| row.get::<_, i64>(0))
+            .map_err(|error| ["查询题目所属题库失败: ", &error.to_string()].concat())?;
+        for row in rows {
+            let bank_id =
+                row.map_err(|error| ["读取题目所属题库失败: ", &error.to_string()].concat())?;
+            if !bank_ids.contains(&bank_id) {
+                bank_ids.push(bank_id);
+            }
+        }
+    }
+
+    Ok(bank_ids)
 }
 
 fn validate_question(question: &CreateQuestionInput) -> Result<(), String> {
