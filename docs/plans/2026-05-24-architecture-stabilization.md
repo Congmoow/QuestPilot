@@ -61,7 +61,7 @@
 
 后续执行本计划时应按小步提交推进。每个阶段完成后至少执行对应验证命令，并把结果补回本文件。
 
-**阶段推进规则：** 阶段 2 起，每个阶段必须完成验证、提交并推送成功后，才允许进入下一阶段。当前执行到阶段 4；阶段 5-7 等待阶段 4 提交推送后再开始。
+**阶段推进规则：** 阶段 2 起，每个阶段必须完成验证、提交并推送成功后，才允许进入下一阶段。当前阶段 5 已完成验收记录；阶段 6-7 必须等待阶段 5 提交推送成功后再开始。
 
 ### 阶段 2：Electron 数据层与 IPC 边界加固
 
@@ -184,7 +184,7 @@
 
 **目标：** 在不发布新版本前，先明确 API Key 的短期保护和中期迁移路径，避免继续扩大明文配置面。
 
-**当前状态：** 已完成，等待本阶段提交并推送后才可进入阶段 5。
+**当前状态：** 已完成并已提交推送。
 
 **涉及文件：**
 
@@ -264,9 +264,12 @@
 
 **目标：** 明确 Electron 稳定线和 Tauri 迁移线的真实状态，避免两个运行时长期无边界并行。
 
+**当前状态：** 已完成验收记录；本阶段提交并推送成功前不得进入阶段 6。
+
 **涉及文件：**
 
-- 修改：`docs/architecture/desktop-api-contract.md`
+- 新增：`docs/architecture/runtime-acceptance.md`
+- 参考：`docs/architecture/desktop-api-contract.md`
 - 修改：`docs/plans/2026-05-24-architecture-stabilization.md`
 - 视结果修改：`src/api/index.js`
 - 视结果修改：`src-tauri/src/lib.rs`
@@ -298,6 +301,31 @@
 - 运行时定位不再只停留在口头说明。
 - 每个核心流程都有 Electron/Tauri 状态标记。
 - 发布前阻塞项清楚可查。
+
+**已完成记录：**
+
+- 新增 `docs/architecture/runtime-acceptance.md`，固化 Electron 稳定线、Tauri 迁移线、验收矩阵、差异归类和发布前阻塞项。
+- Electron CDP smoke 已覆盖公开配置脱敏、设置保存、题库 CRUD、题目 CRUD、随机练习数据、CSV 导入、练习记录、错题本、Prompt、聊天历史和 8 个核心路由。
+- Tauri `npm run tauri:dev` 已完成启动 smoke，WebView2 CDP 可见 `QuestPilot` 页面目标，8 个核心路由均可加载根节点内容。
+- Tauri WebView2 CDP API smoke 已覆盖 Tauri runtime 识别、无 Electron API、公开配置脱敏、设置保存、题库 CRUD、题目 CRUD、CSV 导入、练习记录、错题本、Prompt 和聊天历史，并清理临时数据。
+- 明确 CSV 模板下载、CSV 导出、真实 AI 解析、真实 AI 聊天、Tauri 窗口控制、Electron 到 Tauri 数据迁移和打包产物 smoke 仍是发布前阻塞项或待人工验收项。
+
+**取舍决策：**
+
+- Electron 继续作为当前默认稳定运行时。
+- Tauri 继续作为迁移验证线，只做编译、测试、启动和必要 smoke 保活；未清空阻塞项前不得替换 Electron。
+
+**已验证：**
+
+| 命令或 smoke | 结果 |
+| --- | --- |
+| `npm run tauri:info` | 通过，Windows WebView2、Rust、Node、Tauri CLI 均可用。 |
+| `npm run test:api-contract` | 通过，5 个契约测试通过。 |
+| `npm run build` | 通过，Vite 生产构建成功。 |
+| `cargo test` | 通过，Rust 全量测试通过。 |
+| Electron CDP smoke | 通过，核心 API 与 8 个页面路由均通过；真实 AI 网络请求未执行。 |
+| Tauri route smoke | 通过，`npm run tauri:dev` 可启动，WebView2 CDP 可见 `QuestPilot` 页面目标，8 个页面路由均加载。 |
+| Tauri API smoke | 通过，核心本地 API 均通过并清理临时数据；CSV 保存对话框与真实 AI 未自动触发。 |
 
 ### 阶段 6：模块拆分与维护边界
 
