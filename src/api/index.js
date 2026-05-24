@@ -10,6 +10,10 @@ import {
   invokeTauriCommand,
   isTauriRuntime,
 } from '../lib/desktopRuntime'
+import {
+  normalizeFileSelectionResult,
+  normalizeSaveDialogResult,
+} from './runtimeAdapters'
 
 /**
  * @typedef {'single' | 'multiple' | 'boolean' | 'fill' | 'short'} QuestionType
@@ -338,23 +342,23 @@ export const searchQuestions = async (bankId, keyword, options = {}) => {
 
 /**
  * 下载 CSV 模板
- * @returns {Promise<void>}
+ * @returns {Promise<{success: boolean, canceled: boolean, filePath?: string}>}
  */
 export const downloadCsvTemplate = async () => {
   const api = getElectronAPI()
-  if (api) return api.csv.downloadTemplate()
-  if (isTauriRuntime()) return invokeTauriCommand('csv_download_template')
+  if (api) return normalizeSaveDialogResult(await api.csv.downloadTemplate())
+  if (isTauriRuntime()) return normalizeSaveDialogResult(await invokeTauriCommand('csv_download_template'))
   throw getDesktopApiUnavailableError()
 }
 
 /**
  * 选择 CSV 文件
- * @returns {Promise<string|null>}
+ * @returns {Promise<{success: boolean, canceled: boolean, filePath: string|null}>}
  */
 export const selectCsvFile = async () => {
   const api = getElectronAPI()
-  if (api) return api.csv.selectFile()
-  if (isTauriRuntime()) return invokeTauriCommand('csv_select_file')
+  if (api) return normalizeFileSelectionResult(await api.csv.selectFile())
+  if (isTauriRuntime()) return normalizeFileSelectionResult(await invokeTauriCommand('csv_select_file'))
   throw getDesktopApiUnavailableError()
 }
 
@@ -386,12 +390,12 @@ export const importQuestions = async (bankId, questions) => {
 /**
  * 导出题库
  * @param {number} bankId
- * @returns {Promise<void>}
+ * @returns {Promise<{success: boolean, canceled: boolean, filePath?: string, count?: number}>}
  */
 export const exportQuestionBank = async (bankId) => {
   const api = getElectronAPI()
-  if (api) return api.csv.exportBank(bankId)
-  if (isTauriRuntime()) return invokeTauriCommand('csv_export', { bankId })
+  if (api) return normalizeSaveDialogResult(await api.csv.exportBank(bankId))
+  if (isTauriRuntime()) return normalizeSaveDialogResult(await invokeTauriCommand('csv_export', { bankId }))
   throw getDesktopApiUnavailableError()
 }
 
