@@ -1,4 +1,7 @@
-use questpilot_tauri_lib::database::{CreateQuestionBankInput, CreateQuestionInput, DatabaseStore};
+use questpilot_tauri_lib::database::{
+    CreateQuestionBankInput, CreateQuestionInput, DatabaseStore, PracticeRecordInput,
+    WrongBookPracticeResult,
+};
 use serde_json::json;
 use tempfile::tempdir;
 
@@ -39,10 +42,11 @@ fn database_store_initializes_core_tables() {
             "settings",
             "drafts",
             "wrong_book",
+            "practice_records",
         ])
         .expect("应能统计核心表");
 
-    assert_eq!(table_count, 6);
+    assert_eq!(table_count, 7);
 }
 
 #[test]
@@ -254,6 +258,192 @@ fn database_store_supports_question_crud_and_pagination_search() {
         store
             .count_questions(bank.id, "".to_string(), None)
             .expect("删除后统计不应失败"),
+        0
+    );
+}
+
+#[test]
+fn database_store_supports_practice_records_stats_and_logs() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let db_path = temp_dir.path().join("questpilot.db");
+    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
+    let bank = store
+        .create_bank(CreateQuestionBankInput {
+            name: "练习题库".to_string(),
+            description: None,
+        })
+        .expect("应能创建题库");
+
+    store
+        .create_questions_batch(
+            bank.id,
+            vec![
+                sample_single_question("排序算法", "A"),
+                sample_boolean_question("栈是先进后出结构"),
+            ],
+        )
+        .expect("应能批量创建题目");
+
+    store
+        .save_practice_record(PracticeRecordInput {
+            bank_id: bank.id,
+            total: 2,
+            correct: 1,
+            wrong: 1,
+            accuracy: 50,
+        })
+        .expect("应能保存练习记录");
+
+    let records = store
+        .get_practice_records(bank.id, Some(10))
+        .expect("应能读取练习记录");
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].accuracy, 50);
+
+    let stats = store.get_all_practice_stats().expect("应能读取练习统计");
+    assert_eq!(stats.len(), 1);
+    assert_eq!(stats[0].bank_id, bank.id);
+    assert_eq!(stats[0].practice_count, 1);
+    assert_eq!(stats[0].avg_accuracy, 50);
+
+    let dashboard = store.get_dashboard_stats().expect("应能读取仪表盘统计");
+    assert_eq!(dashboard.total_questions, 2);
+    assert!(dashboard.today_questions >= 2);
+    assert!(dashboard.week_questions >= 2);
+    assert_eq!(dashboard.type_distribution.len(), 2);
+
+    let single_distribution = store
+        .get_question_count_by_type(Some(bank.id))
+        .expect("应能按题库读取题型分布")
+        .into_iter()
+        .find(|item| item.r#type == "single")
+        .expect("应包含单选题统计");
+    assert_eq!(single_distribution.count, 1);
+
+    let logs = store
+        .get_operation_logs(Some(10))
+        .expect("应能读取操作日志");
+    assert!(!logs.is_empty());
+    assert_eq!(logs[0].action, "完成练习");
+}
+
+#[test]
+fn database_store_supports_wrong_book_workflow() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let db_path = temp_dir.path().join("questpilot.db");
+    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
+    let bank = store
+        .create_bank(CreateQuestionBankInput {
+            name: "错题题库".to_string(),
+            description: None,
+        })
+        .expect("应能创建题库");
+    let first = store
+        .create_question(bank.id, sample_single_question("错题 1", "A"))
+        .expect("应能创建题目");
+    let second = store
+        .create_question(bank.id, sample_boolean_question("错题 2"))
+        .expect("应能创建第二题");
+
+    assert_eq!(
+        store.get_wrong_book_threshold().expect("应能读取默认阈值"),
+        3
+    );
+    store
+        .set_wrong_book_threshold(2)
+        .expect("应能设置错题移除阈值");
+    assert_eq!(
+        store.get_wrong_book_threshold().expect("应能读取保存阈值"),
+        2
+    );
+
+    store
+        .update_wrong_book_from_practice(
+            vec![
+                WrongBookPracticeResult {
+                    question_id: first.id,
+                    bank_id: bank.id,
+                    is_correct: false,
+                },
+                WrongBookPracticeResult {
+                    question_id: second.id,
+                    bank_id: bank.id,
+                    is_correct: false,
+                },
+            ],
+            Some(2),
+        )
+        .expect("应能同步错题本");
+
+    let counts = store
+        .get_wrong_book_counts_by_bank()
+        .expect("应能读取错题计数");
+    assert_eq!(counts.len(), 1);
+    assert_eq!(counts[0].bank_id, bank.id);
+    assert_eq!(counts[0].count, 2);
+
+    let items = store
+        .get_wrong_book_items(Some(bank.id), 0, 20)
+        .expect("应能读取错题列表");
+    assert_eq!(items.len(), 2);
+    assert!(items.iter().any(|item| item.question_id == first.id));
+
+    let random = store
+        .get_random_wrong_questions(Some(bank.id), Some(10))
+        .expect("应能随机读取错题");
+    assert_eq!(random.len(), 2);
+
+    store
+        .update_wrong_book_from_practice(
+            vec![
+                WrongBookPracticeResult {
+                    question_id: first.id,
+                    bank_id: bank.id,
+                    is_correct: true,
+                },
+                WrongBookPracticeResult {
+                    question_id: first.id,
+                    bank_id: bank.id,
+                    is_correct: true,
+                },
+            ],
+            Some(2),
+        )
+        .expect("连续答对应能同步错题本");
+    assert_eq!(
+        store
+            .count_wrong_book_items(Some(bank.id))
+            .expect("应能统计错题数量"),
+        1
+    );
+
+    store
+        .remove_wrong_book_item(second.id)
+        .expect("应能移除单个错题");
+    assert_eq!(
+        store
+            .count_wrong_book_items(Some(bank.id))
+            .expect("移除后统计不应失败"),
+        0
+    );
+
+    store
+        .update_wrong_book_from_practice(
+            vec![WrongBookPracticeResult {
+                question_id: second.id,
+                bank_id: bank.id,
+                is_correct: false,
+            }],
+            None,
+        )
+        .expect("应能使用默认阈值同步错题");
+    store
+        .clear_wrong_book(Some(bank.id))
+        .expect("应能清空指定题库错题");
+    assert_eq!(
+        store
+            .count_wrong_book_items(Some(bank.id))
+            .expect("清空后统计不应失败"),
         0
     );
 }

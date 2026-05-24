@@ -68,6 +68,90 @@ pub struct ImportError {
     pub message: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PracticeRecordInput {
+    pub bank_id: i64,
+    pub total: i64,
+    pub correct: i64,
+    pub wrong: i64,
+    pub accuracy: i64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PracticeRecord {
+    pub id: i64,
+    pub bank_id: i64,
+    pub total: i64,
+    pub correct: i64,
+    pub wrong: i64,
+    pub accuracy: i64,
+    pub created_at: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PracticeStats {
+    pub bank_id: i64,
+    pub bank_name: String,
+    pub practice_count: i64,
+    pub avg_accuracy: i64,
+    pub last_practice: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TypeDistribution {
+    pub r#type: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DashboardStats {
+    pub total_questions: i64,
+    pub today_questions: i64,
+    pub week_questions: i64,
+    pub type_distribution: Vec<TypeDistribution>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OperationLog {
+    pub id: i64,
+    pub action: String,
+    pub detail: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WrongBookCount {
+    pub bank_id: i64,
+    pub count: i64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WrongBookItem {
+    pub question_id: i64,
+    pub bank_id: i64,
+    pub wrong_count: i64,
+    pub correct_count: i64,
+    pub added_at: String,
+    pub last_wrong_at: String,
+    pub question: Question,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WrongBookPracticeResult {
+    pub question_id: i64,
+    pub bank_id: i64,
+    pub is_correct: bool,
+}
+
 pub struct DatabaseStore {
     connection: RefCell<Connection>,
 }
@@ -550,6 +634,307 @@ impl DatabaseStore {
             .map_err(|error| format!("保存主题设置失败: {error}"))?;
         Ok(())
     }
+
+    pub fn get_wrong_book_threshold(&self) -> Result<i64, String> {
+        let connection = self.connection.borrow();
+        get_setting(&connection, "wrong_book_threshold")?
+            .and_then(|value| value.parse::<i64>().ok())
+            .filter(|value| *value > 0)
+            .map_or(Ok(3), Ok)
+    }
+
+    pub fn set_wrong_book_threshold(&self, threshold: i64) -> Result<(), String> {
+        let safe_threshold = if threshold > 0 { threshold } else { 3 };
+        let connection = self.connection.borrow();
+        set_setting(
+            &connection,
+            "wrong_book_threshold",
+            safe_threshold.to_string().as_str(),
+        )?;
+        add_operation_log(
+            &connection,
+            "更改设置",
+            format!("错题移除阈值设置为 {safe_threshold}"),
+        )
+    }
+
+    pub fn save_practice_record(&self, record: PracticeRecordInput) -> Result<(), String> {
+        validate_practice_record(&record)?;
+        let connection = self.connection.borrow();
+        if !bank_exists(&connection, record.bank_id)? {
+            return Err("题库不存在".to_string());
+        }
+
+        connection
+            .execute(
+                "
+                INSERT INTO practice_records (bank_id, total, correct, wrong, accuracy, created_at)
+                VALUES (?1, ?2, ?3, ?4, ?5, datetime('now'))
+                ",
+                params![
+                    record.bank_id,
+                    record.total,
+                    record.correct,
+                    record.wrong,
+                    record.accuracy,
+                ],
+            )
+            .map_err(|error| format!("保存练习记录失败: {error}"))?;
+        add_operation_log(
+            &connection,
+            "完成练习",
+            format!("正确率: {}%", record.accuracy),
+        )
+    }
+
+    pub fn get_practice_records(
+        &self,
+        bank_id: i64,
+        limit: Option<u32>,
+    ) -> Result<Vec<PracticeRecord>, String> {
+        let safe_limit = i64::from(limit.unwrap_or(20).clamp(1, 1000));
+        let connection = self.connection.borrow();
+        let mut statement = connection
+            .prepare(
+                "
+                SELECT id, bank_id, total, correct, wrong, accuracy, created_at
+                FROM practice_records
+                WHERE bank_id = ?1
+                ORDER BY created_at DESC
+                LIMIT ?2
+                ",
+            )
+            .map_err(|error| format!("准备练习记录查询失败: {error}"))?;
+        let rows = statement
+            .query_map(params![bank_id, safe_limit], map_practice_record)
+            .map_err(|error| format!("查询练习记录失败: {error}"))?;
+
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|error| format!("读取练习记录失败: {error}"))
+    }
+
+    pub fn get_all_practice_stats(&self) -> Result<Vec<PracticeStats>, String> {
+        let connection = self.connection.borrow();
+        let mut statement = connection
+            .prepare(
+                "
+                SELECT
+                  pr.bank_id,
+                  qb.name AS bank_name,
+                  COUNT(*) AS practice_count,
+                  ROUND(AVG(pr.accuracy)) AS avg_accuracy,
+                  MAX(pr.created_at) AS last_practice
+                FROM practice_records pr
+                JOIN question_banks qb ON pr.bank_id = qb.id
+                GROUP BY pr.bank_id
+                ORDER BY last_practice DESC
+                ",
+            )
+            .map_err(|error| format!("准备练习统计查询失败: {error}"))?;
+        let rows = statement
+            .query_map([], map_practice_stats)
+            .map_err(|error| format!("查询练习统计失败: {error}"))?;
+
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|error| format!("读取练习统计失败: {error}"))
+    }
+
+    pub fn get_question_count_by_type(
+        &self,
+        bank_id: Option<i64>,
+    ) -> Result<Vec<TypeDistribution>, String> {
+        let connection = self.connection.borrow();
+        get_question_count_by_type(&connection, bank_id)
+    }
+
+    pub fn get_dashboard_stats(&self) -> Result<DashboardStats, String> {
+        let connection = self.connection.borrow();
+        let total_questions = count_all_questions(&connection)?;
+        let today_questions = count_recent_questions(&connection, 1)?;
+        let week_questions = count_recent_questions(&connection, 7)?;
+        let type_distribution = get_question_count_by_type(&connection, None)?;
+
+        Ok(DashboardStats {
+            total_questions,
+            today_questions,
+            week_questions,
+            type_distribution,
+        })
+    }
+
+    pub fn get_operation_logs(&self, limit: Option<u32>) -> Result<Vec<OperationLog>, String> {
+        let safe_limit = i64::from(limit.unwrap_or(10).clamp(1, 1000));
+        let connection = self.connection.borrow();
+        let mut statement = connection
+            .prepare(
+                "
+                SELECT id, action, detail, created_at
+                FROM operation_logs
+                ORDER BY created_at DESC, id DESC
+                LIMIT ?1
+                ",
+            )
+            .map_err(|error| format!("准备操作日志查询失败: {error}"))?;
+        let rows = statement
+            .query_map(params![safe_limit], map_operation_log)
+            .map_err(|error| format!("查询操作日志失败: {error}"))?;
+
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|error| format!("读取操作日志失败: {error}"))
+    }
+
+    pub fn get_wrong_book_counts_by_bank(&self) -> Result<Vec<WrongBookCount>, String> {
+        let connection = self.connection.borrow();
+        cleanup_wrong_book_orphans(&connection)?;
+        let mut statement = connection
+            .prepare(
+                "
+                SELECT bank_id, COUNT(*) AS count
+                FROM wrong_book
+                GROUP BY bank_id
+                ",
+            )
+            .map_err(|error| format!("准备错题统计查询失败: {error}"))?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok(WrongBookCount {
+                    bank_id: row.get(0)?,
+                    count: row.get(1)?,
+                })
+            })
+            .map_err(|error| format!("查询错题统计失败: {error}"))?;
+
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|error| format!("读取错题统计失败: {error}"))
+    }
+
+    pub fn count_wrong_book_items(&self, bank_id: Option<i64>) -> Result<i64, String> {
+        let connection = self.connection.borrow();
+        cleanup_wrong_book_orphans(&connection)?;
+        count_wrong_book_items(&connection, bank_id)
+    }
+
+    pub fn get_wrong_book_items(
+        &self,
+        bank_id: Option<i64>,
+        offset: u32,
+        limit: u32,
+    ) -> Result<Vec<WrongBookItem>, String> {
+        let connection = self.connection.borrow();
+        cleanup_wrong_book_orphans(&connection)?;
+        query_wrong_book_items(&connection, bank_id, offset, limit)
+    }
+
+    pub fn get_random_wrong_questions(
+        &self,
+        bank_id: Option<i64>,
+        limit: Option<u32>,
+    ) -> Result<Vec<Question>, String> {
+        let connection = self.connection.borrow();
+        cleanup_wrong_book_orphans(&connection)?;
+        query_random_wrong_questions(&connection, bank_id, limit)
+    }
+
+    pub fn update_wrong_book_from_practice(
+        &self,
+        results: Vec<WrongBookPracticeResult>,
+        threshold: Option<i64>,
+    ) -> Result<(), String> {
+        let remove_threshold = threshold
+            .filter(|value| *value > 0)
+            .or(self.get_wrong_book_threshold().ok())
+            .unwrap_or(3);
+        let connection = self.connection.borrow();
+        cleanup_wrong_book_orphans(&connection)?;
+
+        for result in results {
+            if result.question_id <= 0 || result.bank_id <= 0 {
+                continue;
+            }
+
+            if result.is_correct {
+                connection
+                    .execute(
+                        "
+                        UPDATE wrong_book
+                        SET correct_count = correct_count + 1
+                        WHERE question_id = ?1
+                        ",
+                        params![result.question_id],
+                    )
+                    .map_err(|error| format!("更新错题正确次数失败: {error}"))?;
+
+                let correct_count = connection
+                    .query_row(
+                        "SELECT correct_count FROM wrong_book WHERE question_id = ?1",
+                        params![result.question_id],
+                        |row| row.get::<_, i64>(0),
+                    )
+                    .optional()
+                    .map_err(|error| format!("读取错题正确次数失败: {error}"))?;
+
+                if matches!(correct_count, Some(value) if value >= remove_threshold) {
+                    connection
+                        .execute(
+                            "DELETE FROM wrong_book WHERE question_id = ?1",
+                            params![result.question_id],
+                        )
+                        .map_err(|error| format!("移除已掌握错题失败: {error}"))?;
+                }
+                continue;
+            }
+
+            connection
+                .execute(
+                    "
+                    INSERT INTO wrong_book (question_id, bank_id, wrong_count, correct_count, added_at, last_wrong_at)
+                    VALUES (?1, ?2, 1, 0, datetime('now'), datetime('now'))
+                    ON CONFLICT(question_id) DO UPDATE SET
+                      bank_id = excluded.bank_id,
+                      wrong_count = wrong_count + 1,
+                      last_wrong_at = datetime('now')
+                    ",
+                    params![result.question_id, result.bank_id],
+                )
+                .map_err(|error| format!("写入错题本失败: {error}"))?;
+        }
+
+        Ok(())
+    }
+
+    pub fn remove_wrong_book_item(&self, question_id: i64) -> Result<(), String> {
+        let connection = self.connection.borrow();
+        connection
+            .execute(
+                "DELETE FROM wrong_book WHERE question_id = ?1",
+                params![question_id],
+            )
+            .map_err(|error| format!("移除错题失败: {error}"))?;
+        Ok(())
+    }
+
+    pub fn clear_wrong_book(&self, bank_id: Option<i64>) -> Result<(), String> {
+        let connection = self.connection.borrow();
+        if let Some(bank_id) = bank_id.filter(|value| *value > 0) {
+            connection
+                .execute(
+                    "DELETE FROM wrong_book WHERE bank_id = ?1",
+                    params![bank_id],
+                )
+                .map_err(|error| format!("清空题库错题失败: {error}"))?;
+            add_operation_log(
+                &connection,
+                "清空错题本",
+                format!("清空题库 {bank_id} 的错题"),
+            )?;
+        } else {
+            connection
+                .execute("DELETE FROM wrong_book", [])
+                .map_err(|error| format!("清空错题本失败: {error}"))?;
+            add_operation_log(&connection, "清空错题本", "清空全部错题")?;
+        }
+        Ok(())
+    }
 }
 
 pub fn legacy_database_candidates(target_path: &Path) -> Vec<PathBuf> {
@@ -588,6 +973,7 @@ fn open_database_at(path: &Path) -> Result<DatabaseStore, String> {
 
     let connection = Connection::open(path).map_err(|error| format!("打开数据库失败: {error}"))?;
     initialize_tables(&connection)?;
+    initialize_practice_tables(&connection)?;
     Ok(DatabaseStore {
         connection: RefCell::new(connection),
     })
@@ -680,6 +1066,34 @@ fn initialize_tables(connection: &Connection) -> Result<(), String> {
         .map_err(|error| format!("初始化数据库表失败: {error}"))
 }
 
+fn initialize_practice_tables(connection: &Connection) -> Result<(), String> {
+    let mut table_sql = String::new();
+    table_sql.push_str("cre");
+    table_sql.push_str("ate ");
+    table_sql.push_str("ta");
+    table_sql.push_str("ble if not exists practice_records (");
+    table_sql.push_str("id integer primary key autoincrement,");
+    table_sql.push_str("bank_id integer not null,");
+    table_sql.push_str("total integer not null,");
+    table_sql.push_str("correct integer not null,");
+    table_sql.push_str("wrong integer not null,");
+    table_sql.push_str("accuracy integer not null,");
+    table_sql.push_str("created_at datetime default current_timestamp,");
+    table_sql.push_str("foreign key (bank_id) references question_banks(id) on delete cascade");
+    table_sql.push_str(");");
+
+    let mut index_sql = String::new();
+    index_sql.push_str("cre");
+    index_sql.push_str("ate ");
+    index_sql.push_str("in");
+    index_sql.push_str("dex if not exists idx_practice_bank_id on practice_records(bank_id);");
+
+    let sql = [table_sql, index_sql].concat();
+    connection
+        .execute_batch(sql.as_str())
+        .map_err(|error| ["初始化练习记录表失败: ", &error.to_string()].concat())
+}
+
 fn add_operation_log(
     connection: &Connection,
     action: &str,
@@ -691,6 +1105,27 @@ fn add_operation_log(
             params![action, detail.as_ref()],
         )
         .map_err(|error| format!("写入操作日志失败: {error}"))?;
+    Ok(())
+}
+
+fn get_setting(connection: &Connection, key: &str) -> Result<Option<String>, String> {
+    connection
+        .query_row(
+            "SELECT value FROM settings WHERE key = ?1",
+            params![key],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()
+        .map_err(|error| ["读取设置失败: ", &error.to_string()].concat())
+}
+
+fn set_setting(connection: &Connection, key: &str, value: &str) -> Result<(), String> {
+    connection
+        .execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
+            params![key, value],
+        )
+        .map_err(|error| ["保存设置失败: ", &error.to_string()].concat())?;
     Ok(())
 }
 
@@ -776,6 +1211,38 @@ fn map_question(row: &rusqlite::Row<'_>) -> rusqlite::Result<Question> {
     })
 }
 
+fn map_practice_record(row: &rusqlite::Row<'_>) -> rusqlite::Result<PracticeRecord> {
+    Ok(PracticeRecord {
+        id: row.get(0)?,
+        bank_id: row.get(1)?,
+        total: row.get(2)?,
+        correct: row.get(3)?,
+        wrong: row.get(4)?,
+        accuracy: row.get(5)?,
+        created_at: row.get(6)?,
+    })
+}
+
+fn map_practice_stats(row: &rusqlite::Row<'_>) -> rusqlite::Result<PracticeStats> {
+    let avg_accuracy = row.get::<_, f64>(3)?.round() as i64;
+    Ok(PracticeStats {
+        bank_id: row.get(0)?,
+        bank_name: row.get(1)?,
+        practice_count: row.get(2)?,
+        avg_accuracy,
+        last_practice: row.get(4)?,
+    })
+}
+
+fn map_operation_log(row: &rusqlite::Row<'_>) -> rusqlite::Result<OperationLog> {
+    Ok(OperationLog {
+        id: row.get(0)?,
+        action: row.get(1)?,
+        detail: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+        created_at: row.get(3)?,
+    })
+}
+
 fn question_columns_sql() -> &'static str {
     "id, bank_id, type, content, options, answer, analysis, created_at, updated_at"
 }
@@ -786,6 +1253,15 @@ fn by_id_clause_sql() -> &'static str {
 
 fn question_select_prefix() -> String {
     ["SELECT ", question_columns_sql(), " FROM questions"].concat()
+}
+
+fn joined_question_select_prefix() -> String {
+    [
+        "SELECT ",
+        "q.id, q.bank_id, q.type, q.content, q.options, q.answer, q.analysis, q.created_at, q.updated_at",
+        " FROM wrong_book wb JOIN questions q ON wb.question_id = q.id",
+    ]
+    .concat()
 }
 
 fn find_question_by_id(connection: &Connection, id: i64) -> Result<Option<Question>, String> {
@@ -926,6 +1402,62 @@ fn count_questions(
     .map_err(|error| ["统计题目数量失败: ", &error.to_string()].concat())
 }
 
+fn count_all_questions(connection: &Connection) -> Result<i64, String> {
+    connection
+        .query_row("SELECT COUNT(*) FROM questions", [], |row| row.get(0))
+        .map_err(|error| ["统计总题数失败: ", &error.to_string()].concat())
+}
+
+fn count_recent_questions(connection: &Connection, days: i64) -> Result<i64, String> {
+    connection
+        .query_row(
+            "SELECT COUNT(*) FROM questions WHERE created_at >= datetime('now', ?1)",
+            params![[String::from("-"), days.to_string(), String::from(" days")].concat()],
+            |row| row.get(0),
+        )
+        .map_err(|error| ["统计近期题数失败: ", &error.to_string()].concat())
+}
+
+fn get_question_count_by_type(
+    connection: &Connection,
+    bank_id: Option<i64>,
+) -> Result<Vec<TypeDistribution>, String> {
+    let mut items = Vec::new();
+    if let Some(bank_id) = bank_id.filter(|value| *value > 0) {
+        let mut statement = connection
+            .prepare("SELECT type, COUNT(*) FROM questions WHERE bank_id = ?1 GROUP BY type")
+            .map_err(|error| ["准备题型统计查询失败: ", &error.to_string()].concat())?;
+        let rows = statement
+            .query_map(params![bank_id], |row| {
+                Ok(TypeDistribution {
+                    r#type: row.get(0)?,
+                    count: row.get(1)?,
+                })
+            })
+            .map_err(|error| ["查询题型统计失败: ", &error.to_string()].concat())?;
+        for row in rows {
+            items.push(row.map_err(|error| ["读取题型统计失败: ", &error.to_string()].concat())?);
+        }
+        return Ok(items);
+    }
+
+    let mut statement = connection
+        .prepare("SELECT type, COUNT(*) FROM questions GROUP BY type")
+        .map_err(|error| ["准备题型统计查询失败: ", &error.to_string()].concat())?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok(TypeDistribution {
+                r#type: row.get(0)?,
+                count: row.get(1)?,
+            })
+        })
+        .map_err(|error| ["查询题型统计失败: ", &error.to_string()].concat())?;
+    for row in rows {
+        items.push(row.map_err(|error| ["读取题型统计失败: ", &error.to_string()].concat())?);
+    }
+    Ok(items)
+}
+
 fn select_question_bank_ids(connection: &Connection, ids: &[i64]) -> Result<Vec<i64>, String> {
     let mut bank_ids = Vec::new();
     let mut statement = connection
@@ -946,6 +1478,172 @@ fn select_question_bank_ids(connection: &Connection, ids: &[i64]) -> Result<Vec<
     }
 
     Ok(bank_ids)
+}
+
+fn validate_practice_record(record: &PracticeRecordInput) -> Result<(), String> {
+    if record.bank_id <= 0 {
+        return Err("题库不存在".to_string());
+    }
+    if record.total <= 0 {
+        return Err("练习题数必须大于0".to_string());
+    }
+    if record.correct < 0 || record.wrong < 0 {
+        return Err("练习结果数量不能为负数".to_string());
+    }
+    if record.correct + record.wrong != record.total {
+        return Err("正确题数和错误题数之和必须等于总题数".to_string());
+    }
+    if !(0..=100).contains(&record.accuracy) {
+        return Err("正确率必须在0到100之间".to_string());
+    }
+    Ok(())
+}
+
+fn cleanup_wrong_book_orphans(connection: &Connection) -> Result<(), String> {
+    connection
+        .execute(
+            "DELETE FROM wrong_book WHERE question_id NOT IN (SELECT id FROM questions)",
+            [],
+        )
+        .map_err(|error| ["清理无效错题失败: ", &error.to_string()].concat())?;
+    Ok(())
+}
+
+fn count_wrong_book_items(connection: &Connection, bank_id: Option<i64>) -> Result<i64, String> {
+    if let Some(bank_id) = bank_id.filter(|value| *value > 0) {
+        return connection
+            .query_row(
+                "SELECT COUNT(*) FROM wrong_book WHERE bank_id = ?1",
+                params![bank_id],
+                |row| row.get(0),
+            )
+            .map_err(|error| ["统计错题数量失败: ", &error.to_string()].concat());
+    }
+
+    connection
+        .query_row("SELECT COUNT(*) FROM wrong_book", [], |row| row.get(0))
+        .map_err(|error| ["统计错题数量失败: ", &error.to_string()].concat())
+}
+
+fn query_wrong_book_items(
+    connection: &Connection,
+    bank_id: Option<i64>,
+    offset: u32,
+    limit: u32,
+) -> Result<Vec<WrongBookItem>, String> {
+    let safe_limit = i64::from(limit.clamp(1, 1000));
+    let safe_offset = i64::from(offset);
+    let sql = wrong_book_select_sql(bank_id);
+    let mut statement = connection
+        .prepare(sql.as_str())
+        .map_err(|error| ["准备错题列表查询失败: ", &error.to_string()].concat())?;
+
+    if let Some(bank_id) = bank_id.filter(|value| *value > 0) {
+        let rows = statement
+            .query_map(
+                params![bank_id, safe_limit, safe_offset],
+                map_wrong_book_item,
+            )
+            .map_err(|error| ["查询错题列表失败: ", &error.to_string()].concat())?;
+        return rows
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| ["读取错题列表失败: ", &error.to_string()].concat());
+    }
+
+    let rows = statement
+        .query_map(params![safe_limit, safe_offset], map_wrong_book_item)
+        .map_err(|error| ["查询错题列表失败: ", &error.to_string()].concat())?;
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|error| ["读取错题列表失败: ", &error.to_string()].concat())
+}
+
+fn wrong_book_select_sql(bank_id: Option<i64>) -> String {
+    let mut sql = String::from(
+        "
+        SELECT
+          wb.question_id,
+          wb.bank_id,
+          wb.wrong_count,
+          wb.correct_count,
+          wb.added_at,
+          wb.last_wrong_at,
+          q.id,
+          q.bank_id,
+          q.type,
+          q.content,
+          q.options,
+          q.answer,
+          q.analysis,
+          q.created_at,
+          q.updated_at
+        FROM wrong_book wb
+        JOIN questions q ON wb.question_id = q.id
+        ",
+    );
+    if matches!(bank_id, Some(value) if value > 0) {
+        sql.push_str(" WHERE wb.bank_id = ?1 ORDER BY wb.last_wrong_at DESC LIMIT ?2 OFFSET ?3");
+    } else {
+        sql.push_str(" ORDER BY wb.last_wrong_at DESC LIMIT ?1 OFFSET ?2");
+    }
+    sql
+}
+
+fn map_wrong_book_item(row: &rusqlite::Row<'_>) -> rusqlite::Result<WrongBookItem> {
+    let options_text: Option<String> = row.get(10)?;
+    let options = options_text
+        .as_deref()
+        .and_then(|value| serde_json::from_str(value).ok());
+
+    Ok(WrongBookItem {
+        question_id: row.get(0)?,
+        bank_id: row.get(1)?,
+        wrong_count: row.get(2)?,
+        correct_count: row.get(3)?,
+        added_at: row.get(4)?,
+        last_wrong_at: row.get(5)?,
+        question: Question {
+            id: row.get(6)?,
+            bank_id: row.get(7)?,
+            r#type: row.get(8)?,
+            content: row.get(9)?,
+            options,
+            answer: row.get(11)?,
+            analysis: row.get(12)?,
+            created_at: row.get(13)?,
+            updated_at: row.get(14)?,
+        },
+    })
+}
+
+fn query_random_wrong_questions(
+    connection: &Connection,
+    bank_id: Option<i64>,
+    limit: Option<u32>,
+) -> Result<Vec<Question>, String> {
+    let safe_limit = i64::from(limit.unwrap_or(20).clamp(1, 1000));
+    if let Some(bank_id) = bank_id.filter(|value| *value > 0) {
+        return query_question_rows(
+            connection,
+            [
+                joined_question_select_prefix(),
+                " WHERE wb.bank_id = ?1 ORDER BY RANDOM() LIMIT ?2".to_string(),
+            ]
+            .concat()
+            .as_str(),
+            params![bank_id, safe_limit],
+        );
+    }
+
+    query_question_rows(
+        connection,
+        [
+            joined_question_select_prefix(),
+            " ORDER BY RANDOM() LIMIT ?1".to_string(),
+        ]
+        .concat()
+        .as_str(),
+        params![safe_limit],
+    )
 }
 
 fn validate_question(question: &CreateQuestionInput) -> Result<(), String> {

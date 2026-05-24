@@ -123,24 +123,51 @@ struct PaginatedQuestions {
     total_pages: u32,
 }
 
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PaginatedWrongBookItems {
+    data: Vec<database::WrongBookItem>,
+    total: i64,
+    page: u32,
+    page_size: u32,
+    total_pages: u32,
+}
+
 fn paginated_questions(
     data: Vec<database::Question>,
     total: i64,
     page: u32,
     page_size: u32,
 ) -> PaginatedQuestions {
-    let total_pages = if page_size == 0 {
-        0
-    } else {
-        ((total + i64::from(page_size) - 1) / i64::from(page_size)) as u32
-    };
-
     PaginatedQuestions {
         data,
         total,
         page,
         page_size,
-        total_pages,
+        total_pages: total_pages(total, page_size),
+    }
+}
+
+fn total_pages(total: i64, page_size: u32) -> u32 {
+    if page_size == 0 {
+        0
+    } else {
+        ((total + i64::from(page_size) - 1) / i64::from(page_size)) as u32
+    }
+}
+
+fn paginated_wrong_book_items(
+    data: Vec<database::WrongBookItem>,
+    total: i64,
+    page: u32,
+    page_size: u32,
+) -> PaginatedWrongBookItems {
+    PaginatedWrongBookItems {
+        data,
+        total,
+        page,
+        page_size,
+        total_pages: total_pages(total, page_size),
     }
 }
 
@@ -219,6 +246,27 @@ fn question_search(
 }
 
 #[tauri::command(rename_all = "camelCase")]
+fn stats_get_dashboard(app: AppHandle) -> Result<database::DashboardStats, String> {
+    open_store(&app)?.get_dashboard_stats()
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn stats_get_operation_logs(
+    app: AppHandle,
+    limit: Option<u32>,
+) -> Result<Vec<database::OperationLog>, String> {
+    open_store(&app)?.get_operation_logs(limit)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn stats_get_type_distribution(
+    app: AppHandle,
+    bank_id: Option<i64>,
+) -> Result<Vec<database::TypeDistribution>, String> {
+    open_store(&app)?.get_question_count_by_type(bank_id)
+}
+
+#[tauri::command(rename_all = "camelCase")]
 fn settings_get_theme(app: AppHandle) -> Result<String, String> {
     open_store(&app)?.get_theme()
 }
@@ -226,6 +274,91 @@ fn settings_get_theme(app: AppHandle) -> Result<String, String> {
 #[tauri::command(rename_all = "camelCase")]
 fn settings_set_theme(app: AppHandle, theme: String) -> Result<(), String> {
     open_store(&app)?.set_theme(theme)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn settings_get_wrong_book_threshold(app: AppHandle) -> Result<i64, String> {
+    open_store(&app)?.get_wrong_book_threshold()
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn settings_set_wrong_book_threshold(app: AppHandle, threshold: i64) -> Result<(), String> {
+    open_store(&app)?.set_wrong_book_threshold(threshold)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn practice_save_record(
+    app: AppHandle,
+    record: database::PracticeRecordInput,
+) -> Result<serde_json::Value, String> {
+    open_store(&app)?.save_practice_record(record)?;
+    Ok(serde_json::json!({ "success": true }))
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn practice_get_records(
+    app: AppHandle,
+    bank_id: i64,
+    limit: Option<u32>,
+) -> Result<Vec<database::PracticeRecord>, String> {
+    open_store(&app)?.get_practice_records(bank_id, limit)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn practice_get_all_stats(app: AppHandle) -> Result<Vec<database::PracticeStats>, String> {
+    open_store(&app)?.get_all_practice_stats()
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn wrong_book_get_counts_by_bank(app: AppHandle) -> Result<Vec<database::WrongBookCount>, String> {
+    open_store(&app)?.get_wrong_book_counts_by_bank()
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn wrong_book_get_items(
+    app: AppHandle,
+    bank_id: Option<i64>,
+    page: Option<u32>,
+    page_size: Option<u32>,
+) -> Result<PaginatedWrongBookItems, String> {
+    let page = page.unwrap_or(1).max(1);
+    let page_size = page_size.unwrap_or(20).clamp(1, 1000);
+    let offset = (page - 1) * page_size;
+    let store = open_store(&app)?;
+    let data = store.get_wrong_book_items(bank_id, offset, page_size)?;
+    let total = store.count_wrong_book_items(bank_id)?;
+    Ok(paginated_wrong_book_items(data, total, page, page_size))
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn wrong_book_get_random_questions(
+    app: AppHandle,
+    bank_id: Option<i64>,
+    limit: Option<u32>,
+) -> Result<Vec<database::Question>, String> {
+    open_store(&app)?.get_random_wrong_questions(bank_id, limit)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn wrong_book_update_from_practice(
+    app: AppHandle,
+    results: Vec<database::WrongBookPracticeResult>,
+    threshold: Option<i64>,
+) -> Result<serde_json::Value, String> {
+    open_store(&app)?.update_wrong_book_from_practice(results, threshold)?;
+    Ok(serde_json::json!({ "success": true }))
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn wrong_book_remove_item(app: AppHandle, question_id: i64) -> Result<serde_json::Value, String> {
+    open_store(&app)?.remove_wrong_book_item(question_id)?;
+    Ok(serde_json::json!({ "success": true }))
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn wrong_book_clear(app: AppHandle, bank_id: Option<i64>) -> Result<serde_json::Value, String> {
+    open_store(&app)?.clear_wrong_book(bank_id)?;
+    Ok(serde_json::json!({ "success": true }))
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -283,8 +416,22 @@ pub fn run() {
             question_update,
             question_delete,
             question_search,
+            stats_get_dashboard,
+            stats_get_operation_logs,
+            stats_get_type_distribution,
             settings_get_theme,
             settings_set_theme,
+            settings_get_wrong_book_threshold,
+            settings_set_wrong_book_threshold,
+            practice_save_record,
+            practice_get_records,
+            practice_get_all_stats,
+            wrong_book_get_counts_by_bank,
+            wrong_book_get_items,
+            wrong_book_get_random_questions,
+            wrong_book_update_from_practice,
+            wrong_book_remove_item,
+            wrong_book_clear,
             csv_select_file,
             csv_parse_file
         ])
