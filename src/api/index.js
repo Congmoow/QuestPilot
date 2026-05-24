@@ -1,7 +1,15 @@
 /**
  * 前端 API 调用层
- * 封装 window.electronAPI 调用，提供统一的接口
+ * 封装桌面运行时调用，提供统一的接口
  */
+
+import {
+  getDesktopApiUnavailableError,
+  getElectronAPI,
+  getUnsupportedTauriApiError,
+  invokeTauriCommand,
+  isTauriRuntime,
+} from '../lib/desktopRuntime'
 
 /**
  * @typedef {'single' | 'multiple' | 'boolean' | 'fill' | 'short'} QuestionType
@@ -112,12 +120,13 @@
  * @property {ParseError[]} errors
  */
 
-// 获取 electronAPI，如果不存在则返回 null
-const getElectronAPI = () => {
-  if (typeof window !== 'undefined' && window.electronAPI) {
-    return window.electronAPI
+const requireElectronApi = (apiName) => {
+  const api = getElectronAPI()
+  if (!api) {
+    if (isTauriRuntime()) throw getUnsupportedTauriApiError(apiName)
+    throw getDesktopApiUnavailableError()
   }
-  return null
+  return api
 }
 
 // ==================== 题库 API ====================
@@ -129,8 +138,9 @@ const getElectronAPI = () => {
  */
 export const createQuestionBank = async (data) => {
   const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
-  return api.questionBank.create(data)
+  if (api) return api.questionBank.create(data)
+  if (isTauriRuntime()) return invokeTauriCommand('question_bank_create', { data })
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -139,8 +149,16 @@ export const createQuestionBank = async (data) => {
  */
 export const getAllQuestionBanks = async () => {
   const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
-  return api.questionBank.getAll()
+  if (api) return api.questionBank.getAll()
+  if (isTauriRuntime()) {
+    const banks = await invokeTauriCommand('question_bank_get_all')
+    return banks.map((bank) => ({
+      ...bank,
+      questionCount: bank.questionCount ?? bank.question_count ?? 0,
+    }))
+  }
+
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -149,8 +167,7 @@ export const getAllQuestionBanks = async () => {
  * @returns {Promise<QuestionBank|null>}
  */
 export const getQuestionBankById = async (id) => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('questionBank.getById')
   return api.questionBank.getById(id)
 }
 
@@ -161,8 +178,7 @@ export const getQuestionBankById = async (id) => {
  * @returns {Promise<QuestionBank>}
  */
 export const updateQuestionBank = async (id, data) => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('questionBank.update')
   return api.questionBank.update(id, data)
 }
 
@@ -172,8 +188,7 @@ export const updateQuestionBank = async (id, data) => {
  * @returns {Promise<void>}
  */
 export const deleteQuestionBank = async (id) => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('questionBank.delete')
   return api.questionBank.delete(id)
 }
 
@@ -186,9 +201,24 @@ export const deleteQuestionBank = async (id) => {
  * @returns {Promise<Question>}
  */
 export const createQuestion = async (data) => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('question.create')
   return api.question.create(data)
+}
+
+/**
+ * 批量创建题目
+ * @param {number} bankId
+ * @param {CreateQuestionInput[]} questions
+ * @returns {Promise<ImportResult>}
+ */
+export const createQuestionsBatch = async (bankId, questions) => {
+  const api = getElectronAPI()
+  if (api) return api.question.createBatch(bankId, questions)
+  if (isTauriRuntime()) {
+    return invokeTauriCommand('question_create_batch', { bankId, questions })
+  }
+
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -198,9 +228,28 @@ export const createQuestion = async (data) => {
  * @returns {Promise<PaginatedResult<Question>>}
  */
 export const getQuestionsByBankId = async (bankId, options = {}) => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('question.getByBankId')
   return api.question.getByBankId(bankId, options)
+}
+
+/**
+ * 从题库随机获取题目
+ * @param {number} bankId
+ * @param {{limit?: number, type?: QuestionType}} [options]
+ * @returns {Promise<Question[]>}
+ */
+export const getRandomQuestions = async (bankId, options = {}) => {
+  const api = getElectronAPI()
+  if (api) return api.question.getRandom(bankId, options)
+  if (isTauriRuntime()) {
+    return invokeTauriCommand('question_get_random', {
+      bankId,
+      limit: options.limit,
+      questionType: options.type,
+    })
+  }
+
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -209,8 +258,7 @@ export const getQuestionsByBankId = async (bankId, options = {}) => {
  * @returns {Promise<Question|null>}
  */
 export const getQuestionById = async (id) => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('question.getById')
   return api.question.getById(id)
 }
 
@@ -221,8 +269,7 @@ export const getQuestionById = async (id) => {
  * @returns {Promise<Question>}
  */
 export const updateQuestion = async (id, data) => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('question.update')
   return api.question.update(id, data)
 }
 
@@ -232,8 +279,7 @@ export const updateQuestion = async (id, data) => {
  * @returns {Promise<void>}
  */
 export const deleteQuestions = async (ids) => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('question.delete')
   return api.question.delete(ids)
 }
 
@@ -245,8 +291,7 @@ export const deleteQuestions = async (ids) => {
  * @returns {Promise<PaginatedResult<Question>>}
  */
 export const searchQuestions = async (bankId, keyword, options = {}) => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('question.search')
   return api.question.search(bankId, keyword, options)
 }
 
@@ -257,8 +302,7 @@ export const searchQuestions = async (bankId, keyword, options = {}) => {
  * @returns {Promise<void>}
  */
 export const downloadCsvTemplate = async () => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('csv.downloadTemplate')
   return api.csv.downloadTemplate()
 }
 
@@ -268,8 +312,9 @@ export const downloadCsvTemplate = async () => {
  */
 export const selectCsvFile = async () => {
   const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
-  return api.csv.selectFile()
+  if (api) return api.csv.selectFile()
+  if (isTauriRuntime()) return invokeTauriCommand('csv_select_file')
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -279,8 +324,9 @@ export const selectCsvFile = async () => {
  */
 export const parseCsvFile = async (filePath) => {
   const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
-  return api.csv.parseFile(filePath)
+  if (api) return api.csv.parseFile(filePath)
+  if (isTauriRuntime()) return invokeTauriCommand('csv_parse_file', { filePath })
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -290,8 +336,7 @@ export const parseCsvFile = async (filePath) => {
  * @returns {Promise<ImportResult>}
  */
 export const importQuestions = async (bankId, questions) => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('csv.importQuestions')
   return api.csv.importQuestions(bankId, questions)
 }
 
@@ -301,8 +346,7 @@ export const importQuestions = async (bankId, questions) => {
  * @returns {Promise<void>}
  */
 export const exportQuestionBank = async (bankId) => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('csv.exportBank')
   return api.csv.exportBank(bankId)
 }
 
@@ -315,8 +359,17 @@ export const exportQuestionBank = async (bankId) => {
  */
 export const getDashboardStats = async () => {
   const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
-  return api.stats.getDashboardStats()
+  if (api) return api.stats.getDashboardStats()
+  if (isTauriRuntime()) {
+    return {
+      totalQuestions: 0,
+      todayQuestions: 0,
+      weekQuestions: 0,
+      typeDistribution: [],
+    }
+  }
+
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -326,8 +379,9 @@ export const getDashboardStats = async () => {
  */
 export const getOperationLogs = async (limit = 10) => {
   const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
-  return api.stats.getOperationLogs(limit)
+  if (api) return api.stats.getOperationLogs(limit)
+  if (isTauriRuntime()) return []
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -337,8 +391,9 @@ export const getOperationLogs = async (limit = 10) => {
  */
 export const getTypeDistribution = async (bankId = null) => {
   const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
-  return api.stats.getTypeDistribution(bankId)
+  if (api) return api.stats.getTypeDistribution(bankId)
+  if (isTauriRuntime()) return []
+  throw getDesktopApiUnavailableError()
 }
 
 // ==================== 设置 API ====================
@@ -349,8 +404,9 @@ export const getTypeDistribution = async (bankId = null) => {
  */
 export const getTheme = async () => {
   const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
-  return api.settings.getTheme()
+  if (api) return api.settings.getTheme()
+  if (isTauriRuntime()) return invokeTauriCommand('settings_get_theme')
+  throw getDesktopApiUnavailableError()
 }
 
 /**
@@ -360,19 +416,18 @@ export const getTheme = async () => {
  */
 export const setTheme = async (theme) => {
   const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
-  return api.settings.setTheme(theme)
+  if (api) return api.settings.setTheme(theme)
+  if (isTauriRuntime()) return invokeTauriCommand('settings_set_theme', { theme })
+  throw getDesktopApiUnavailableError()
 }
 
 export const getWrongBookThreshold = async () => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('settings.getWrongBookThreshold')
   return api.settings.getWrongBookThreshold()
 }
 
 export const setWrongBookThreshold = async (threshold) => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('settings.setWrongBookThreshold')
   return api.settings.setWrongBookThreshold(threshold)
 }
 
@@ -384,8 +439,7 @@ export const setWrongBookThreshold = async (threshold) => {
  * @returns {Promise<void>}
  */
 export const saveDraft = async (data) => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('draft.save')
   return api.draft.save(data)
 }
 
@@ -394,8 +448,7 @@ export const saveDraft = async (data) => {
  * @returns {Promise<DraftData|null>}
  */
 export const loadDraft = async () => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('draft.load')
   return api.draft.load()
 }
 
@@ -404,8 +457,7 @@ export const loadDraft = async () => {
  * @returns {Promise<void>}
  */
 export const clearDraft = async () => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('draft.clear')
   return api.draft.clear()
 }
 
@@ -416,8 +468,7 @@ export const clearDraft = async () => {
  * @returns {Promise<{apiKey: string, apiUrl: string, modelId: string}>}
  */
 export const getApiConfig = async () => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('settings.getApiConfig')
   return api.settings.getApiConfig()
 }
 
@@ -427,8 +478,7 @@ export const getApiConfig = async () => {
  * @returns {Promise<void>}
  */
 export const setApiConfig = async (config) => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('settings.setApiConfig')
   return api.settings.setApiConfig(config)
 }
 
@@ -437,8 +487,7 @@ export const setApiConfig = async (config) => {
  * @returns {Promise<{success: boolean, message: string}>}
  */
 export const testApiConnection = async () => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('settings.testApiConnection')
   return api.settings.testApiConnection()
 }
 
@@ -450,8 +499,7 @@ export const testApiConnection = async () => {
  * @returns {Promise<{questions: CreateQuestionInput[]}>}
  */
 export const parseQuestionsWithAI = async (content) => {
-  const api = getElectronAPI()
-  if (!api) throw new Error('Electron API 不可用')
+  const api = requireElectronApi('ai.parseQuestions')
   return api.ai.parseQuestions(content)
 }
 
@@ -469,7 +517,9 @@ export default {
   // 题目
   question: {
     create: createQuestion,
+    createBatch: createQuestionsBatch,
     getByBankId: getQuestionsByBankId,
+    getRandom: getRandomQuestions,
     getById: getQuestionById,
     update: updateQuestion,
     delete: deleteQuestions,
@@ -512,51 +562,44 @@ export default {
   // 练习
   practice: {
     saveRecord: async (record) => {
-      const api = getElectronAPI()
-      if (!api) throw new Error('Electron API 不可用')
+      const api = requireElectronApi('practice.saveRecord')
       return api.practice.saveRecord(record)
     },
     getRecords: async (bankId, limit = 20) => {
-      const api = getElectronAPI()
-      if (!api) throw new Error('Electron API 不可用')
+      const api = requireElectronApi('practice.getRecords')
       return api.practice.getRecords(bankId, limit)
     },
     getAllStats: async () => {
       const api = getElectronAPI()
-      if (!api) throw new Error('Electron API 不可用')
-      return api.practice.getAllStats()
+      if (api) return api.practice.getAllStats()
+      if (isTauriRuntime()) return []
+      throw getDesktopApiUnavailableError()
     },
   },
 
   wrongBook: {
     getCountsByBank: async () => {
-      const api = getElectronAPI()
-      if (!api) throw new Error('Electron API 不可用')
+      const api = requireElectronApi('wrongBook.getCountsByBank')
       return api.wrongBook.getCountsByBank()
     },
     getItems: async (bankId, options = {}) => {
-      const api = getElectronAPI()
-      if (!api) throw new Error('Electron API 不可用')
+      const api = requireElectronApi('wrongBook.getItems')
       return api.wrongBook.getItems(bankId, options)
     },
     getRandomQuestions: async (bankId, limit = 20) => {
-      const api = getElectronAPI()
-      if (!api) throw new Error('Electron API 不可用')
+      const api = requireElectronApi('wrongBook.getRandomQuestions')
       return api.wrongBook.getRandomQuestions(bankId, limit)
     },
     updateFromPractice: async (results, threshold) => {
-      const api = getElectronAPI()
-      if (!api) throw new Error('Electron API 不可用')
+      const api = requireElectronApi('wrongBook.updateFromPractice')
       return api.wrongBook.updateFromPractice(results, threshold)
     },
     removeItem: async (questionId) => {
-      const api = getElectronAPI()
-      if (!api) throw new Error('Electron API 不可用')
+      const api = requireElectronApi('wrongBook.removeItem')
       return api.wrongBook.removeItem(questionId)
     },
     clear: async (bankId) => {
-      const api = getElectronAPI()
-      if (!api) throw new Error('Electron API 不可用')
+      const api = requireElectronApi('wrongBook.clear')
       return api.wrongBook.clear(bankId)
     },
   },

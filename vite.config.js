@@ -24,10 +24,17 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        // 分割代码块
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['framer-motion', 'lucide-react', 'recharts'],
+        // 固定 React 核心依赖，其余重依赖交给路由懒加载自然拆分
+        manualChunks(id) {
+          const normalizedId = id.replace(/\\/g, '/');
+          if (
+            normalizedId.includes('/node_modules/react/') ||
+            normalizedId.includes('/node_modules/react-dom/') ||
+            normalizedId.includes('/node_modules/react-router-dom/') ||
+            normalizedId.includes('/node_modules/scheduler/')
+          ) {
+            return 'vendor';
+          }
         },
       },
     },

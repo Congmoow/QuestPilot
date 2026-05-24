@@ -21,13 +21,13 @@ const practiceTones = [
 ];
 
 const QB_ICONS = [
-  '/questionbank-icons/QBicon1.png',
-  '/questionbank-icons/QBicon2.png',
-  '/questionbank-icons/QBicon3.png',
-  '/questionbank-icons/QBicon4.png',
-  '/questionbank-icons/QBicon5.png',
-  '/questionbank-icons/QBicon6.png',
-  '/questionbank-icons/QBicon7.png',
+  '/questionbank-icons/QBicon1.webp',
+  '/questionbank-icons/QBicon2.webp',
+  '/questionbank-icons/QBicon3.webp',
+  '/questionbank-icons/QBicon4.webp',
+  '/questionbank-icons/QBicon5.webp',
+  '/questionbank-icons/QBicon6.webp',
+  '/questionbank-icons/QBicon7.webp',
 ];
 
 const getRandomIcon = (bankId) => {

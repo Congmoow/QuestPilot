@@ -260,6 +260,20 @@ ipcMain.handle('question:create', async (event, data) => {
   }
 })
 
+// 批量创建题目
+ipcMain.handle('question:createBatch', async (event, bankId, questions) => {
+  try {
+    const result = importQuestionsInBatch(bankId, questions)
+    if (result.success > 0) {
+      database.addOperationLog('批量添加题目', `添加 ${result.success} 道题目到题库`)
+    }
+    return result
+  } catch (error) {
+    console.error('批量创建题目失败:', error)
+    throw error
+  }
+})
+
 // 根据题库ID获取题目列表（分页）
 ipcMain.handle('question:getByBankId', async (event, bankId, options = {}) => {
   try {
@@ -286,6 +300,18 @@ ipcMain.handle('question:getByBankId', async (event, bankId, options = {}) => {
     }
   } catch (error) {
     console.error('获取题目列表失败:', error)
+    throw error
+  }
+})
+
+// 随机获取题目
+ipcMain.handle('question:getRandom', async (event, bankId, options = {}) => {
+  try {
+    const { limit = 20, type } = options
+    const realLimit = Math.max(1, Math.min(Number(limit) || 20, 1000))
+    return database.getRandomQuestions(bankId, realLimit, type || null)
+  } catch (error) {
+    console.error('随机获取题目失败:', error)
     throw error
   }
 })
@@ -367,6 +393,43 @@ function getTypeLabel(type) {
   return labels[type] || '题目'
 }
 
+function importQuestionsInBatch(bankId, questions) {
+  const realBankId = Number(bankId)
+  if (!Number.isFinite(realBankId) || realBankId <= 0) {
+    throw new Error('题库不存在')
+  }
+
+  if (!Array.isArray(questions) || questions.length === 0) {
+    throw new Error('没有可导入的题目')
+  }
+
+  const validQuestions = []
+  const errors = []
+
+  for (let i = 0; i < questions.length; i++) {
+    const validationResult = validation.validateQuestion(questions[i])
+    if (!validationResult.valid) {
+      errors.push({
+        index: i,
+        message: validationResult.errors[0]
+      })
+      continue
+    }
+
+    validQuestions.push(questions[i])
+  }
+
+  if (validQuestions.length > 0) {
+    database.createQuestionsBatch(realBankId, validQuestions)
+  }
+
+  return {
+    success: validQuestions.length,
+    failed: errors.length,
+    errors
+  }
+}
+
 
 // ==================== CSV 相关 IPC 处理器 ====================
 
@@ -443,42 +506,9 @@ ipcMain.handle('csv:parseFile', async (event, filePath) => {
 // 导入题目
 ipcMain.handle('csv:import', async (event, bankId, questions) => {
   try {
-    if (!Array.isArray(questions) || questions.length === 0) {
-      throw new Error('没有可导入的题目')
-    }
-    
-    let successCount = 0
-    const errors = []
-    
-    for (let i = 0; i < questions.length; i++) {
-      try {
-        // 验证题目数据
-        const validationResult = validation.validateQuestion(questions[i])
-        if (!validationResult.valid) {
-          errors.push({
-            index: i,
-            message: validationResult.errors[0]
-          })
-          continue
-        }
-        
-        database.createQuestion(bankId, questions[i])
-        successCount++
-      } catch (err) {
-        errors.push({
-          index: i,
-          message: err.message
-        })
-      }
-    }
-    
-    database.addOperationLog('导入题目', `导入 ${successCount} 道题目`)
-    
-    return {
-      success: successCount,
-      failed: errors.length,
-      errors
-    }
+    const result = importQuestionsInBatch(bankId, questions)
+    database.addOperationLog('导入题目', `导入 ${result.success} 道题目`)
+    return result
   } catch (error) {
     console.error('导入题目失败:', error)
     throw error
