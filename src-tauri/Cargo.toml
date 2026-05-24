@@ -1,6 +1,6 @@
 [package]
 name = "questpilot-tauri"
-version = "1.5.6"
+version = "1.6.7"
 description = "QuestPilot Tauri PoC"
 authors = ["wangzhongwu"]
 edition = "2021"
