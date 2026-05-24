@@ -780,7 +780,12 @@ impl DatabaseStore {
 
     pub fn set_api_config(&self, config: ApiConfig) -> Result<(), String> {
         let connection = self.connection.borrow();
-        set_setting(&connection, "ai_api_key", config.api_key.as_str())?;
+        let next_api_key = if config.api_key.trim().is_empty() {
+            get_setting(&connection, "ai_api_key")?.unwrap_or_default()
+        } else {
+            config.api_key.trim().to_string()
+        };
+        set_setting(&connection, "ai_api_key", next_api_key.as_str())?;
         set_setting(
             &connection,
             "ai_api_url",

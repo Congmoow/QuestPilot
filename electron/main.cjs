@@ -8,6 +8,7 @@ const ai = require('./ai/index.cjs')
 const { normalizeAiParseResult } = require('./ai-normalize.cjs')
 const { splitMarkdownIntoChunks } = require('./ai-import-chunker.cjs')
 const { resolveWindowEntry } = require('./window-entry.cjs')
+const { createPublicApiConfig, normalizeApiConfigUpdate } = require('./security/apiConfig.cjs')
 const {
   normalizeIdList,
   normalizeLimit,
@@ -705,7 +706,7 @@ ipcMain.handle('settings:getApiConfig', async () => {
     const apiUrl = database.getSetting('ai_api_url') || 'https://api.openai.com'
     const modelId = database.getSetting('ai_model_id') || 'gpt-3.5-turbo'
     const provider = database.getSetting('ai_provider') || 'custom'
-    return { apiKey, apiUrl, modelId, provider }
+    return createPublicApiConfig({ apiKey, apiUrl, modelId, provider })
   } catch (error) {
     console.error('获取 API 配置失败:', error)
     throw error
@@ -715,11 +716,13 @@ ipcMain.handle('settings:getApiConfig', async () => {
 // 设置 API 配置
 ipcMain.handle('settings:setApiConfig', async (event, config) => {
   try {
-    const { apiKey, apiUrl, modelId, provider } = config
-    database.setSetting('ai_api_key', apiKey || '')
-    database.setSetting('ai_api_url', apiUrl || 'https://api.openai.com')
-    database.setSetting('ai_model_id', modelId || 'gpt-3.5-turbo')
-    database.setSetting('ai_provider', provider || 'custom')
+    const normalized = normalizeApiConfigUpdate(config, {
+      apiKey: database.getSetting('ai_api_key') || ''
+    })
+    database.setSetting('ai_api_key', normalized.apiKey)
+    database.setSetting('ai_api_url', normalized.apiUrl)
+    database.setSetting('ai_model_id', normalized.modelId)
+    database.setSetting('ai_provider', normalized.provider)
     database.addOperationLog('更改设置', '更新 AI API 配置')
     return { success: true }
   } catch (error) {

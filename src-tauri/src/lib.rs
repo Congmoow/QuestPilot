@@ -136,6 +136,17 @@ struct PaginatedWrongBookItems {
     total_pages: u32,
 }
 
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PublicApiConfig {
+    api_key: String,
+    api_key_preview: String,
+    has_api_key: bool,
+    api_url: String,
+    model_id: String,
+    provider: String,
+}
+
 fn paginated_questions(
     data: Vec<database::Question>,
     total: i64,
@@ -290,8 +301,10 @@ fn settings_set_wrong_book_threshold(app: AppHandle, threshold: i64) -> Result<(
 }
 
 #[tauri::command(rename_all = "camelCase")]
-fn settings_get_api_config(app: AppHandle) -> Result<database::ApiConfig, String> {
-    open_store(&app)?.get_api_config()
+fn settings_get_api_config(app: AppHandle) -> Result<PublicApiConfig, String> {
+    open_store(&app)?
+        .get_api_config()
+        .map(public_api_config_from_database)
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -335,6 +348,39 @@ fn ai_config_from_database(config: database::ApiConfig) -> ai::AiConfig {
         api_url: config.api_url,
         model_id: config.model_id,
     }
+}
+
+fn public_api_config_from_database(config: database::ApiConfig) -> PublicApiConfig {
+    let api_key = config.api_key.trim().to_string();
+    PublicApiConfig {
+        api_key: String::new(),
+        api_key_preview: mask_api_key(api_key.as_str()),
+        has_api_key: !api_key.is_empty(),
+        api_url: config.api_url,
+        model_id: config.model_id,
+        provider: config.provider,
+    }
+}
+
+fn mask_api_key(api_key: &str) -> String {
+    let value = api_key.trim();
+    if value.is_empty() {
+        return String::new();
+    }
+    if value.chars().count() <= 8 {
+        return "••••".to_string();
+    }
+
+    let prefix: String = value.chars().take(4).collect();
+    let suffix: String = value
+        .chars()
+        .rev()
+        .take(4)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect();
+    format!("{prefix}••••{suffix}")
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -652,4 +698,30 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("启动 QuestPilot Tauri PoC 失败");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn public_api_config_does_not_expose_full_api_key() {
+        let raw_key = "token-test-1234567890abcdef".to_string();
+        let public_config = public_api_config_from_database(database::ApiConfig {
+            api_key: raw_key.clone(),
+            api_url: "https://api.example.com".to_string(),
+            model_id: "model-x".to_string(),
+            provider: "openai".to_string(),
+        });
+
+        assert_eq!(public_config.api_key, "");
+        assert!(public_config.has_api_key);
+        assert_eq!(public_config.api_url, "https://api.example.com");
+        assert_eq!(public_config.model_id, "model-x");
+        assert_eq!(public_config.provider, "openai");
+        assert_ne!(public_config.api_key_preview, raw_key);
+        assert!(!public_config.api_key_preview.contains(raw_key.as_str()));
+        assert!(public_config.api_key_preview.starts_with("toke"));
+        assert!(public_config.api_key_preview.ends_with("cdef"));
+    }
 }

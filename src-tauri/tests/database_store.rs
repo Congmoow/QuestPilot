@@ -558,17 +558,31 @@ fn database_store_supports_draft_and_api_config() {
 
     store
         .set_api_config(ApiConfig {
-            api_key: "sk-test".to_string(),
+            api_key: "token-test".to_string(),
             api_url: "https://api.example.com".to_string(),
             model_id: "model-x".to_string(),
             provider: "openai".to_string(),
         })
         .expect("应能保存 API 配置");
     let saved_config = store.get_api_config().expect("应能读取保存后的 API 配置");
-    assert_eq!(saved_config.api_key, "sk-test");
+    assert_eq!(saved_config.api_key, "token-test");
     assert_eq!(saved_config.api_url, "https://api.example.com");
     assert_eq!(saved_config.model_id, "model-x");
     assert_eq!(saved_config.provider, "openai");
+
+    store
+        .set_api_config(ApiConfig {
+            api_key: "   ".to_string(),
+            api_url: "https://api.updated.example.com".to_string(),
+            model_id: "model-y".to_string(),
+            provider: "custom".to_string(),
+        })
+        .expect("空 API Key 应保留已有配置");
+    let preserved_config = store.get_api_config().expect("应能读取保留后的 API 配置");
+    assert_eq!(preserved_config.api_key, "token-test");
+    assert_eq!(preserved_config.api_url, "https://api.updated.example.com");
+    assert_eq!(preserved_config.model_id, "model-y");
+    assert_eq!(preserved_config.provider, "custom");
 }
 
 #[test]

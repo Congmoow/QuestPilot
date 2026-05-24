@@ -61,7 +61,7 @@
 
 后续执行本计划时应按小步提交推进。每个阶段完成后至少执行对应验证命令，并把结果补回本文件。
 
-**阶段推进规则：** 阶段 2 起，每个阶段必须完成验证、提交并推送成功后，才允许进入下一阶段。当前只收尾到阶段 3，阶段 4-7 暂停。
+**阶段推进规则：** 阶段 2 起，每个阶段必须完成验证、提交并推送成功后，才允许进入下一阶段。当前执行到阶段 4；阶段 5-7 等待阶段 4 提交推送后再开始。
 
 ### 阶段 2：Electron 数据层与 IPC 边界加固
 
@@ -184,13 +184,21 @@
 
 **目标：** 在不发布新版本前，先明确 API Key 的短期保护和中期迁移路径，避免继续扩大明文配置面。
 
+**当前状态：** 已完成，等待本阶段提交并推送后才可进入阶段 5。
+
 **涉及文件：**
 
-- 修改：`electron/database/index.cjs`
+- 新增：`electron/security/apiConfig.cjs`
 - 修改：`electron/main.cjs`
+- 修改：`package.json`
+- 修改：`src/api/index.js`
 - 修改：`src-tauri/src/database.rs`
 - 修改：`src-tauri/src/lib.rs`
+- 修改：`src-tauri/tests/ai_client.rs`
+- 修改：`src-tauri/tests/database_store.rs`
+- 修改：`src/pages/AiImport.jsx`
 - 修改：`src/pages/Settings.jsx`
+- 新增：`scripts/__tests__/api-config-secrets.test.mjs`
 - 更新文档：`docs/architecture/desktop-api-contract.md`
 
 **任务：**
@@ -220,6 +228,37 @@
 
 - 前端、Electron、Tauri 对 API Key 的展示和错误路径都有脱敏边界。
 - 文档清楚标注当前保护级别和下一步迁移路径。
+
+**已完成记录：**
+
+- Electron `settings:getApiConfig` 不再返回完整 Key，改为返回空 `apiKey`、`apiKeyPreview` 和 `hasApiKey`。
+- Electron `settings:setApiConfig` 收到空白 Key 时保留已保存 Key，收到非空 Key 时才替换。
+- Tauri `settings_get_api_config` 改为返回公开配置结构，不暴露完整 Key。
+- Tauri 数据库保存 API 配置时，空白 Key 会保留已有 Key。
+- 设置页不再把读取到的完整 Key 写入输入框，只展示脱敏预览；测试连接支持使用已保存 Key。
+- AI 导入页改用 `hasApiKey` 判断是否已有配置。
+- 新增 `npm run test:api-config-security`，覆盖 Electron 脱敏、空 Key 保留和前端静态边界。
+
+**当前保护级别：**
+
+- 当前 Key 仍保存在本地数据库设置表中，不能视为系统级安全凭据仓库。
+- 本阶段只收口展示、读取契约、错误与日志暴露面；后续如要提升保护级别，应评估系统凭据存储。
+
+**已验证：**
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run test:api-config-security` | 通过，3 个 Key 脱敏与前端边界测试通过。 |
+| `npm run test:api-contract` | 通过，5 个契约测试通过。 |
+| `npm run test:electron-db-safety` | 通过，5 个数据边界测试通过。 |
+| `npm run test:db-migrations` | 通过，3 个迁移测试通过。 |
+| `npm run build` | 通过，Vite 生产构建成功。 |
+| `cargo test` | 通过，新增公开配置脱敏测试，Rust 全量测试通过。 |
+| `cargo fmt -- --check` | 通过。 |
+| `node --check electron/main.cjs`、`node --check electron/security/apiConfig.cjs` | 通过。 |
+| `rg -n "sk-\|apiKey\|api_key" dist electron src src-tauri --glob "!src-tauri/target/**"` | 有命中，均为变量名、字段名、UI 占位符或测试夹具；未发现真实完整 Key。 |
+| `rg -n "sk-[A-Za-z0-9_-]{12,}\|Bearer\\s+sk-" dist electron src src-tauri --glob "!src-tauri/target/**"` | 无命中。 |
+| Electron 设置页 smoke | 通过；Electron shell 中进入 `#/settings`，API Key 输入框值长度为 `0`。Windows 仍有既有 `WSALookupServiceBegin failed with: 10108` 告警，未导致启动退出。 |
 
 ### 阶段 5：双运行时真实验收与取舍
 

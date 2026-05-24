@@ -517,7 +517,7 @@ export const clearDraft = async () => {
 
 /**
  * 获取 API 配置
- * @returns {Promise<{apiKey: string, apiUrl: string, modelId: string}>}
+ * @returns {Promise<{apiKey: string, apiKeyPreview: string, hasApiKey: boolean, apiUrl: string, modelId: string, provider: string}>}
  */
 export const getApiConfig = async () => {
   const api = getElectronAPI()
@@ -528,7 +528,7 @@ export const getApiConfig = async () => {
 
 /**
  * 设置 API 配置
- * @param {{apiKey: string, apiUrl: string, modelId: string}} config
+ * @param {{apiKey: string, apiUrl: string, modelId: string, provider: string}} config
  * @returns {Promise<void>}
  */
 export const setApiConfig = async (config) => {

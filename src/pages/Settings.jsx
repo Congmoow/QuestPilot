@@ -50,6 +50,8 @@ const AI_PROVIDERS = [
 const Settings = () => {
   const [provider, setProvider] = useState('custom');
   const [apiKey, setApiKey] = useState('');
+  const [apiKeyPreview, setApiKeyPreview] = useState('');
+  const [hasSavedApiKey, setHasSavedApiKey] = useState(false);
   const [apiUrl, setApiUrl] = useState('https://api.newcoin.top');
   const [modelId, setModelId] = useState('minimax-m2');
   const [showApiKey, setShowApiKey] = useState(false);
@@ -76,7 +78,9 @@ const Settings = () => {
     const loadConfig = async () => {
       try {
         const config = await api.settings.getApiConfig();
-        setApiKey(config.apiKey || '');
+        setApiKey('');
+        setApiKeyPreview(config.apiKeyPreview || '');
+        setHasSavedApiKey(Boolean(config.hasApiKey || config.apiKey));
         setApiUrl(config.apiUrl || 'https://api.newcoin.top');
         setModelId(config.modelId || 'minimax-m2');
         setProvider(config.provider || 'custom');
@@ -217,7 +221,11 @@ const Settings = () => {
     setSaved(false);
     setTestResult(null);
     try {
-      await api.settings.setApiConfig({ apiKey, apiUrl, modelId, provider });
+      await api.settings.setApiConfig({ apiKey: apiKey.trim(), apiUrl, modelId, provider });
+      const config = await api.settings.getApiConfig();
+      setApiKey('');
+      setApiKeyPreview(config.apiKeyPreview || '');
+      setHasSavedApiKey(Boolean(config.hasApiKey || config.apiKey));
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {
@@ -228,7 +236,7 @@ const Settings = () => {
   };
 
   const handleTestConnection = async () => {
-    if (!apiKey) {
+    if (!apiKey.trim() && !hasSavedApiKey) {
       setTestResult({ success: false, message: '请先输入 API Key' });
       return;
     }
@@ -236,8 +244,12 @@ const Settings = () => {
     setTesting(true);
     setTestResult(null);
     try {
-      await api.settings.setApiConfig({ apiKey, apiUrl, modelId, provider });
+      await api.settings.setApiConfig({ apiKey: apiKey.trim(), apiUrl, modelId, provider });
       const result = await api.settings.testApiConnection();
+      const config = await api.settings.getApiConfig();
+      setApiKey('');
+      setApiKeyPreview(config.apiKeyPreview || '');
+      setHasSavedApiKey(Boolean(config.hasApiKey || config.apiKey));
       setTestResult({ success: true, message: result.message || 'API 连接成功' });
     } catch (error) {
       setTestResult({ success: false, message: error.message || 'API 连接失败' });
@@ -315,13 +327,16 @@ const Settings = () => {
             />
           </Field>
 
-          <Field label={<span className="inline-flex items-center gap-2"><Key size={16} />API Key</span>}>
+          <Field
+            label={<span className="inline-flex items-center gap-2"><Key size={16} />API Key</span>}
+            hint={hasSavedApiKey ? `已保存：${apiKeyPreview || '已隐藏'}；留空保存会保留现有 Key` : '保存后不会在界面回显完整 Key'}
+          >
             <PasswordInput
               show={showApiKey}
               onToggleShow={() => setShowApiKey(!showApiKey)}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder={currentProvider.placeholder || 'sk-xxxxxxxxxxxxxxxx'}
+              placeholder={hasSavedApiKey ? '留空则保留已保存 Key' : (currentProvider.placeholder || '输入 API Key')}
             />
           </Field>
 
@@ -372,7 +387,7 @@ const Settings = () => {
               variant="secondary"
               icon={TestTube}
               onClick={handleTestConnection}
-              disabled={testing || !apiKey}
+              disabled={testing || (!apiKey.trim() && !hasSavedApiKey)}
               loading={testing}
             >
               测试连接

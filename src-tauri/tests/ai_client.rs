@@ -8,7 +8,7 @@ use serde_json::json;
 #[test]
 fn ai_client_builds_openai_compatible_chat_request() {
     let config = AiConfig {
-        api_key: "sk-test".to_string(),
+        api_key: "token-test".to_string(),
         api_url: "https://api.example.com".to_string(),
         model_id: "model-x".to_string(),
     };
@@ -26,7 +26,7 @@ fn ai_client_builds_openai_compatible_chat_request() {
     assert_eq!(request.url, "https://api.example.com/v1/chat/completions");
     assert_eq!(
         request.headers.get("Authorization").map(String::as_str),
-        Some("Bearer sk-test")
+        Some("Bearer token-test")
     );
     assert_eq!(request.body["model"], "model-x");
     assert_eq!(request.body["messages"][0]["role"], "system");
