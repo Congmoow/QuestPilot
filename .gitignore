@@ -15,6 +15,8 @@ src-tauri/target/
 
 # Local tests
 tests/
+!src-tauri/tests/
+!src-tauri/tests/**
 
 # Logs
 *.log
