@@ -61,7 +61,7 @@
 
 后续执行本计划时应按小步提交推进。每个阶段完成后至少执行对应验证命令，并把结果补回本文件。
 
-**阶段推进规则：** 阶段 2 起，每个阶段必须完成验证、提交并推送成功后，才允许进入下一阶段。当前阶段 5 已完成验收记录；阶段 6-7 必须等待阶段 5 提交推送成功后再开始。
+**阶段推进规则：** 阶段 2 起，每个阶段必须完成验证、提交并推送成功后，才允许进入下一阶段。当前阶段 5 已完成并已提交推送；阶段 5.5 已完成准入评估；阶段 6-7 必须等待阶段 5.5 提交推送成功后再开始。
 
 ### 阶段 2：Electron 数据层与 IPC 边界加固
 
@@ -264,7 +264,7 @@
 
 **目标：** 明确 Electron 稳定线和 Tauri 迁移线的真实状态，避免两个运行时长期无边界并行。
 
-**当前状态：** 已完成验收记录；本阶段提交并推送成功前不得进入阶段 6。
+**当前状态：** 已完成并已提交推送；阶段 5.5 已完成准入评估，阶段 6 暂不开始。
 
 **涉及文件：**
 
@@ -326,6 +326,91 @@
 | Electron CDP smoke | 通过，核心 API 与 8 个页面路由均通过；真实 AI 网络请求未执行。 |
 | Tauri route smoke | 通过，`npm run tauri:dev` 可启动，WebView2 CDP 可见 `QuestPilot` 页面目标，8 个页面路由均加载。 |
 | Tauri API smoke | 通过，核心本地 API 均通过并清理临时数据；CSV 保存对话框与真实 AI 未自动触发。 |
+
+### 阶段 5.5：Tauri 主线化准入
+
+**目标：** 判断 Tauri 是否可以从迁移验证线升级为新开发主线，并明确 Electron 是否可以进入维护冻结状态。
+
+**当前状态：** 已完成准入评估；本阶段提交并推送成功前不得进入阶段 6。
+
+**定位：**
+
+- 本阶段不是发布 Tauri。
+- 本阶段不是删除 Electron。
+- 本阶段不是立刻冻结 Electron 的所有修改。
+- 本阶段只做准入验证、小范围补齐和决策记录。
+
+**涉及文件：**
+
+- 修改：`docs/plans/2026-05-24-architecture-stabilization.md`
+- 修改：`docs/architecture/runtime-acceptance.md`
+- 视结果修改：`src-tauri/capabilities/main.json`
+- 视结果修改：`src-tauri/src/lib.rs`
+- 修改：`src-tauri/src/database.rs`
+- 修改：`src-tauri/tests/database_store.rs`
+- 视结果修改：`src/api/index.js`
+- 视结果修改：`electron/main.cjs`
+- 视结果新增或修改：`docs/architecture/tauri-mainline-readiness.md`
+
+**任务：**
+
+1. 核查 Tauri 能力与权限边界。
+   - 检查 `src-tauri/capabilities/main.json` 是否覆盖当前真实使用的对话框能力。
+   - 重点验证 CSV 模板下载、CSV 导出、文件选择、取消保存和实际写入路径。
+   - 如果需要前端直接调用 Tauri dialog 插件，补齐 `dialog:allow-save` 或等价权限；如果仍由 Rust command 发起保存对话框，必须用真实窗口验收确认。
+2. 完成 Tauri 真实窗口验收。
+   - 使用 `npm run tauri:dev`。
+   - 覆盖题库 CRUD、题目 CRUD、CSV 导入、CSV 模板下载、CSV 导出、随机练习、错题本、设置保存、窗口最小化、最大化、关闭和拖拽。
+   - 记录每个流程的通过、失败、阻塞或未覆盖原因，不得把未点击流程写成已验证。
+3. 完成真实 AI 路径验收。
+   - 使用真实 API Key 验证 AI 解析成功路径、AI 聊天成功路径、连接失败路径和错误脱敏路径。
+   - 继续确认前端、Electron、Tauri 的错误信息和日志不泄露完整 Key。
+4. 明确数据目录和迁移策略。
+   - 对比 Electron 与 Tauri 的应用数据目录。
+   - 明确旧 Electron 数据在 Tauri 主线化后的处理方式：自动迁移、手动导入、并行保留或暂不支持。
+   - 如果暂不迁移，必须把用户影响和回退路径写入文档。
+5. 做主线化取舍决策。
+   - 输出三选一结论：`Tauri-first`、`Tauri-continue-validation` 或 `Tauri-freeze`。
+   - 若结论为 `Tauri-first`，明确 Electron 维护冻结规则：只接受 P0/P1 修复、安全修复、数据兼容修复和回退线保活。
+   - 若结论不是 `Tauri-first`，明确还剩哪些阻塞项以及下一次复查条件。
+
+**验证：**
+
+- `npm run tauri:info`
+- `npm run test:api-contract`
+- `npm run test:api-config-security`
+- `npm run build`
+- `cargo test`
+- `npm run tauri:dev`
+- Tauri 真实窗口验收记录
+- 真实 AI Key 验收记录
+- Electron smoke，确认稳定回退线未被破坏
+
+**完成标准：**
+
+- Tauri 的 CSV 保存、真实 AI、窗口控制和文件系统路径都有明确验收结论。
+- Electron 到 Tauri 的数据目录和迁移策略有明确文档结论。
+- `docs/architecture/runtime-acceptance.md` 或新增准入文档中写明是否允许进入 `Tauri-first`。
+- 阶段 5.5 完成、验证、提交并推送成功前，不进入阶段 6。
+
+**已完成记录：**
+
+- 新增 `docs/architecture/tauri-mainline-readiness.md`，记录准入证据、阻塞项、数据目录结论和主线化决策。
+- 准入结论为 `Tauri-continue-validation`：Tauri 继续作为迁移验证线，暂不替换 Electron，也不冻结 Electron。
+- Tauri WebView2 CDP smoke 已覆盖 8 个核心路由、Tauri runtime 识别、无 Electron API、公开配置脱敏、窗口最大化切换、设置保存、题库 CRUD、题目 CRUD、CSV 导入、练习记录和错题本。
+- Tauri 本机公开配置显示 `hasSavedApiKey=false`，真实 AI 解析和 AI 聊天未执行，继续作为准入阻塞项。
+- CSV 模板下载和题库导出仍需真实保存对话框验收，继续作为准入阻塞项。
+- 已补齐 Tauri 旧库候选路径，覆盖当前 Electron `QuestPilot`/`questpilot` 数据目录和 `questpilot.db` 文件名，并新增 Rust 测试。
+
+**已验证：**
+
+| 命令或 smoke | 结果 |
+| --- | --- |
+| `npm run tauri:info` | 通过，Windows WebView2、Rust、Node、Tauri CLI 均可用。 |
+| `npm run test:api-contract` | 通过，5 个契约测试通过。 |
+| `npm run test:api-config-security` | 通过，3 个 API Key 脱敏与前端边界测试通过。 |
+| `cargo test --test database_store legacy_database_candidates_include_current_electron_data_dirs` | 先失败后通过，证明并修复当前 Electron 数据目录候选缺口。 |
+| Tauri WebView2 CDP smoke | 通过可自动验证部分；CSV 保存对话框、真实 AI、最小化/拖拽和打包产物未覆盖。 |
 
 ### 阶段 6：模块拆分与维护边界
 

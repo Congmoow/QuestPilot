@@ -7,8 +7,13 @@ use serde::{Deserialize, Serialize};
 
 pub const DATABASE_FILE_NAME: &str = "questpilot.db";
 
-const LEGACY_DATABASE_FILE_NAMES: [&str; 1] = ["question-bank.db"];
-const LEGACY_USER_DATA_DIRS: [&str; 2] = ["question-bank-assistant", "题库助手"];
+const LEGACY_DATABASE_FILE_NAMES: [&str; 2] = ["questpilot.db", "question-bank.db"];
+const LEGACY_USER_DATA_DIRS: [&str; 4] = [
+    "QuestPilot",
+    "questpilot",
+    "question-bank-assistant",
+    "题库助手",
+];
 const QUESTION_TYPES: [&str; 5] = ["single", "multiple", "boolean", "fill", "short"];
 
 struct SchemaMigration {

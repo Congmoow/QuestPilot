@@ -6,8 +6,9 @@
 ## 结论
 
 - Electron 继续作为当前稳定运行时。
-- Tauri 继续作为迁移验证线，暂不替换 Electron，也不进入发布默认运行时。
+- 阶段 5.5 的 Tauri 主线化准入结论是 `Tauri-continue-validation`：Tauri 继续作为迁移验证线，暂不替换 Electron，也不进入发布默认运行时。
 - 阶段 5 的目标是把真实状态、差异类别和发布前阻塞项固化到文档中；未完成的人工验收不会写成已验证。
+- 阶段 5.5 的详细记录见 `docs/architecture/tauri-mainline-readiness.md`。
 
 ## 状态定义
 
@@ -31,6 +32,7 @@
 | Tauri 启动 | `npm run tauri:dev` | 通过，Vite 与 `questpilot-tauri.exe` 正常启动；WebView2 CDP 可见 `QuestPilot` 页面目标。 |
 | Tauri 路由 | WebView2 CDP route smoke | 通过：`#/dashboard`、`#/manual-entry`、`#/csv-import`、`#/practice`、`#/wrong-book`、`#/ai-import`、`#/ai-chat`、`#/settings` 均能加载根节点内容。 |
 | Tauri API | WebView2 CDP API smoke | 通过：Tauri runtime 识别、无 Electron API、公开配置不返回完整 Key、设置保存、题库 CRUD、题目 CRUD、CSV 导入、练习记录、错题本、Prompt、聊天历史均通过，并清理临时数据。 |
+| Tauri 主线化准入 | 阶段 5.5 smoke 与数据迁移候选测试 | 未进入 `Tauri-first`；Tauri 本地 API、路由和最大化切换通过，但真实 AI、CSV 保存对话框、已有 Tauri 空库迁移策略和打包产物仍是阻塞项。 |
 
 说明：Tauri smoke 结束时通过 `Ctrl+C` 正常中断 dev 进程，控制台返回 `STATUS_CONTROL_C_EXIT` 属于本次受控退出的预期结果。Electron smoke 中仍可见既有 Windows 网络状态告警 `WSALookupServiceBegin failed with: 10108`，未导致运行时退出。
 

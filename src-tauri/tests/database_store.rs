@@ -1,6 +1,7 @@
 use questpilot_tauri_lib::database::{
-    ApiConfig, ChatHistoryInput, CreatePromptInput, CreateQuestionBankInput, CreateQuestionInput,
-    DatabaseStore, PracticeRecordInput, WrongBookPracticeResult,
+    legacy_database_candidates, ApiConfig, ChatHistoryInput, CreatePromptInput,
+    CreateQuestionBankInput, CreateQuestionInput, DatabaseStore, PracticeRecordInput,
+    WrongBookPracticeResult,
 };
 use rusqlite::Connection;
 use serde_json::json;
@@ -213,6 +214,27 @@ fn database_store_can_open_from_legacy_candidate_when_target_is_missing() {
     assert!(target_path.exists());
     assert_eq!(banks.len(), 1);
     assert_eq!(banks[0].name, "旧题库");
+}
+
+#[test]
+fn legacy_database_candidates_include_current_electron_data_dirs() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let target_path = temp_dir
+        .path()
+        .join("com.questpilot.desktop")
+        .join("questpilot.db");
+
+    let candidates = legacy_database_candidates(&target_path);
+
+    assert!(candidates.contains(&temp_dir.path().join("QuestPilot").join("questpilot.db")));
+    assert!(candidates.contains(&temp_dir.path().join("questpilot").join("questpilot.db")));
+    assert!(candidates.contains(
+        &temp_dir
+            .path()
+            .join("question-bank-assistant")
+            .join("question-bank.db")
+    ));
+    assert!(!candidates.contains(&target_path));
 }
 
 #[test]
