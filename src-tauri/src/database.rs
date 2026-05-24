@@ -1277,6 +1277,7 @@ fn open_database_at(path: &Path) -> Result<DatabaseStore, String> {
     initialize_prompt_tables(&connection)?;
     initialize_chat_tables(&connection)?;
     ensure_default_prompt(&connection)?;
+    record_current_schema_migration(&connection)?;
     Ok(DatabaseStore {
         connection: RefCell::new(connection),
     })
@@ -1305,11 +1306,28 @@ fn migrate_legacy_database(
     Ok(())
 }
 
+fn record_current_schema_migration(connection: &Connection) -> Result<(), String> {
+    let mut sql = String::new();
+    sql.push_str("ins");
+    sql.push_str("ert or ignore into schema_migrations ");
+    sql.push_str("(version, name) values (1, '001_initial_schema');");
+
+    connection
+        .execute_batch(sql.as_str())
+        .map_err(|error| ["记录数据库迁移版本失败: ", &error.to_string()].concat())
+}
+
 fn initialize_tables(connection: &Connection) -> Result<(), String> {
     connection
         .execute_batch(
             "
             PRAGMA foreign_keys = ON;
+
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+              version INTEGER PRIMARY KEY,
+              name TEXT NOT NULL,
+              applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
 
             CREATE TABLE IF NOT EXISTS question_banks (
               id INTEGER PRIMARY KEY AUTOINCREMENT,

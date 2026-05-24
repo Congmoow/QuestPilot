@@ -46,9 +46,20 @@
 | `node --test scripts/__tests__/runtime-adapters.test.mjs` | 初次失败，原因是适配器未实现。 |
 | `npm run test:api-contract` | 通过，5 个契约测试通过。 |
 
-## 下一阶段建议
+## 阶段 3：数据库迁移基础
 
-阶段 2 应先处理 Electron 数据层与 IPC 边界：
+### 已启动
+
+- 新增数据库迁移机制文档：`docs/architecture/database-migrations.md`。
+- Electron 初始化数据库时创建 `schema_migrations` 并写入 `001_initial_schema`。
+- Tauri 初始化数据库时创建同名元数据表并写入同一版本。
+- 新增 Electron 迁移幂等测试：`scripts/__tests__/electron-database-migrations.test.mjs`。
+- 扩展 Tauri 数据库测试，验证迁移版本只记录一次。
+- 新增脚本：`npm run test:db-migrations`。
+
+### 下一步建议
+
+阶段 2/3 后续应继续处理 Electron 数据层与 IPC 边界：
 
 - 把 `electron/database/index.cjs` 中由 renderer 参数参与的拼接 SQL 改为 prepared statement。
 - 为 IPC handler 增加统一入参校验。

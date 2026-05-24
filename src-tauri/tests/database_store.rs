@@ -2,8 +2,23 @@ use questpilot_tauri_lib::database::{
     ApiConfig, ChatHistoryInput, CreatePromptInput, CreateQuestionBankInput, CreateQuestionInput,
     DatabaseStore, PracticeRecordInput, WrongBookPracticeResult,
 };
+use rusqlite::Connection;
 use serde_json::json;
+use std::path::Path;
 use tempfile::tempdir;
+
+fn read_schema_migrations(db_path: &Path) -> Vec<(i64, String)> {
+    let connection = Connection::open(db_path).expect("应能打开迁移元数据数据库");
+    let mut statement = connection
+        .prepare("SELECT version, name FROM schema_migrations ORDER BY version")
+        .expect("应能读取迁移元数据");
+
+    statement
+        .query_map([], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)))
+        .expect("应能查询迁移元数据")
+        .map(|row| row.expect("应能解析迁移元数据行"))
+        .collect()
+}
 
 fn sample_single_question(content: &str, answer: &str) -> CreateQuestionInput {
     CreateQuestionInput {
@@ -45,10 +60,33 @@ fn database_store_initializes_core_tables() {
             "chat_history",
             "wrong_book",
             "practice_records",
+            "schema_migrations",
         ])
         .expect("应能统计核心表");
 
-    assert_eq!(table_count, 9);
+    assert_eq!(table_count, 10);
+}
+
+#[test]
+fn database_store_records_current_schema_migration_once() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let db_path = temp_dir.path().join("questpilot.db");
+
+    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
+    drop(store);
+
+    assert_eq!(
+        read_schema_migrations(&db_path),
+        vec![(1, "001_initial_schema".to_string())]
+    );
+
+    let reopened = DatabaseStore::open(&db_path).expect("应能重复打开数据库");
+    drop(reopened);
+
+    assert_eq!(
+        read_schema_migrations(&db_path),
+        vec![(1, "001_initial_schema".to_string())]
+    );
 }
 
 #[test]

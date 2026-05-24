@@ -23,6 +23,7 @@
     "tauri:build": "tauri build",
     "tauri:info": "tauri info",
     "test:api-contract": "node --test scripts/__tests__/runtime-adapters.test.mjs",
+    "test:db-migrations": "node --test scripts/__tests__/electron-database-migrations.test.mjs",
     "clean": "rimraf dist release",
     "optimize:assets": "node scripts/optimize-assets.cjs"
   },

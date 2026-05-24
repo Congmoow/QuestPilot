@@ -2,6 +2,7 @@ const initSqlJs = require('sql.js')
 const fs = require('fs')
 const path = require('path')
 const { app } = require('electron')
+const { ensureSchemaMigrations } = require('./migrations.cjs')
 
 let db = null
 let dbPath = null
@@ -170,6 +171,7 @@ function initializeTables() {
   db.run(`CREATE INDEX IF NOT EXISTS idx_questions_content ON questions(content)`)
   db.run(`CREATE INDEX IF NOT EXISTS idx_wrong_book_bank_id ON wrong_book(bank_id)`)
   db.run(`CREATE INDEX IF NOT EXISTS idx_wrong_book_last_wrong_at ON wrong_book(last_wrong_at)`)
+  ensureSchemaMigrations(db)
 
   // 保存数据库
   saveDatabase()
