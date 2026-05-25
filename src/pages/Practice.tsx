@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
@@ -18,8 +18,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { useQuestionBanks } from '../contexts/QuestionBankContext';
 import api from '../api';
+import type { Question, WrongBookPracticeResult } from '../api';
 import CodeAwareText from '../components/CodeAwareText';
 import { countFillBlanks } from '../lib/fillBlank';
+import type { AnswerCardState, PracticeAnswerMap, PracticeAnswerValue, PracticeQuestion, PracticeResultView, TypeLabelMap } from '../types/viewModels';
 import {
   ActionButton,
   AlertBanner,
@@ -35,7 +37,7 @@ import {
   TypeBadge,
 } from '../components/ui';
 
-const TYPE_LABELS = {
+const TYPE_LABELS: TypeLabelMap = {
   single: '单选题',
   multiple: '多选题',
   boolean: '判断题',
@@ -49,21 +51,21 @@ const Practice = () => {
   const navigate = useNavigate();
   const { banks, fetchBanks: refreshBanks } = useQuestionBanks();
 
-  const [selectedBankId, setSelectedBankId] = useState(null);
-  const [questions, setQuestions] = useState([]);
+  const [selectedBankId, setSelectedBankId] = useState<number | null>(null);
+  const [questions, setQuestions] = useState<PracticeQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [userAnswers, setUserAnswers] = useState({});
+  const [userAnswers, setUserAnswers] = useState<PracticeAnswerMap>({});
   const [showResult, setShowResult] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [practicing, setPracticing] = useState(false);
-  const [practiceResult, setPracticeResult] = useState(null);
+  const [practiceResult, setPracticeResult] = useState<PracticeResultView | null>(null);
 
   useEffect(() => {
     refreshBanks();
   }, []);
 
-  const shuffleArray = (array) => {
+  const shuffleArray = <T,>(array: T[]): T[] => {
     const arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -72,11 +74,11 @@ const Practice = () => {
     return arr;
   };
 
-  const shuffleQuestionOptions = (question) => {
+  const shuffleQuestionOptions = (question: PracticeQuestion): PracticeQuestion => {
     const originalOptions = Array.isArray(question.options) ? question.options : [];
     const shuffledOptions = shuffleArray(originalOptions);
 
-    const idMap = new Map();
+    const idMap = new Map<string, string>();
     const remappedOptions = shuffledOptions.map((opt, index) => {
       const newId = String.fromCharCode(65 + index);
       if (opt && opt.id != null) idMap.set(String(opt.id), newId);
@@ -99,7 +101,7 @@ const Practice = () => {
     return { ...question, options: remappedOptions, answer: remappedAnswer };
   };
 
-  const normalizeFillAnswer = (value, blankCount) => {
+  const normalizeFillAnswer = (value: PracticeAnswerValue | undefined, blankCount: number): string[] => {
     const n = Math.max(0, Number(blankCount) || 0);
     const arr = Array.isArray(value)
       ? value
@@ -111,7 +113,7 @@ const Practice = () => {
     return normalized;
   };
 
-  const isFillAnswerCorrect = (question, userValue) => {
+  const isFillAnswerCorrect = (question: Pick<Question, 'content' | 'answer'>, userValue: PracticeAnswerValue | undefined): boolean => {
     const blankCount = countFillBlanks(question?.content);
     const correctArr = normalizeFillAnswer(question?.answer, blankCount).map((a) => a.trim());
     const userArr = normalizeFillAnswer(userValue, blankCount).map((a) => a.trim());
@@ -122,7 +124,7 @@ const Practice = () => {
     return true;
   };
 
-  const startPractice = async (bankId = selectedBankId) => {
+  const startPractice = async (bankId: number | null = selectedBankId) => {
     if (!bankId) return;
 
     setLoading(true);
@@ -155,12 +157,12 @@ const Practice = () => {
     }
   };
 
-  const handleAnswer = (questionId, answer) => {
+  const handleAnswer = (questionId: number, answer: string) => {
     if (submitted) return;
     setUserAnswers(prev => ({ ...prev, [questionId]: answer }));
   };
 
-  const handleFillAnswer = (questionId, blankCount, index, value) => {
+  const handleFillAnswer = (questionId: number, blankCount: number, index: number, value: string) => {
     if (submitted) return;
     setUserAnswers((prev) => {
       const current = normalizeFillAnswer(prev[questionId], blankCount);
@@ -169,9 +171,9 @@ const Practice = () => {
     });
   };
 
-  const toggleMultipleAnswer = (questionId, option) => {
+  const toggleMultipleAnswer = (questionId: number, option: string) => {
     if (submitted) return;
-    const current = userAnswers[questionId] || [];
+    const current = Array.isArray(userAnswers[questionId]) ? userAnswers[questionId] : [];
     const newAnswer = current.includes(option)
       ? current.filter(o => o !== option)
       : [...current, option].sort();
@@ -195,12 +197,12 @@ const Practice = () => {
 
   const finishPractice = async () => {
     let correct = 0;
-    const perQuestionResults = [];
+    const perQuestionResults: WrongBookPracticeResult[] = [];
     questions.forEach(q => {
       const userAnswer = userAnswers[q.id];
       if (q.type === 'multiple') {
         const correctArr = q.answer.split('|').sort();
-        const userArr = (userAnswer || []).sort();
+        const userArr = Array.isArray(userAnswer) ? [...userAnswer].sort() : [];
         if (JSON.stringify(correctArr) === JSON.stringify(userArr)) {
           correct++;
           perQuestionResults.push({ questionId: q.id, bankId: q.bankId, isCorrect: true });
@@ -234,7 +236,15 @@ const Practice = () => {
     setPracticeResult(result);
 
     try {
-      await api.practice.saveRecord(result);
+      if (result.bankId !== null) {
+        await api.practice.saveRecord({
+          bankId: result.bankId,
+          total: result.total,
+          correct: result.correct,
+          wrong: result.wrong,
+          accuracy: result.accuracy,
+        });
+      }
     } catch (error) {
       console.error('保存练习记录失败:', error);
     }
@@ -256,11 +266,11 @@ const Practice = () => {
 
   const currentQuestion = questions[currentIndex];
 
-  const isCorrect = (question) => {
+  const isCorrect = (question: PracticeQuestion): boolean => {
     const userAnswer = userAnswers[question.id];
     if (question.type === 'multiple') {
       const correctArr = question.answer.split('|').sort();
-      const userArr = (userAnswer || []).sort();
+      const userArr = Array.isArray(userAnswer) ? [...userAnswer].sort() : [];
       return JSON.stringify(correctArr) === JSON.stringify(userArr);
     }
     if (question.type === 'fill') {
@@ -286,7 +296,7 @@ const Practice = () => {
             <ActionButton variant="secondary" icon={RotateCcw} onClick={restart}>
               重新选择
             </ActionButton>
-            <ActionButton icon={Play} onClick={startPractice}>
+            <ActionButton icon={Play} onClick={() => startPractice()}>
               再练一次
             </ActionButton>
           </>
@@ -306,7 +316,7 @@ const Practice = () => {
 
     const canSubmit = (() => {
       const v = userAnswers[currentQuestion.id];
-      if (currentQuestion.type === 'multiple') return (v || []).length > 0;
+      if (currentQuestion.type === 'multiple') return Array.isArray(v) && v.length > 0;
       if (currentQuestion.type === 'fill') {
         if (blankCount <= 0) return false;
         return normalizeFillAnswer(v, blankCount).every((a) => a.trim() !== '');
@@ -353,7 +363,7 @@ const Practice = () => {
                     ? currentQuestion.answer.split('|').includes(option.id)
                     : currentQuestion.answer === option.id;
 
-                  let state = isSelected ? 'selected' : 'default';
+                  let state: AnswerCardState = isSelected ? 'selected' : 'default';
                   if (showResult) {
                     if (isCorrectOption) state = 'correct';
                     else if (isSelected && !isCorrectOption) state = 'wrong';
@@ -389,7 +399,7 @@ const Practice = () => {
                   const isSelected = userAnswers[currentQuestion.id] === option;
                   const isCorrectOption = currentQuestion.answer === option;
 
-                  let state = isSelected ? 'selected' : 'default';
+                  let state: AnswerCardState = isSelected ? 'selected' : 'default';
                   if (showResult) {
                     if (isCorrectOption) state = 'correct';
                     else if (isSelected && !isCorrectOption) state = 'wrong';
@@ -503,7 +513,7 @@ const Practice = () => {
                 index={index}
                 selected={selectedBankId === bank.id}
                 onSelect={() => setSelectedBankId(bank.id)}
-                onStart={(e) => {
+                onStart={(e: MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
                   setSelectedBankId(bank.id);
                   startPractice(bank.id);

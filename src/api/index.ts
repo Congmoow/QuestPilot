@@ -21,10 +21,13 @@ import type {
   DraftData,
   FileSelectionResult,
   ImportResult,
+  LegacyDatabaseCandidate,
   LegacyDatabaseReplaceResult,
   LegacyDatabaseStatus,
   OperationLog,
   PaginatedResult,
+  ParseError,
+  ParseResult,
   PracticeRecord,
   PracticeRecordInput,
   PracticeStats,
@@ -51,10 +54,13 @@ export type {
   DraftData,
   FileSelectionResult,
   ImportResult,
+  LegacyDatabaseCandidate,
   LegacyDatabaseReplaceResult,
   LegacyDatabaseStatus,
   OperationLog,
   PaginatedResult,
+  ParseError,
+  ParseResult,
   PracticeRecord,
   PracticeRecordInput,
   PracticeStats,
@@ -184,7 +190,7 @@ export const selectCsvFile = async (): Promise<FileSelectionResult> => {
   return normalizeFileSelectionResult(await invokeTauriCommand('csv_select_file'));
 };
 
-export const parseCsvFile = async (filePath: string): Promise<unknown> => {
+export const parseCsvFile = async (filePath: string): Promise<ParseResult> => {
   return invokeTauriCommand('csv_parse_file', { filePath });
 };
 

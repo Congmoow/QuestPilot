@@ -55,4 +55,98 @@ describe('Tauri-only API 门面', () => {
       filePath: 'D:\\data\\questions.csv',
     });
   });
+
+  it('CSV 解析直接返回类型化解析结果', async () => {
+    const { parseCsvFile } = await import('./index');
+    const parseResult = {
+      valid: [{ type: 'boolean', content: '题干', answer: '正确' }],
+      errors: [],
+      totalRows: 1,
+    };
+    invokeMock.mockResolvedValueOnce(parseResult);
+
+    await expect(parseCsvFile('D:\\data\\questions.csv')).resolves.toEqual(parseResult);
+
+    expect(invokeMock).toHaveBeenCalledWith('csv_parse_file', {
+      filePath: 'D:\\data\\questions.csv',
+    });
+  });
+
+  it('保存 API 配置时只传递配置字段', async () => {
+    const { setApiConfig } = await import('./index');
+    invokeMock.mockResolvedValueOnce({ success: true });
+
+    await setApiConfig({
+      apiKey: 'sk-test',
+      apiUrl: 'https://api.example.com',
+      modelId: 'model-a',
+      provider: 'custom',
+    });
+
+    expect(invokeMock).toHaveBeenCalledWith('settings_set_api_config', {
+      config: {
+        apiKey: 'sk-test',
+        apiUrl: 'https://api.example.com',
+        modelId: 'model-a',
+        provider: 'custom',
+      },
+    });
+  });
+
+  it('读取 API 配置时保留脱敏预览字段', async () => {
+    const { getApiConfig } = await import('./index');
+    const config = {
+      apiKey: '',
+      apiKeyPreview: 'sk-...abcd',
+      hasApiKey: true,
+      apiUrl: 'https://api.example.com',
+      modelId: 'model-a',
+      provider: 'custom',
+    };
+    invokeMock.mockResolvedValueOnce(config);
+
+    await expect(getApiConfig()).resolves.toEqual(config);
+
+    expect(invokeMock).toHaveBeenCalledWith('settings_get_api_config', {});
+  });
+
+  it('AI 问答传递消息与 promptId', async () => {
+    const { chatWithAI } = await import('./index');
+    invokeMock.mockResolvedValueOnce({ success: true, content: '回答' });
+
+    await chatWithAI([{ role: 'user', content: '问题' }], 7);
+
+    expect(invokeMock).toHaveBeenCalledWith('ai_chat', {
+      messages: [{ role: 'user', content: '问题' }],
+      promptId: 7,
+    });
+  });
+
+  it('迁移状态查询映射到 Tauri command', async () => {
+    const { getLegacyDatabaseStatus } = await import('./index');
+    const status = {
+      shouldPrompt: true,
+      targetHasData: true,
+      legacyCandidates: [],
+      requiresExplicitReset: true,
+    };
+    invokeMock.mockResolvedValueOnce(status);
+
+    await expect(getLegacyDatabaseStatus()).resolves.toEqual(status);
+
+    expect(invokeMock).toHaveBeenCalledWith('migration_get_legacy_status', {});
+  });
+
+  it('备份替换旧库时传递固定确认短语', async () => {
+    const { backupAndReplaceFromLegacy } = await import('./index');
+    const result = { success: true, backupPath: 'D:\\backup\\questpilot.db' };
+    invokeMock.mockResolvedValueOnce(result);
+
+    await expect(backupAndReplaceFromLegacy('D:\\legacy\\questpilot.db')).resolves.toEqual(result);
+
+    expect(invokeMock).toHaveBeenCalledWith('migration_backup_and_replace_from_legacy', {
+      legacyPath: 'D:\\legacy\\questpilot.db',
+      confirmation: 'BACKUP_AND_REPLACE',
+    });
+  });
 });

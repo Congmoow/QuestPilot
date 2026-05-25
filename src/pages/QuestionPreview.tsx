@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, type ChangeEvent, type MouseEvent } from 'react';
 import {
   ArrowLeft,
   BookOpen,
@@ -21,7 +21,7 @@ import { useQuestions } from '../contexts/QuestionContext';
 import QuestionBankDialog from '../components/QuestionBankDialog';
 import ConfirmDialog from '../components/ConfirmDialog';
 import QuestionEditDialog from '../components/QuestionEditDialog';
-import { exportQuestionBank } from '../api';
+import { exportQuestionBank, type CreateQuestionBankInput, type CreateQuestionInput, type QueryOptions, type Question, type QuestionBank, type QuestionType } from '../api';
 import CodeAwareText from '../components/CodeAwareText';
 import {
   ActionButton,
@@ -37,7 +37,7 @@ import {
   TypeBadge,
 } from '../components/ui';
 
-const typeMap = {
+const typeMap: Record<QuestionType, { label: string }> = {
   single: { label: '单选题' },
   multiple: { label: '多选题' },
   boolean: { label: '判断题' },
@@ -53,6 +53,13 @@ const bankTones = [
   'bg-cyan-50 text-cyan-600',
   'bg-teal-50 text-teal-600',
 ];
+
+type QuestionLoadOptions = Pick<QueryOptions, 'page' | 'type'>;
+type TypeFilterValue = QuestionType | 'all';
+
+const errorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error ? error.message : fallback;
+};
 
 const QuestionPreview = () => {
   const { banks, loading: banksLoading, error: banksError, addBank, editBank, removeBank, fetchBanks } = useQuestionBanks();
@@ -80,22 +87,22 @@ const QuestionPreview = () => {
     editQuestion,
   } = useQuestions();
 
-  const [selectedBank, setSelectedBank] = useState(null);
+  const [selectedBank, setSelectedBank] = useState<QuestionBank | null>(null);
   const [searchInput, setSearchInput] = useState('');
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editingBank, setEditingBank] = useState(null);
-  const [deletingBank, setDeletingBank] = useState(null);
+  const [editingBank, setEditingBank] = useState<QuestionBank | null>(null);
+  const [deletingBank, setDeletingBank] = useState<QuestionBank | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [deleteQuestionsDialogOpen, setDeleteQuestionsDialogOpen] = useState(false);
   const [editQuestionDialogOpen, setEditQuestionDialogOpen] = useState(false);
-  const [editingQuestion, setEditingQuestion] = useState(null);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  const loadQuestions = useCallback(async (bankId, options = {}) => {
+  const loadQuestions = useCallback(async (bankId: number, options: QuestionLoadOptions = {}) => {
     await fetchQuestions(bankId, {
       page: options.page || 1,
       type: options.type !== undefined ? options.type : filterType,
@@ -116,7 +123,7 @@ const QuestionPreview = () => {
     }
   }, [filterType]);
 
-  const handleSelectAll = (e) => {
+  const handleSelectAll = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
       selectAll();
     } else {
@@ -124,7 +131,7 @@ const QuestionPreview = () => {
     }
   };
 
-  const handleSelectOne = (id) => {
+  const handleSelectOne = (id: number) => {
     if (selectedIds.includes(id)) {
       setSelectedIds(selectedIds.filter(sid => sid !== id));
     } else {
@@ -132,7 +139,7 @@ const QuestionPreview = () => {
     }
   };
 
-  const handleEnterBank = (bank) => {
+  const handleEnterBank = (bank: QuestionBank) => {
     setSelectedBank(bank);
     setSearchInput('');
     setSearchKeyword('');
@@ -165,12 +172,12 @@ const QuestionPreview = () => {
     }
   }, [selectedBank, setSearchKeyword, loadQuestions]);
 
-  const handleTypeFilter = useCallback((type) => {
+  const handleTypeFilter = useCallback((type: TypeFilterValue) => {
     const newType = type === 'all' ? null : type;
     setFilterType(newType);
   }, [setFilterType]);
 
-  const handlePageChange = useCallback((newPage) => {
+  const handlePageChange = useCallback((newPage: number) => {
     if (selectedBank && newPage >= 1 && newPage <= totalPages) {
       setPage(newPage);
       if (searchKeyword) {
@@ -193,19 +200,19 @@ const QuestionPreview = () => {
     }
   };
 
-  const handleOpenEditQuestion = (question, e) => {
+  const handleOpenEditQuestion = (question: Question, e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     setEditingQuestion(question);
     setEditQuestionDialogOpen(true);
   };
 
-  const handleDeleteSingleQuestion = async (id, e) => {
+  const handleDeleteSingleQuestion = async (id: number, e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     setSelectedIds([id]);
     setDeleteQuestionsDialogOpen(true);
   };
 
-  const handleCreateBank = async (data) => {
+  const handleCreateBank = async (data: CreateQuestionBankInput) => {
     setSubmitting(true);
     try {
       await addBank(data);
@@ -215,13 +222,13 @@ const QuestionPreview = () => {
     }
   };
 
-  const handleOpenEditDialog = (bank, e) => {
+  const handleOpenEditDialog = (bank: QuestionBank, e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     setEditingBank(bank);
     setEditDialogOpen(true);
   };
 
-  const handleEditBank = async (data) => {
+  const handleEditBank = async (data: CreateQuestionBankInput) => {
     if (!editingBank) return;
     setSubmitting(true);
     try {
@@ -233,7 +240,7 @@ const QuestionPreview = () => {
     }
   };
 
-  const handleOpenDeleteDialog = (bank, e) => {
+  const handleOpenDeleteDialog = (bank: QuestionBank, e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     setDeletingBank(bank);
     setDeleteDialogOpen(true);
@@ -258,13 +265,13 @@ const QuestionPreview = () => {
       await exportQuestionBank(selectedBank.id);
     } catch (error) {
       console.error('导出失败:', error);
-      alert(error.message || '导出失败');
+      alert(errorMessage(error, '导出失败'));
     } finally {
       setExporting(false);
     }
   };
 
-  const formatDate = (dateStr) => {
+  const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
     return date.toLocaleDateString('zh-CN');
@@ -424,7 +431,7 @@ const QuestionPreview = () => {
           </div>
           <SelectInput
             value={filterType || 'all'}
-            onChange={(e) => handleTypeFilter(e.target.value)}
+            onChange={(e) => handleTypeFilter(e.target.value as TypeFilterValue)}
             className="w-full lg:w-44"
           >
             <option value="all">所有题型</option>
@@ -606,7 +613,7 @@ const QuestionPreview = () => {
             setEditingQuestion(null);
           }}
           question={editingQuestion}
-          onSave={async (data) => {
+          onSave={async (data: Partial<CreateQuestionInput>) => {
             await editQuestion(editingQuestion.id, data);
             setEditQuestionDialogOpen(false);
             setEditingQuestion(null);

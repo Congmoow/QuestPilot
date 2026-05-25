@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, type ChangeEvent } from 'react';
 import { Save, Send, Plus, Trash2, ArrowLeft, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuestionBanks } from '../contexts/QuestionBankContext';
 import { useQuestions } from '../contexts/QuestionContext';
-import { saveDraft, loadDraft, clearDraft } from '../api';
+import { saveDraft, loadDraft, clearDraft, type CreateQuestionInput, type DraftData, type QuestionOption, type QuestionType } from '../api';
 import { countFillBlanks } from '../lib/fillBlank';
 import {
   ActionButton,
@@ -22,6 +22,44 @@ import {
   ToolbarCard
 } from '../components/ui';
 
+type ManualEntryFormData = {
+  content: string;
+  options: QuestionOption[];
+  answer: string;
+  answers: string[];
+  fillAnswers: string[];
+  analysis: string;
+};
+
+type ManualEntrySubmitData = CreateQuestionInput & {
+  bankId: number;
+};
+
+type QuestionTypeTab = {
+  id: QuestionType;
+  label: string;
+};
+
+const initialOptions = (): QuestionOption[] => [
+  { id: 'A', text: '' },
+  { id: 'B', text: '' },
+  { id: 'C', text: '' },
+  { id: 'D', text: '' }
+];
+
+const initialFormData = (): ManualEntryFormData => ({
+  content: '',
+  options: initialOptions(),
+  answer: '',
+  answers: [],
+  fillAnswers: [],
+  analysis: '',
+});
+
+const errorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error ? error.message : fallback;
+};
+
 const ManualEntry = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -31,31 +69,19 @@ const ManualEntry = () => {
   const { addQuestion, currentBankId } = useQuestions();
   
   // 确定当前题库ID：优先使用URL参数，其次使用context中的currentBankId
-  const [selectedBankId, setSelectedBankId] = useState(null);
+  const [selectedBankId, setSelectedBankId] = useState<number | null>(null);
   
-  const [activeTab, setActiveTab] = useState('single');
-  const [formData, setFormData] = useState({
-    content: '',
-    options: [
-      { id: 'A', text: '' },
-      { id: 'B', text: '' },
-      { id: 'C', text: '' },
-      { id: 'D', text: '' }
-    ],
-    answer: '',
-    answers: [], // for multiple choice
-    fillAnswers: [], // for fill blank - 动态生成的答案数组
-    analysis: '',
-  });
+  const [activeTab, setActiveTab] = useState<QuestionType>('single');
+  const [formData, setFormData] = useState<ManualEntryFormData>(() => initialFormData());
   
   // 状态管理
-  const [errors, setErrors] = useState([]);
+  const [errors, setErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
 
-  const questionTypes = [
+  const questionTypes: QuestionTypeTab[] = [
     { id: 'single', label: '单选题' },
     { id: 'multiple', label: '多选题' },
     { id: 'boolean', label: '判断题' },
@@ -122,7 +148,7 @@ const ManualEntry = () => {
     }
   }, [blankCount, activeTab]);
 
-  const handleTabChange = (id) => {
+  const handleTabChange = (id: QuestionType) => {
     setActiveTab(id);
     setErrors([]);
     // Reset form state tailored to type
@@ -143,7 +169,7 @@ const ManualEntry = () => {
     });
   };
 
-  const removeOption = (index) => {
+  const removeOption = (index: number) => {
     if (formData.options.length <= 2) return;
     const removedId = formData.options[index].id;
     const newOptions = formData.options.filter((_, i) => i !== index);
@@ -172,13 +198,13 @@ const ManualEntry = () => {
     setFormData({ ...formData, options: reindexed, answer: newAnswer, answers: newAnswers });
   };
 
-  const updateOption = (index, text) => {
+  const updateOption = (index: number, text: string) => {
     const newOptions = [...formData.options];
     newOptions[index].text = text;
     setFormData({ ...formData, options: newOptions });
   };
 
-  const toggleMultipleAnswer = (id) => {
+  const toggleMultipleAnswer = (id: string) => {
     const current = formData.answers;
     if (current.includes(id)) {
       setFormData({ ...formData, answers: current.filter(a => a !== id) });
@@ -194,7 +220,7 @@ const ManualEntry = () => {
     });
   };
 
-  const updateFillAnswer = (index, value) => {
+  const updateFillAnswer = (index: number, value: string) => {
     const newFillAnswers = [...formData.fillAnswers];
     newFillAnswers[index] = value;
     setFormData({ ...formData, fillAnswers: newFillAnswers });
@@ -202,7 +228,7 @@ const ManualEntry = () => {
 
   // 验证表单
   const validateForm = () => {
-    const newErrors = [];
+    const newErrors: string[] = [];
 
     // 验证题库选择
     if (!selectedBankId) {
@@ -267,11 +293,16 @@ const ManualEntry = () => {
   };
 
   // 构建提交数据
-  const buildSubmitData = () => {
-    const data = {
+  const buildSubmitData = (): ManualEntrySubmitData => {
+    if (selectedBankId === null) {
+      throw new Error('请选择题库');
+    }
+
+    const data: ManualEntrySubmitData = {
       bankId: selectedBankId,
       type: activeTab,
       content: formData.content.trim(),
+      answer: '',
       analysis: formData.analysis.trim() || null,
     };
 
@@ -320,24 +351,12 @@ const ManualEntry = () => {
       setSubmitSuccess(true);
       
       // 重置表单
-      setFormData({
-        content: '',
-        options: [
-          { id: 'A', text: '' },
-          { id: 'B', text: '' },
-          { id: 'C', text: '' },
-          { id: 'D', text: '' }
-        ],
-        answer: '',
-        answers: [],
-        fillAnswers: [],
-        analysis: '',
-      });
+      setFormData(initialFormData());
       
       // 3秒后隐藏成功提示
       setTimeout(() => setSubmitSuccess(false), 3000);
     } catch (err) {
-      setErrors([err.message || '提交失败，请重试']);
+      setErrors([errorMessage(err, '提交失败，请重试')]);
     } finally {
       setSubmitting(false);
     }
@@ -347,7 +366,7 @@ const ManualEntry = () => {
   const handleSaveDraft = async () => {
     setSavingDraft(true);
     try {
-      const draftData = {
+      const draftData: DraftData = {
         type: activeTab,
         content: formData.content,
         options: formData.options,
@@ -361,7 +380,7 @@ const ManualEntry = () => {
       // 显示保存成功提示
       alert('草稿保存成功');
     } catch (err) {
-      setErrors([err.message || '保存草稿失败']);
+      setErrors([errorMessage(err, '保存草稿失败')]);
     } finally {
       setSavingDraft(false);
     }
