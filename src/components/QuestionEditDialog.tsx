@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, type ChangeEvent, type FormEvent } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import Dialog from './Dialog';
 import { countFillBlanks } from '../lib/fillBlank';
+import type { CreateQuestionInput, Question, QuestionOption, QuestionType } from '../api';
 
 /**
  * @typedef {import('../api').Question} Question
@@ -18,6 +19,20 @@ const typeOptions = [
   { value: 'short', label: '简答题' },
 ];
 
+type QuestionEditDialogErrors = {
+  content?: string;
+  options?: string;
+  answer?: string;
+};
+
+type QuestionEditDialogProps = {
+  open: boolean;
+  onClose: () => void;
+  question: Question | null;
+  onSave: (data: Partial<CreateQuestionInput>) => Promise<void>;
+  loading?: boolean;
+};
+
 /**
  * 题目编辑对话框
  * @param {{
@@ -28,14 +43,14 @@ const typeOptions = [
  *   loading?: boolean
  * }} props
  */
-const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }) => {
-  const [type, setType] = useState(question?.type || 'single');
+const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }: QuestionEditDialogProps) => {
+  const [type, setType] = useState<QuestionType>(question?.type || 'single');
   const [content, setContent] = useState(question?.content || '');
-  const [options, setOptions] = useState(question?.options || []);
+  const [options, setOptions] = useState<QuestionOption[]>(question?.options || []);
   const [answer, setAnswer] = useState(question?.answer || '');
-  const [fillAnswers, setFillAnswers] = useState([]);
+  const [fillAnswers, setFillAnswers] = useState<string[]>([]);
   const [analysis, setAnalysis] = useState(question?.analysis || '');
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<QuestionEditDialogErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
   const blankCount = useMemo(() => {
@@ -82,7 +97,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
 
   // 验证表单
   const validate = () => {
-    const newErrors = {};
+    const newErrors: QuestionEditDialogErrors = {};
     
     if (!content.trim()) {
       newErrors.content = '题干内容不能为空';
@@ -120,7 +135,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
   };
 
   // 提交表单
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (!validate()) return;
@@ -146,7 +161,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
   };
 
   // 删除选项
-  const removeOption = (index) => {
+  const removeOption = (index: number) => {
     const newOptions = options.filter((_, i) => i !== index);
     // 重新编号
     const reindexed = newOptions.map((opt, i) => ({
@@ -182,19 +197,19 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
   };
 
   // 更新选项文本
-  const updateOptionText = (index, text) => {
+  const updateOptionText = (index: number, text: string) => {
     const newOptions = [...options];
     newOptions[index] = { ...newOptions[index], text };
     setOptions(newOptions);
   };
 
   // 处理单选答案
-  const handleSingleAnswer = (optionId) => {
+  const handleSingleAnswer = (optionId: string) => {
     setAnswer(optionId);
   };
 
   // 处理多选答案
-  const handleMultipleAnswer = (optionId) => {
+  const handleMultipleAnswer = (optionId: string) => {
     const currentAnswers = answer ? answer.split('|') : [];
     if (currentAnswers.includes(optionId)) {
       setAnswer(currentAnswers.filter(id => id !== optionId).join('|'));
@@ -208,7 +223,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
     setContent(content + '___');
   };
 
-  const updateFillAnswer = (index, value) => {
+  const updateFillAnswer = (index: number, value: string) => {
     setFillAnswers((prev) => {
       const next = Array.isArray(prev) ? [...prev] : [];
       next[index] = value;
@@ -227,7 +242,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
           <select
             value={type}
             onChange={(e) => {
-              setType(e.target.value);
+              setType(e.target.value as QuestionType);
               setAnswer('');
               if (e.target.value !== 'single' && e.target.value !== 'multiple') {
                 setOptions([]);

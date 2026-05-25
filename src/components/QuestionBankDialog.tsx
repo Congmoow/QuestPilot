@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, type FormEvent } from 'react';
 import Dialog from './Dialog';
 import { ActionButton, AlertBanner, Field, TextareaInput, TextInput } from './ui';
+import type { CreateQuestionBankInput, QuestionBank } from '../api';
 
 /**
  * 题库表单对话框组件
@@ -12,10 +13,27 @@ import { ActionButton, AlertBanner, Field, TextareaInput, TextInput } from './ui
  * @param {{id?: number, name?: string, description?: string}} [props.initialData] - 初始数据（编辑模式）
  * @param {boolean} [props.loading] - 加载状态
  */
-export function QuestionBankDialog({ open, onClose, onSubmit, initialData, loading }) {
+type QuestionBankDialogErrors = {
+  name?: string;
+  submit?: string;
+};
+
+type QuestionBankDialogProps = {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (data: CreateQuestionBankInput) => Promise<void>;
+  initialData?: Partial<Pick<QuestionBank, 'id' | 'name' | 'description'>> | null;
+  loading?: boolean;
+};
+
+const errorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error ? error.message : fallback;
+};
+
+export function QuestionBankDialog({ open, onClose, onSubmit, initialData, loading = false }: QuestionBankDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<QuestionBankDialogErrors>({});
 
   const isEditMode = !!initialData?.id;
 
@@ -35,7 +53,7 @@ export function QuestionBankDialog({ open, onClose, onSubmit, initialData, loadi
 
   // 验证表单
   const validate = () => {
-    const newErrors = {};
+    const newErrors: QuestionBankDialogErrors = {};
 
     // 验证名称非空
     if (!name || name.trim() === '') {
@@ -49,7 +67,7 @@ export function QuestionBankDialog({ open, onClose, onSubmit, initialData, loadi
   };
 
   // 提交表单
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (!validate()) {
@@ -59,11 +77,11 @@ export function QuestionBankDialog({ open, onClose, onSubmit, initialData, loadi
     try {
       await onSubmit({
         name: name.trim(),
-        description: description.trim() || null,
+        description: description.trim() || undefined,
       });
       onClose();
     } catch (err) {
-      setErrors({ submit: err.message || '操作失败' });
+      setErrors({ submit: errorMessage(err, '操作失败') });
     }
   };
 

@@ -75,6 +75,8 @@ export interface DraftData {
   content: string;
   options?: QuestionOption[];
   answer?: string;
+  answers?: string[];
+  fillAnswers?: string[];
   analysis?: string;
   savedAt: string;
 }
