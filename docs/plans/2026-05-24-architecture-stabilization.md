@@ -61,7 +61,7 @@
 
 后续执行本计划时应按小步提交推进。每个阶段完成后至少执行对应验证命令，并把结果补回本文件。
 
-**阶段推进规则：** 阶段 2 起，每个阶段必须完成验证、提交并推送成功后，才允许进入下一阶段。当前阶段 5 已完成并已提交推送；阶段 5.5 已完成准入评估；阶段 6-7 必须等待阶段 5.5 提交推送成功后再开始。
+**阶段推进规则：** 阶段 2 起，每个阶段必须完成验证、提交并推送成功后，才允许进入下一阶段。当前阶段 5 已完成并已提交推送；阶段 5.5 已完成准入评估；2026-05-25 起剩余阶段以 Tauri 为开发主线继续推进，Electron 暂停主动修改。
 
 ### 阶段 2：Electron 数据层与 IPC 边界加固
 
@@ -401,6 +401,7 @@
 - Tauri 本机公开配置显示 `hasSavedApiKey=false`，真实 AI 解析和 AI 聊天未执行，继续作为准入阻塞项。
 - CSV 模板下载和题库导出仍需真实保存对话框验收，继续作为准入阻塞项。
 - 已补齐 Tauri 旧库候选路径，覆盖当前 Electron `QuestPilot`/`questpilot` 数据目录和 `questpilot.db` 文件名，并新增 Rust 测试。
+- 已补齐已有 Tauri 空库迁移策略：目标库无用户数据且 Electron 候选库有用户数据时自动替换空目标库；目标 Tauri 库已有用户数据时不静默覆盖。
 
 **已验证：**
 
@@ -410,25 +411,34 @@
 | `npm run test:api-contract` | 通过，5 个契约测试通过。 |
 | `npm run test:api-config-security` | 通过，3 个 API Key 脱敏与前端边界测试通过。 |
 | `cargo test --test database_store legacy_database_candidates_include_current_electron_data_dirs` | 先失败后通过，证明并修复当前 Electron 数据目录候选缺口。 |
+| `cargo test --test database_store database_store_replaces_empty_target_with_legacy_candidate` | 先失败后通过，证明并修复已有 Tauri 空库不会迁移 Electron 候选库的问题。 |
+| `cargo test --test database_store database_store_keeps_target_when_it_has_user_data` | 通过，确认目标 Tauri 库已有用户数据时不会被 Electron 候选库静默覆盖。 |
+| `cargo test --test database_store` | 通过，16 个数据库集成测试通过。 |
+| `cargo test` | 通过，Rust 全量测试通过。 |
 | Tauri WebView2 CDP smoke | 通过可自动验证部分；CSV 保存对话框、真实 AI、最小化/拖拽和打包产物未覆盖。 |
 
 ### 阶段 6：模块拆分与维护边界
 
 **目标：** 在安全和迁移边界稳定后，再拆分超大文件，降低后续维护成本。
 
+**当前状态：** 已按 Tauri 主线完成；Electron 相关拆分暂不执行，除非用户后续明确要求。
+
 **涉及文件：**
 
-- 拆分候选：`electron/database/index.cjs`
 - 拆分候选：`src-tauri/src/database.rs`
-- 更新测试：`scripts/__tests__/*.test.mjs`
-- 更新测试：`src-tauri/tests/*.rs`
+- 新增：`src-tauri/src/database/types.rs`
+- 新增：`src-tauri/src/database/validation.rs`
+- 新增：`src-tauri/src/database/migrations.rs`
+- 新增：`src-tauri/src/database/schema.rs`
+- 新增：`src-tauri/src/database/legacy.rs`
+- 新增：`src-tauri/src/database/queries.rs`
+- 更新测试：`src-tauri/tests/database_store.rs`
 
 **任务：**
 
 1. 先做依赖图盘点，不直接搬代码。
-   - 命令：`rg -n "function |module\\.exports|pub fn|fn " electron/database/index.cjs src-tauri/src/database.rs`
+   - 命令：`rg -n "^(pub )?(struct|enum|const|fn) |^impl " src-tauri/src/database.rs`
 2. 按领域拆分。
-   - Electron 候选：题库、题目、设置、练习、错题本、AI Prompt、聊天历史。
    - Tauri 候选：类型定义、校验、仓储方法、迁移、查询辅助函数。
 3. 每次只拆一个领域。
    - 拆分前后必须保持公开 API 不变。
@@ -442,23 +452,51 @@
 - `npm run test:db-migrations`
 - `npm run build`
 - `cargo test`
-- Electron 8 秒启动 smoke
+- 必要时执行 `npm run tauri:info`、`npm run tauri:dev` 或 Tauri CDP smoke
 
 **完成标准：**
 
 - 大文件拆分后公开 API 不变。
 - 每个领域有清晰文件归属。
 - 没有为了拆分而改变业务行为。
+- 本阶段不主动修改 Electron 源码。
+
+**已完成记录：**
+
+- 已按 Tauri 主线策略完成 `src-tauri/src/database.rs` 依赖图盘点。
+- 已新增 `src-tauri/src/database/types.rs`，将数据库公开 DTO 和序列化类型从主数据库实现文件中拆出。
+- 已新增 `src-tauri/src/database/validation.rs`，承接题库名称、题目、聊天记录、API 配置默认值和选项序列化等输入校验边界。
+- 已新增 `src-tauri/src/database/migrations.rs`，承接 schema migration 版本记录、幂等执行和失败回滚测试。
+- 已新增 `src-tauri/src/database/schema.rs`，承接数据库建表、索引、默认 Prompt 和迁移调度。
+- 已新增 `src-tauri/src/database/legacy.rs`，承接旧 Electron/Tauri 候选库查找、空目标库替换和已有用户数据保护。
+- 已新增 `src-tauri/src/database/queries.rs`，承接共享查询、映射、统计、错题本查询和设置读写辅助函数。
+- `src-tauri/src/database.rs` 通过 `pub use types::{...}` 与 `pub use legacy::legacy_database_candidates` 保持 `database::Question`、`database::ApiConfig`、`database::legacy_database_candidates` 等公开路径不变。
+- `src-tauri/src/database.rs` 已从阶段前的超大单文件拆到约 1,090 行，业务仓储方法仍留在主文件，后续可按领域继续拆服务方法。
+- 本阶段未主动修改 `electron/`、`scripts/` 或前端 `src/` 运行时代码。
+
+**已验证：**
+
+| 命令 | 结果 |
+| --- | --- |
+| `cargo fmt -- --check` | 通过。 |
+| `cargo test --test database_store` | 通过，16 个数据库集成测试通过。 |
+| `cargo test` | 通过，Rust 全量测试通过。 |
+| `npm run test:api-contract` | 通过，5 个 API 契约测试通过。 |
+| `npm run test:db-migrations` | 通过，3 个数据库迁移脚本测试通过。 |
+| `npm run build` | 通过。 |
 
 ### 阶段 7：发布前架构闸门
 
 **目标：** 在恢复发布前建立最低闸门，避免架构治理未完成时误发新版。
 
+**当前状态：** 已完成阶段 7 文档收口；Tauri 可继续作为开发主线，但发布默认运行时仍未准入。
+
 **涉及文件：**
 
 - 更新：`docs/plans/2026-05-24-architecture-stabilization.md`
-- 视情况新增：`docs/architecture/release-gate.md`
-- 视情况修改：`README.md`
+- 新增：`docs/architecture/release-gate.md`
+- 更新：`docs/architecture/runtime-acceptance.md`
+- 更新：`docs/architecture/tauri-mainline-readiness.md`
 
 **任务：**
 
@@ -471,7 +509,8 @@
    - `npm run test:db-migrations`
    - `npm run build`
    - `cargo test`
-   - Electron smoke
+   - Tauri dev 或预览级 smoke
+   - Electron smoke 仅在恢复发布或用户明确要求时执行
    - 必要时再执行打包命令。
 4. 记录人工验收结论。
    - 未完成的人工验收不得写成已验证。
@@ -480,3 +519,24 @@
 
 - 发布前必须完成的自动化和手工验证都写入文档。
 - 阻塞项未清零前，不更新发布版本。
+
+**已完成记录：**
+
+- 已新增 `docs/architecture/release-gate.md`，固化发布前自动化命令、人工验收清单、P0/P1 阻塞项和当前可发布判断。
+- 已明确阶段 7 结论：允许继续 Tauri 主线开发；不允许删除 Electron 回退线；不允许把 Tauri 设为默认发布运行时；不允许在 P0 阻塞项清零前更新发布版本或打正式包。
+- 已把真实 AI、CSV 保存对话框、Tauri 打包产物和目标 Tauri 库已有用户数据时的显式处置流程列为 P0 发布阻塞项。
+- 已把 Tauri 窗口控制、文件选择真实点击、Electron 最终回退 smoke 和发布命令人工记录列为 P1 或待验收项。
+- 已同步 `docs/architecture/runtime-acceptance.md` 和 `docs/architecture/tauri-mainline-readiness.md` 的阶段 7 入口。
+
+**已验证：**
+
+| 命令 | 结果 |
+| --- | --- |
+| `cargo fmt -- --check` | 通过。 |
+| `cargo test --test database_store` | 通过，16 个数据库集成测试通过。 |
+| `cargo test` | 通过，Rust 全量测试通过。 |
+| `npm run test:api-contract` | 通过，5 个 API 契约测试通过。 |
+| `npm run test:api-config-security` | 通过，3 个 API Key 安全测试通过。 |
+| `npm run test:db-migrations` | 通过，3 个数据库迁移脚本测试通过。 |
+| `npm run build` | 通过。 |
+| `git diff --check` | 通过，仅保留 Git 行尾提示。 |

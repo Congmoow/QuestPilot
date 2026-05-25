@@ -7,6 +7,8 @@
 
 - Electron 继续作为当前稳定运行时。
 - 阶段 5.5 的 Tauri 主线化准入结论是 `Tauri-continue-validation`：Tauri 继续作为迁移验证线，暂不替换 Electron，也不进入发布默认运行时。
+- 2026-05-25 起，剩余阶段以 Tauri 作为开发主线推进，Electron 暂停修改并仅保留为回退参考；该决策不代表 Tauri 已满足发布默认运行时准入。
+- 阶段 7 已新增发布前架构闸门：`docs/architecture/release-gate.md`。P0 阻塞项清零前，不更新发布版本，也不把 Tauri 设为默认发布运行时。
 - 阶段 5 的目标是把真实状态、差异类别和发布前阻塞项固化到文档中；未完成的人工验收不会写成已验证。
 - 阶段 5.5 的详细记录见 `docs/architecture/tauri-mainline-readiness.md`。
 
@@ -32,7 +34,7 @@
 | Tauri 启动 | `npm run tauri:dev` | 通过，Vite 与 `questpilot-tauri.exe` 正常启动；WebView2 CDP 可见 `QuestPilot` 页面目标。 |
 | Tauri 路由 | WebView2 CDP route smoke | 通过：`#/dashboard`、`#/manual-entry`、`#/csv-import`、`#/practice`、`#/wrong-book`、`#/ai-import`、`#/ai-chat`、`#/settings` 均能加载根节点内容。 |
 | Tauri API | WebView2 CDP API smoke | 通过：Tauri runtime 识别、无 Electron API、公开配置不返回完整 Key、设置保存、题库 CRUD、题目 CRUD、CSV 导入、练习记录、错题本、Prompt、聊天历史均通过，并清理临时数据。 |
-| Tauri 主线化准入 | 阶段 5.5 smoke 与数据迁移候选测试 | 未进入 `Tauri-first`；Tauri 本地 API、路由和最大化切换通过，但真实 AI、CSV 保存对话框、已有 Tauri 空库迁移策略和打包产物仍是阻塞项。 |
+| Tauri 主线化准入 | 阶段 5.5 smoke 与数据迁移候选测试 | 未进入 `Tauri-first`；Tauri 本地 API、路由、最大化切换和已有 Tauri 空库迁移策略通过，但真实 AI、CSV 保存对话框、目标 Tauri 库已有用户数据时的显式合并策略和打包产物仍是阻塞项。 |
 
 说明：Tauri smoke 结束时通过 `Ctrl+C` 正常中断 dev 进程，控制台返回 `STATUS_CONTROL_C_EXIT` 属于本次受控退出的预期结果。Electron smoke 中仍可见既有 Windows 网络状态告警 `WSALookupServiceBegin failed with: 10108`，未导致运行时退出。
 
@@ -69,7 +71,7 @@
 
 ### 窗口和文件系统差异
 
-- Electron 和 Tauri 使用不同运行时、窗口壳和应用数据目录。阶段 5 只验证临时数据在各自运行时内可用，没有验证 Electron 既有数据迁移到 Tauri。
+- Electron 和 Tauri 使用不同运行时、窗口壳和应用数据目录。阶段 5 只验证临时数据在各自运行时内可用；阶段 5.5 已补齐目标 Tauri 库缺失或为空时的 Electron 候选库迁移，并保护已有用户数据的 Tauri 目标库不被静默覆盖。
 - Tauri 的透明无边框窗口、拖拽区域、最小化、最大化和关闭按钮需要真实窗口人工点击验收。
 
 ### 未实现或未完成验收
@@ -82,18 +84,20 @@
 
 短期取舍：
 
-- Electron 保持默认稳定运行时，用于后续架构治理和恢复发布前验收。
-- Tauri 保持迁移验证线，继续通过 `cargo test`、`npm run tauri:info`、`npm run tauri:dev` 和必要的 CDP smoke 保活。
+- Tauri 作为后续架构治理和模块拆分的开发主线，继续通过 `cargo test`、`npm run tauri:info`、`npm run tauri:dev` 和必要的 CDP smoke 保活。
+- Electron 暂停主动修改，仅作为回退参考；恢复发布前是否补 Electron smoke 由发布闸门单独判断。
 
 Tauri 替换 Electron 前的阻塞项：
 
 1. 完成 Tauri 真实窗口人工验收：CSV 模板下载、CSV 导出、文件选择、窗口控制、取消路径和异常路径。
 2. 完成真实 AI Key 下的解析与聊天验收，并确认错误和日志不泄露完整 Key。
-3. 明确 Electron 数据目录到 Tauri 数据目录的迁移策略，至少覆盖旧库读取、失败回滚和重复启动幂等。
+3. 明确目标 Tauri 库已有用户数据时的显式合并、人工导入或用户确认重置策略，并继续覆盖失败回滚和重复启动幂等。
 4. 执行 Tauri 打包或预览级 smoke，确认安装包或可执行产物能启动并访问同一套核心流程。
 5. 更新发布闸门，明确未通过上述阻塞项前不得把 Tauri 设为默认发布运行时。
 
 ## 发布前验收清单
+
+完整闸门见 `docs/architecture/release-gate.md`。本节仅保留运行时验收入口。
 
 - `npm run test:api-contract`
 - `npm run test:api-config-security`

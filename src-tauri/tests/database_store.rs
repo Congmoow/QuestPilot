@@ -217,6 +217,65 @@ fn database_store_can_open_from_legacy_candidate_when_target_is_missing() {
 }
 
 #[test]
+fn database_store_replaces_empty_target_with_legacy_candidate() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let target_path = temp_dir.path().join("questpilot.db");
+    let legacy_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
+
+    let target = DatabaseStore::open(&target_path).expect("应能创建 Tauri 空库");
+    assert!(target.get_all_banks().expect("应能读取空库题库").is_empty());
+    drop(target);
+
+    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库");
+    legacy
+        .create_bank(CreateQuestionBankInput {
+            name: "Electron 题库".to_string(),
+            description: Some("来自 Electron 当前数据目录".to_string()),
+        })
+        .expect("候选库应能写入题库");
+    drop(legacy);
+
+    let migrated = DatabaseStore::open_with_legacy_candidates(&target_path, &[legacy_path])
+        .expect("应能用候选库替换无用户数据的 Tauri 空库");
+    let banks = migrated.get_all_banks().expect("应能读取迁移后的题库");
+
+    assert_eq!(banks.len(), 1);
+    assert_eq!(banks[0].name, "Electron 题库");
+}
+
+#[test]
+fn database_store_keeps_target_when_it_has_user_data() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let target_path = temp_dir.path().join("questpilot.db");
+    let legacy_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
+
+    let target = DatabaseStore::open(&target_path).expect("应能创建 Tauri 库");
+    target
+        .create_bank(CreateQuestionBankInput {
+            name: "Tauri 题库".to_string(),
+            description: None,
+        })
+        .expect("Tauri 库应能写入题库");
+    drop(target);
+
+    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库");
+    legacy
+        .create_bank(CreateQuestionBankInput {
+            name: "Electron 题库".to_string(),
+            description: None,
+        })
+        .expect("Electron 候选库应能写入题库");
+    drop(legacy);
+
+    let migrated = DatabaseStore::open_with_legacy_candidates(&target_path, &[legacy_path])
+        .expect("目标库已有用户数据时应保留目标库");
+    let banks = migrated.get_all_banks().expect("应能读取目标库题库");
+
+    assert_eq!(banks.len(), 1);
+    assert_eq!(banks[0].name, "Tauri 题库");
+}
+
+#[test]
 fn legacy_database_candidates_include_current_electron_data_dirs() {
     let temp_dir = tempdir().expect("应能创建临时目录");
     let target_path = temp_dir
