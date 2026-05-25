@@ -1,12 +1,20 @@
 {
   "name": "questpilot",
   "private": true,
-  "version": "1.6.7",
+  "version": "1.7.7",
   "type": "module",
   "author": {
-    "name": ""
+    "name": "WangZhongWu"
   },
   "description": "QuestPilot - 一款用于管理和组织考试题目的桌面应用程序",
+  "homepage": "https://github.com/Congmoow/QuestPilot/releases",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Congmoow/QuestPilot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Congmoow/QuestPilot/issues"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
