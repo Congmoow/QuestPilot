@@ -1,13 +1,13 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, type ChangeEventHandler, type ElementType, type KeyboardEventHandler, type ReactNode, type RefObject } from 'react';
 import { Bot, Camera, Paperclip, Send, Sparkles, ArrowRight } from 'lucide-react';
 import { getPublicAssetPath } from '../../lib/assets';
 import { cn } from '../../lib/utils';
 import { ActionButton, EmptyState, SurfaceCard } from './base';
 
-export function JsonEditorPanel({ value, onChange, placeholder, title = '输入 JSON 数据', supportText, className }) {
+export function JsonEditorPanel({ value, onChange, placeholder, title = '输入 JSON 数据', supportText, className }: { value: string; onChange: ChangeEventHandler<HTMLTextAreaElement>; placeholder?: string; title?: ReactNode; supportText?: ReactNode; className?: string }) {
   const lineCount = Math.max(18, String(value || placeholder || '').split('\n').length);
-  const lineNumbersRef = useRef(null);
-  const textareaRef = useRef(null);
+  const lineNumbersRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleScroll = useCallback(() => {
     if (lineNumbersRef.current && textareaRef.current) {
@@ -42,7 +42,7 @@ export function JsonEditorPanel({ value, onChange, placeholder, title = '输入 
   );
 }
 
-export function ParsedQuestionItem({ question, index, typeLabel, onRemove, removeIcon: RemoveIcon }) {
+export function ParsedQuestionItem({ question, index, typeLabel, onRemove, removeIcon: RemoveIcon }: { question: { content: string; answer: string }; index: number; typeLabel: ReactNode; onRemove?: () => void; removeIcon?: ElementType }) {
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-4 transition-colors hover:border-blue-200 hover:bg-blue-50/40 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700">
       <div className="flex items-start justify-between gap-3">
@@ -69,7 +69,7 @@ export function ParsedQuestionItem({ question, index, typeLabel, onRemove, remov
   );
 }
 
-export function AIChatWelcome({ features }) {
+export function AIChatWelcome({ features }: { features?: Array<{ title: string; description: string; icon?: ElementType; iconSrc?: string; iconClass?: string }> }) {
   return (
     <div className="flex flex-col items-center text-center w-full max-w-[880px]">
       <div className="relative mb-2">
@@ -113,7 +113,7 @@ export function AIChatWelcome({ features }) {
   );
 }
 
-export function ChatMessageBubble({ role, children, avatar, className }) {
+export function ChatMessageBubble({ role, children, avatar, className }: { role: string; children?: ReactNode; avatar?: ReactNode; className?: string }) {
   const isUser = role === 'user';
   return (
     <div className={cn('flex gap-3', isUser && 'flex-row-reverse', className)}>
@@ -129,7 +129,7 @@ export function ChatMessageBubble({ role, children, avatar, className }) {
   );
 }
 
-export function ChatComposer({ value, onChange, onKeyDown, onSend, loading, disabled, inputRef, placeholder = '输入你的问题...' }) {
+export function ChatComposer({ value, onChange, onKeyDown, onSend, loading, disabled, inputRef, placeholder = '输入你的问题...' }: { value: string; onChange: ChangeEventHandler<HTMLTextAreaElement>; onKeyDown?: KeyboardEventHandler<HTMLTextAreaElement>; onSend: () => void; loading?: boolean; disabled?: boolean; inputRef?: RefObject<HTMLTextAreaElement>; placeholder?: string }) {
   return (
     <div className="rounded-[20px] border border-blue-200/60 bg-white p-4 shadow-[0_2px_16px_rgba(37,99,235,0.06)] dark:border-gray-700 dark:bg-gray-800">
       <textarea
@@ -169,7 +169,7 @@ export function ChatComposer({ value, onChange, onKeyDown, onSend, loading, disa
   );
 }
 
-const JiexiIcon = ({ size = 44, ...props }) => (
+const JiexiIcon = ({ size = 44, ...props }: { size?: number; [key: string]: unknown }) => (
   <img src={getPublicAssetPath('/jiexi-icon.webp')} alt="解析" width={size} height={size} {...props} />
 );
 

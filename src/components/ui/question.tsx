@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { type ButtonHTMLAttributes, type ElementType, type ReactNode } from 'react';
 import { ArrowRight, CalendarDays, Edit3, Trash2 } from 'lucide-react';
 import { getPublicAssetPath } from '../../lib/assets';
 import { cn } from '../../lib/utils';
 import { ActionButton, IconButton, SurfaceCard, StatusBadge } from './base';
 
-const typeVariants = {
+const typeVariants: Record<string, 'primary' | 'success' | 'warning' | 'danger' | 'muted' | 'purple' | 'orange'> = {
   single: 'primary',
   multiple: 'success',
   boolean: 'orange',
@@ -30,13 +30,13 @@ const QB_ICONS = [
   '/questionbank-icons/QBicon7.webp',
 ];
 
-const getRandomIcon = (bankId) => {
+const getRandomIcon = (bankId: number | undefined) => {
   const seed = bankId ? bankId * 9301 + 49297 : Date.now();
   const index = seed % QB_ICONS.length;
   return getPublicAssetPath(QB_ICONS[index]);
 };
 
-export function QuestionBankCard({ bank, icon: Icon, onClick, onEdit, onDelete, formatDate, toneClass = 'bg-blue-50 text-primary' }) {
+export function QuestionBankCard({ bank, icon: Icon, onClick, onEdit, onDelete, formatDate, toneClass = 'bg-blue-50 text-primary' }: { bank: { id: number; name: string; description?: string | null; createdAt: string; questionCount?: number; question_count?: number }; icon?: ElementType; onClick?: () => void; onEdit?: ButtonHTMLAttributes<HTMLButtonElement>['onClick']; onDelete?: ButtonHTMLAttributes<HTMLButtonElement>['onClick']; formatDate?: (v: string) => string; toneClass?: string }) {
   const iconSrc = getRandomIcon(bank.id);
 
   return (
@@ -65,7 +65,7 @@ export function QuestionBankCard({ bank, icon: Icon, onClick, onEdit, onDelete, 
   );
 }
 
-export function PracticeCard({ bank, icon: Icon, index = 0, selected = false, onSelect, onStart }) {
+export function PracticeCard({ bank, icon: Icon, index = 0, selected = false, onSelect, onStart }: { bank: { id: number; name: string; questionCount?: number; question_count?: number }; icon?: ElementType; index?: number; selected?: boolean; onSelect?: () => void; onStart?: ButtonHTMLAttributes<HTMLButtonElement>['onClick'] }) {
   const iconSrc = getRandomIcon(bank.id);
 
   return (
@@ -95,7 +95,7 @@ export function PracticeCard({ bank, icon: Icon, index = 0, selected = false, on
   );
 }
 
-export function QuestionCard({ children, selected = false, className }) {
+export function QuestionCard({ children, selected = false, className }: { children?: ReactNode; selected?: boolean; className?: string }) {
   return (
     <SurfaceCard className={cn(selected && 'ring-2 ring-primary/25', className)} padding="p-6">
       {children}
@@ -103,7 +103,7 @@ export function QuestionCard({ children, selected = false, className }) {
   );
 }
 
-export function QuizShell({ current, total, children, actions, className }) {
+export function QuizShell({ current, total, children, actions, className }: { current: number; total: number; children?: ReactNode; actions?: ReactNode; className?: string }) {
   const progress = total > 0 ? Math.round((current / total) * 100) : 0;
   return (
     <div className={cn('mx-auto max-w-3xl space-y-5', className)}>
@@ -124,7 +124,7 @@ export function QuizShell({ current, total, children, actions, className }) {
   );
 }
 
-export function AnswerOptionCard({ children, state = 'default', onClick, disabled }) {
+export function AnswerOptionCard({ children, state = 'default', onClick, disabled }: { children?: ReactNode; state?: 'default' | 'selected' | 'correct' | 'wrong'; onClick?: () => void; disabled?: boolean }) {
   const stateClass = {
     default: 'border-gray-200 bg-white hover:border-primary hover:bg-blue-50/60 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700',
     selected: 'border-primary bg-primary-soft text-primary',
@@ -143,7 +143,7 @@ export function AnswerOptionCard({ children, state = 'default', onClick, disable
   );
 }
 
-export function ResultSummary({ title, subtitle, stats, score, actions, icon: Icon }) {
+export function ResultSummary({ title, subtitle, stats, score, actions, icon: Icon }: { title: ReactNode; subtitle?: ReactNode; stats: Array<{ label: string; value: ReactNode; className?: string }>; score?: number | null; actions?: ReactNode; icon?: ElementType }) {
   return (
     <SurfaceCard className="mx-auto max-w-2xl text-center" padding="p-8">
       {Icon && (
@@ -172,7 +172,7 @@ export function ResultSummary({ title, subtitle, stats, score, actions, icon: Ic
   );
 }
 
-export function Pagination({ page, totalPages, onPageChange, className }) {
+export function Pagination({ page, totalPages, onPageChange, className }: { page: number; totalPages: number; onPageChange: (page: number) => void; className?: string }) {
   if (!totalPages || totalPages <= 1) return null;
   return (
     <div className={cn('flex items-center justify-center gap-2', className)}>
@@ -183,6 +183,6 @@ export function Pagination({ page, totalPages, onPageChange, className }) {
   );
 }
 
-export function TypeBadge({ type, label }) {
-  return <StatusBadge variant={typeVariants[type] || 'muted'}>{label}</StatusBadge>;
+export function TypeBadge({ type, label }: { type: string; label: ReactNode }) {
+  return <StatusBadge variant={typeVariants[type] ?? 'muted'}>{label}</StatusBadge>;
 }

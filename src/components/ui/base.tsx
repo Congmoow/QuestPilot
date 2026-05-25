@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { type ButtonHTMLAttributes, type ElementType, type HTMLAttributes, type ReactNode } from 'react';
 import { AlertCircle, CheckCircle2, Info, Loader2, XCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
+
+type IconComponent = ElementType;
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
+type BadgeVariant = 'primary' | 'success' | 'warning' | 'danger' | 'muted' | 'purple' | 'orange';
 
 const buttonVariants = {
   primary: 'bg-primary text-white shadow-soft hover:bg-primary-hover active:bg-primary-active disabled:bg-primary/45',
@@ -39,7 +43,7 @@ const alertVariants = {
   },
 };
 
-export function PageHeader({ title, subtitle, actions, className }) {
+export function PageHeader({ title, subtitle, actions, className }: { title?: ReactNode; subtitle?: ReactNode; actions?: ReactNode; className?: string }) {
   return (
     <header className={cn('flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between', className)}>
       <div className="min-w-0">
@@ -51,7 +55,7 @@ export function PageHeader({ title, subtitle, actions, className }) {
   );
 }
 
-export function PageHeaderNoTitle({ subtitle, actions, className }) {
+export function PageHeaderNoTitle({ subtitle, actions, className }: { subtitle?: ReactNode; actions?: ReactNode; className?: string }) {
   return (
     <header className={cn('flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between', className)}>
       <div className="min-w-0">
@@ -62,7 +66,7 @@ export function PageHeaderNoTitle({ subtitle, actions, className }) {
   );
 }
 
-export function SurfaceCard({ children, className, hover = false, padding = 'p-6', as: Component = 'section', ...props }) {
+export function SurfaceCard({ children, className, hover = false, padding = 'p-6', as: Component = 'section', ...props }: HTMLAttributes<HTMLElement> & { children?: ReactNode; className?: string; hover?: boolean; padding?: string; as?: ElementType }) {
   return (
     <Component className={cn('ui-card', hover && 'ui-card-hover', padding, className)} {...props}>
       {children}
@@ -70,7 +74,7 @@ export function SurfaceCard({ children, className, hover = false, padding = 'p-6
   );
 }
 
-export function ToolbarCard({ children, className }) {
+export function ToolbarCard({ children, className }: { children?: ReactNode; className?: string }) {
   return (
     <SurfaceCard className={cn('flex flex-col gap-4', className)} padding="p-5">
       {children}
@@ -87,7 +91,7 @@ export function ActionButton({
   className,
   type = 'button',
   ...props
-}) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { children?: ReactNode; variant?: ButtonVariant; size?: 'sm' | 'md' | 'lg'; icon?: IconComponent; loading?: boolean; className?: string }) {
   const sizes = {
     sm: 'h-9 px-3 text-xs',
     md: 'h-10 px-4 text-xs',
@@ -111,7 +115,7 @@ export function ActionButton({
   );
 }
 
-export function IconButton({ label, icon: Icon, variant = 'ghost', className, type = 'button', tooltip = true, ...props }) {
+export function IconButton({ label, icon: Icon, variant = 'ghost', className, type = 'button', tooltip = true, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; icon?: IconComponent; variant?: ButtonVariant; className?: string; tooltip?: boolean }) {
   return (
     <div className="group relative inline-flex">
       <button
@@ -136,7 +140,7 @@ export function IconButton({ label, icon: Icon, variant = 'ghost', className, ty
   );
 }
 
-export function StatusBadge({ children, variant = 'primary', className }) {
+export function StatusBadge({ children, variant = 'primary', className }: { children?: ReactNode; variant?: BadgeVariant; className?: string }) {
   return (
     <span className={cn('inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold', badgeVariants[variant] || badgeVariants.primary, className)}>
       {children}
@@ -144,7 +148,7 @@ export function StatusBadge({ children, variant = 'primary', className }) {
   );
 }
 
-export function AlertBanner({ type = 'info', title, children, className }) {
+export function AlertBanner({ type = 'info', title, children, className }: { type?: 'info' | 'success' | 'warning' | 'danger'; title?: ReactNode; children?: ReactNode; className?: string }) {
   const config = alertVariants[type] || alertVariants.info;
   const Icon = config.icon;
 
@@ -159,7 +163,7 @@ export function AlertBanner({ type = 'info', title, children, className }) {
   );
 }
 
-export function EmptyState({ icon: Icon = Info, title, description, action, className, bareIcon }) {
+export function EmptyState({ icon: Icon = Info, title, description, action, className, bareIcon }: { icon?: IconComponent; title?: ReactNode; description?: ReactNode; action?: ReactNode; className?: string; bareIcon?: boolean }) {
   return (
     <div className={cn('flex min-h-[260px] flex-col items-center justify-center rounded-card px-6 py-12 text-center', className)}>
       {bareIcon ? (
@@ -182,7 +186,7 @@ export function EmptyState({ icon: Icon = Info, title, description, action, clas
   );
 }
 
-export function SegmentedTabs({ tabs, value, onChange, className }) {
+export function SegmentedTabs<T extends string = string>({ tabs, value, onChange, className }: { tabs: Array<{ id: T; label: ReactNode; icon?: IconComponent; disabled?: boolean; title?: string }>; value: T; onChange: (id: T) => void; className?: string }) {
   return (
     <div className={cn('inline-flex rounded-2xl border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-800', className)}>
       {tabs.map((tab) => {

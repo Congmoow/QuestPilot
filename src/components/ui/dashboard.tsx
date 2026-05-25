@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import { ArrowUpRight, Clock } from 'lucide-react';
 import { getPublicAssetPath } from '../../lib/assets';
 import { cn } from '../../lib/utils';
@@ -18,7 +18,7 @@ const DASHBOARD_ICONS = [
   '/dashboard-icons/icon-4.webp',
 ];
 
-export function StatCard({ title, value, trend, iconIndex = 0, tone = 'blue' }) {
+export function StatCard({ title, value, trend, iconIndex = 0, tone = 'blue' }: { title: ReactNode; value: ReactNode; trend?: { label: ReactNode; value: ReactNode }; iconIndex?: number; tone?: string }) {
   const iconSrc = getPublicAssetPath(DASHBOARD_ICONS[iconIndex % DASHBOARD_ICONS.length]);
 
   return (
@@ -43,7 +43,7 @@ export function StatCard({ title, value, trend, iconIndex = 0, tone = 'blue' }) 
   );
 }
 
-export function ChartCard({ title, icon: Icon, action, children, className }) {
+export function ChartCard({ title, icon: Icon, action, children, className }: { title: ReactNode; icon?: React.ElementType; action?: ReactNode; children?: ReactNode; className?: string }) {
   return (
     <SurfaceCard className={className} padding="p-5">
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -58,7 +58,7 @@ export function ChartCard({ title, icon: Icon, action, children, className }) {
   );
 }
 
-export function TimelineLog({ logs, formatTime, emptyText = '暂无操作记录', className }) {
+export function TimelineLog({ logs, formatTime, emptyText = '暂无操作记录', className }: { logs?: Array<{ id?: number; action: string; detail?: string; createdAt: string }>; formatTime?: (value: string) => string; emptyText?: ReactNode; className?: string }) {
   const getVariant = (action = '') => {
     if (action.includes('删除')) return 'danger';
     if (action.includes('添加') || action.includes('新增')) return 'success';

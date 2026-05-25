@@ -1,8 +1,17 @@
-import React from 'react';
+import React, { type ChangeEventHandler, type InputHTMLAttributes, type KeyboardEventHandler, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { Eye, EyeOff, Search, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-export function Field({ label, required = false, hint, error, children, className }) {
+type FieldProps = {
+  label?: ReactNode;
+  required?: boolean;
+  hint?: ReactNode;
+  error?: ReactNode;
+  children?: ReactNode;
+  className?: string;
+};
+
+export function Field({ label, required = false, hint, error, children, className }: FieldProps) {
   return (
     <div className={cn('space-y-2', className)}>
       {label && (
@@ -18,7 +27,7 @@ export function Field({ label, required = false, hint, error, children, classNam
   );
 }
 
-export function TextInput({ className, error, ...props }) {
+export function TextInput({ className, error, ...props }: InputHTMLAttributes<HTMLInputElement> & { className?: string; error?: ReactNode | boolean }) {
   return (
     <input
       className={cn(
@@ -31,7 +40,7 @@ export function TextInput({ className, error, ...props }) {
   );
 }
 
-export function TextareaInput({ className, error, rows = 4, ...props }) {
+export function TextareaInput({ className, error, rows = 4, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement> & { className?: string; error?: ReactNode | boolean }) {
   return (
     <textarea
       rows={rows}
@@ -45,7 +54,7 @@ export function TextareaInput({ className, error, rows = 4, ...props }) {
   );
 }
 
-export function SelectInput({ className, children, ...props }) {
+export function SelectInput({ className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { className?: string; children?: ReactNode }) {
   return (
     <div className="relative">
       <select
@@ -62,7 +71,7 @@ export function SelectInput({ className, children, ...props }) {
   );
 }
 
-export function PasswordInput({ show, onToggleShow, className, ...props }) {
+export function PasswordInput({ show, onToggleShow, className, ...props }: InputHTMLAttributes<HTMLInputElement> & { show: boolean; onToggleShow: () => void; className?: string }) {
   return (
     <div className="relative">
       <input
@@ -83,7 +92,7 @@ export function PasswordInput({ show, onToggleShow, className, ...props }) {
   );
 }
 
-export function SearchInput({ value, onChange, onClear, onEnter, placeholder = '搜索', className }) {
+export function SearchInput({ value, onChange, onClear, onEnter, placeholder = '搜索', className }: { value: string; onChange: ChangeEventHandler<HTMLInputElement>; onClear?: () => void; onEnter?: KeyboardEventHandler<HTMLInputElement>; placeholder?: string; className?: string }) {
   return (
     <div className={cn('relative', className)}>
       <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
