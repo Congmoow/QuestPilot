@@ -3,8 +3,18 @@ import api from '../../../api';
 import type { WrongBookItem, WrongBookPracticeResult } from '../../../api';
 import { countFillBlanks } from '../../../lib/fillBlank';
 import { useQuestionBanks } from '../../../contexts/QuestionBankContext';
-import type { PracticeAnswerMap, PracticeAnswerValue, PracticeQuestion, PracticeResultView } from '../../../types/viewModels';
-import { isFillAnswerCorrect, normalizeFillAnswer, shuffleArray, shuffleQuestionOptions } from '../utils/practiceHelpers';
+import type {
+  PracticeAnswerMap,
+  PracticeAnswerValue,
+  PracticeQuestion,
+  PracticeResultView,
+} from '../../../types/viewModels';
+import {
+  isFillAnswerCorrect,
+  normalizeFillAnswer,
+  shuffleArray,
+  shuffleQuestionOptions,
+} from '../utils/practiceHelpers';
 
 export const useWrongBook = () => {
   const { banks, fetchBanks: refreshBanks } = useQuestionBanks();
@@ -33,6 +43,7 @@ export const useWrongBook = () => {
 
   useEffect(() => {
     refreshBanks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadItems = async (bankId: number | null, targetPage = 1) => {
@@ -57,6 +68,7 @@ export const useWrongBook = () => {
 
   useEffect(() => {
     loadItems(selectedBankId, 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBankId]);
 
   const currentBankName = useMemo(() => {
@@ -82,12 +94,13 @@ export const useWrongBook = () => {
     try {
       const count = Number(practiceCount) > 0 ? Number(practiceCount) : 20;
       const result = await api.wrongBook.getRandomQuestions(selectedBankId, count);
-      if (!result || result.length === 0) { alert('错题本暂无题目'); return; }
+      if (!result || result.length === 0) {
+        alert('错题本暂无题目');
+        return;
+      }
 
       const shuffled = shuffleArray(result).map((q) =>
-        (q.type === 'single' || q.type === 'multiple') && q.options
-          ? shuffleQuestionOptions(q)
-          : q
+        (q.type === 'single' || q.type === 'multiple') && q.options ? shuffleQuestionOptions(q) : q,
       );
 
       setQuestions(shuffled);
@@ -109,7 +122,12 @@ export const useWrongBook = () => {
     setUserAnswers((prev) => ({ ...prev, [questionId]: answer }));
   };
 
-  const handleFillAnswer = (questionId: number, blankCount: number, index: number, value: string) => {
+  const handleFillAnswer = (
+    questionId: number,
+    blankCount: number,
+    index: number,
+    value: string,
+  ) => {
     if (submitted) return;
     setUserAnswers((prev) => {
       const current = normalizeFillAnswer(prev[questionId], blankCount);
@@ -120,7 +138,9 @@ export const useWrongBook = () => {
 
   const toggleMultipleAnswer = (questionId: number, option: string) => {
     if (submitted) return;
-    const current: PracticeAnswerValue = Array.isArray(userAnswers[questionId]) ? userAnswers[questionId] : [];
+    const current: PracticeAnswerValue = Array.isArray(userAnswers[questionId])
+      ? userAnswers[questionId]
+      : [];
     const newAnswer = (current as string[]).includes(option)
       ? (current as string[]).filter((o) => o !== option)
       : [...(current as string[]), option].sort();
@@ -243,21 +263,41 @@ export const useWrongBook = () => {
 
   return {
     banks,
-    selectedBankId, setSelectedBankId,
-    practiceCount, setPracticeCount,
-    items, total, page, setPage, totalPages, loading, loadError,
+    selectedBankId,
+    setSelectedBankId,
+    practiceCount,
+    setPracticeCount,
+    items,
+    total,
+    page,
+    setPage,
+    totalPages,
+    loading,
+    loadError,
     practicing,
-    questions, currentIndex, currentQuestion,
-    userAnswers, showResult, submitted, practiceResult,
-    clearDialogOpen, setClearDialogOpen,
+    questions,
+    currentIndex,
+    currentQuestion,
+    userAnswers,
+    showResult,
+    submitted,
+    practiceResult,
+    clearDialogOpen,
+    setClearDialogOpen,
     removingId,
     currentBankName,
     canSubmit,
     loadItems,
     startPractice,
-    handleAnswer, handleFillAnswer, toggleMultipleAnswer,
-    submitAnswer, nextQuestion, finishPractice, restart,
-    handleRemoveItem, handleClear,
+    handleAnswer,
+    handleFillAnswer,
+    toggleMultipleAnswer,
+    submitAnswer,
+    nextQuestion,
+    finishPractice,
+    restart,
+    handleRemoveItem,
+    handleClear,
     isCorrect,
     normalizeFillAnswer,
   };

@@ -36,11 +36,13 @@ const ThresholdSection = () => {
           />
         </Field>
 
-        {savedWrongBook && (
-          <AlertBanner type="success">阈值已保存</AlertBanner>
-        )}
+        {savedWrongBook && <AlertBanner type="success">阈值已保存</AlertBanner>}
 
-        <ActionButton onClick={handleSaveWrongBookThreshold} disabled={savingWrongBook} loading={savingWrongBook}>
+        <ActionButton
+          onClick={handleSaveWrongBookThreshold}
+          disabled={savingWrongBook}
+          loading={savingWrongBook}
+        >
           保存设置
         </ActionButton>
       </div>

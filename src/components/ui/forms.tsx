@@ -1,4 +1,11 @@
-import React, { type ChangeEventHandler, type InputHTMLAttributes, type KeyboardEventHandler, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import React, {
+  type ChangeEventHandler,
+  type InputHTMLAttributes,
+  type KeyboardEventHandler,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from 'react';
 import { Eye, EyeOff, Search, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -27,41 +34,57 @@ export function Field({ label, required = false, hint, error, children, classNam
   );
 }
 
-export function TextInput({ className, error, ...props }: InputHTMLAttributes<HTMLInputElement> & { className?: string; error?: ReactNode | boolean }) {
+export function TextInput({
+  className,
+  error,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { className?: string; error?: ReactNode | boolean }) {
   return (
     <input
       className={cn(
         'ui-control w-full px-4 text-sm placeholder:text-gray-400',
         error && 'border-danger focus:border-danger focus:shadow-[0_0_0_4px_rgba(239,68,68,0.12)]',
-        className
+        className,
       )}
       {...props}
     />
   );
 }
 
-export function TextareaInput({ className, error, rows = 4, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement> & { className?: string; error?: ReactNode | boolean }) {
+export function TextareaInput({
+  className,
+  error,
+  rows = 4,
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  className?: string;
+  error?: ReactNode | boolean;
+}) {
   return (
     <textarea
       rows={rows}
       className={cn(
         'ui-control w-full resize-y px-4 py-3 text-sm leading-6 placeholder:text-gray-400',
         error && 'border-danger focus:border-danger focus:shadow-[0_0_0_4px_rgba(239,68,68,0.12)]',
-        className
+        className,
       )}
       {...props}
     />
   );
 }
 
-export function SelectInput({ className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { className?: string; children?: ReactNode }) {
+export function SelectInput({
+  className,
+  children,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & { className?: string; children?: ReactNode }) {
   return (
     <div className="relative">
       <select
         className={cn(
           'ui-control w-full appearance-none px-4 pr-10 text-sm',
           'bg-[url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E")] bg-[length:18px] bg-[right_12px_center] bg-no-repeat',
-          className
+          className,
         )}
         {...props}
       >
@@ -71,7 +94,16 @@ export function SelectInput({ className, children, ...props }: SelectHTMLAttribu
   );
 }
 
-export function PasswordInput({ show, onToggleShow, className, ...props }: InputHTMLAttributes<HTMLInputElement> & { show: boolean; onToggleShow: () => void; className?: string }) {
+export function PasswordInput({
+  show,
+  onToggleShow,
+  className,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & {
+  show: boolean;
+  onToggleShow: () => void;
+  className?: string;
+}) {
   return (
     <div className="relative">
       <input
@@ -92,10 +124,27 @@ export function PasswordInput({ show, onToggleShow, className, ...props }: Input
   );
 }
 
-export function SearchInput({ value, onChange, onClear, onEnter, placeholder = '搜索', className }: { value: string; onChange: ChangeEventHandler<HTMLInputElement>; onClear?: () => void; onEnter?: KeyboardEventHandler<HTMLInputElement>; placeholder?: string; className?: string }) {
+export function SearchInput({
+  value,
+  onChange,
+  onClear,
+  onEnter,
+  placeholder = '搜索',
+  className,
+}: {
+  value: string;
+  onChange: ChangeEventHandler<HTMLInputElement>;
+  onClear?: () => void;
+  onEnter?: KeyboardEventHandler<HTMLInputElement>;
+  placeholder?: string;
+  className?: string;
+}) {
   return (
     <div className={cn('relative', className)}>
-      <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+      <Search
+        size={18}
+        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+      />
       <input
         value={value}
         onChange={onChange}

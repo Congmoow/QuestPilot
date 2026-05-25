@@ -12,16 +12,24 @@ const loadBrandFont = () => {
   }
 
   const fonts = [
-    new FontFace(BRAND_FONT_FAMILY, `url("${getPublicAssetPath('/fonts/dancing-script-regular.ttf')}")`, {
-      style: 'normal',
-      weight: '400',
-      display: 'swap',
-    }),
-    new FontFace(BRAND_FONT_FAMILY, `url("${getPublicAssetPath('/fonts/dancing-script-bold.ttf')}")`, {
-      style: 'normal',
-      weight: '700',
-      display: 'swap',
-    }),
+    new FontFace(
+      BRAND_FONT_FAMILY,
+      `url("${getPublicAssetPath('/fonts/dancing-script-regular.ttf')}")`,
+      {
+        style: 'normal',
+        weight: '400',
+        display: 'swap',
+      },
+    ),
+    new FontFace(
+      BRAND_FONT_FAMILY,
+      `url("${getPublicAssetPath('/fonts/dancing-script-bold.ttf')}")`,
+      {
+        style: 'normal',
+        weight: '700',
+        display: 'swap',
+      },
+    ),
   ];
 
   brandFontLoading = Promise.all(fonts.map((font) => font.load()))
@@ -59,7 +67,7 @@ const TitleBar: FC = () => {
       }
     };
     checkMaximized();
-    
+
     // 监听窗口大小变化
     const handleResize = () => checkMaximized();
     window.addEventListener('resize', handleResize);
@@ -93,12 +101,22 @@ const TitleBar: FC = () => {
   };
 
   return (
-    <div data-tauri-drag-region className="app-drag flex h-12 select-none items-center justify-between overflow-hidden rounded-t-xl bg-white shadow-[8px_0_28px_rgba(15,23,42,0.04)] dark:bg-gray-800">
+    <div
+      data-tauri-drag-region
+      className="app-drag flex h-12 select-none items-center justify-between overflow-hidden rounded-t-xl bg-white shadow-[8px_0_28px_rgba(15,23,42,0.04)] dark:bg-gray-800"
+    >
       <div className="flex items-center gap-2 px-4">
         <img src={iconPath} alt="QuestPilot 标志" className="size-7" />
-        <span className="text-[28px] font-bold leading-none text-gray-700 dark:text-gray-200" style={{ fontFamily: `'${BRAND_FONT_FAMILY}', 'Microsoft YaHei', 'PingFang SC', cursive` }}>QuestPilot</span>
+        <span
+          className="text-[28px] font-bold leading-none text-gray-700 dark:text-gray-200"
+          style={{
+            fontFamily: `'${BRAND_FONT_FAMILY}', 'Microsoft YaHei', 'PingFang SC', cursive`,
+          }}
+        >
+          QuestPilot
+        </span>
       </div>
-      
+
       <div className="app-no-drag flex h-full items-center">
         <button
           onClick={handleMinimize}
@@ -110,7 +128,7 @@ const TitleBar: FC = () => {
         <button
           onClick={handleMaximize}
           className="flex h-full items-center justify-center px-5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
-          title={isMaximized ? "还原" : "最大化"}
+          title={isMaximized ? '还原' : '最大化'}
         >
           {isMaximized ? (
             <Copy size={14} className="text-gray-500 dark:text-gray-400" />

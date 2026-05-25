@@ -20,23 +20,59 @@ import {
 } from '../features/ai-chat/utils/providerAssets';
 
 const features = [
-  { title: '上传题目解析', description: '上传题目图片\n获取详细解析', iconSrc: '/aichat-icon/icon-1.webp', iconClass: 'bg-blue-50 text-blue-600' },
-  { title: '知识点总结', description: '梳理知识要点\n构建知识体系', iconSrc: '/aichat-icon/icon-2.webp', iconClass: 'bg-emerald-50 text-emerald-600' },
-  { title: '错题分析', description: '智能分析错因\n提供改进建议', iconSrc: '/aichat-icon/icon-3.webp', iconClass: 'bg-orange-50 text-orange-600' },
-  { title: '生成练习题', description: '生成相似题目\n巩固知识掌握', iconSrc: '/aichat-icon/icon-4.webp', iconClass: 'bg-violet-50 text-violet-600' },
+  {
+    title: '上传题目解析',
+    description: '上传题目图片\n获取详细解析',
+    iconSrc: '/aichat-icon/icon-1.webp',
+    iconClass: 'bg-blue-50 text-blue-600',
+  },
+  {
+    title: '知识点总结',
+    description: '梳理知识要点\n构建知识体系',
+    iconSrc: '/aichat-icon/icon-2.webp',
+    iconClass: 'bg-emerald-50 text-emerald-600',
+  },
+  {
+    title: '错题分析',
+    description: '智能分析错因\n提供改进建议',
+    iconSrc: '/aichat-icon/icon-3.webp',
+    iconClass: 'bg-orange-50 text-orange-600',
+  },
+  {
+    title: '生成练习题',
+    description: '生成相似题目\n巩固知识掌握',
+    iconSrc: '/aichat-icon/icon-4.webp',
+    iconClass: 'bg-violet-50 text-violet-600',
+  },
 ];
 
 const AiChat = () => {
   const {
-    messages, input, setInput, loading, error,
-    prompts, selectedPrompt, setSelectedPrompt,
-    showPromptDropdown, setShowPromptDropdown,
-    chatHistoryList, currentChatId,
-    showHistory, setShowHistory,
+    messages,
+    input,
+    setInput,
+    loading,
+    error,
+    prompts,
+    selectedPrompt,
+    setSelectedPrompt,
+    showPromptDropdown,
+    setShowPromptDropdown,
+    chatHistoryList,
+    currentChatId,
+    showHistory,
+    setShowHistory,
     aiConfig,
-    messagesEndRef, inputRef, dropdownRef, historyRef,
-    handleSend, handleKeyDown,
-    loadChat, deleteChat, newChat, clearChat,
+    messagesEndRef,
+    inputRef,
+    dropdownRef,
+    historyRef,
+    handleSend,
+    handleKeyDown,
+    loadChat,
+    deleteChat,
+    newChat,
+    clearChat,
   } = useAiChat();
   const aiDisplayInfo = getAiProviderDisplayInfo(aiConfig.provider, aiConfig.modelId);
   const aiHeroImagePath = getAiProviderHeroImagePath(aiConfig.provider, aiConfig.modelId);
@@ -47,7 +83,7 @@ const AiChat = () => {
     <div className="flex h-full min-h-0 flex-col gap-5">
       <PageHeaderNoTitle
         subtitle="有任何学习问题，都可以问我"
-        actions={(
+        actions={
           <div className="flex flex-wrap items-center gap-3">
             <ChatHistoryPanel
               panelRef={historyRef}
@@ -65,7 +101,10 @@ const AiChat = () => {
               selectedPrompt={selectedPrompt}
               showDropdown={showPromptDropdown}
               onToggle={() => setShowPromptDropdown(!showPromptDropdown)}
-              onSelect={(prompt) => { setSelectedPrompt(prompt); setShowPromptDropdown(false); }}
+              onSelect={(prompt) => {
+                setSelectedPrompt(prompt);
+                setShowPromptDropdown(false);
+              }}
             />
             {messages.length > 0 && (
               <button
@@ -77,7 +116,7 @@ const AiChat = () => {
               </button>
             )}
           </div>
-        )}
+        }
       />
 
       <SurfaceCard className="flex min-h-0 flex-1 flex-col overflow-hidden" padding="p-0">
@@ -98,7 +137,13 @@ const AiChat = () => {
                 <ChatMessageBubble
                   key={index}
                   role={msg.role}
-                  avatar={msg.role === 'user' ? <User size={18} /> : <AiIcon provider={aiConfig.provider} modelId={aiConfig.modelId} size={28} />}
+                  avatar={
+                    msg.role === 'user' ? (
+                      <User size={18} />
+                    ) : (
+                      <AiIcon provider={aiConfig.provider} modelId={aiConfig.modelId} size={28} />
+                    )
+                  }
                 >
                   {msg.role === 'user' ? (
                     <div className="whitespace-pre-wrap">{msg.content.trim()}</div>
@@ -110,7 +155,9 @@ const AiChat = () => {
               {loading && (
                 <ChatMessageBubble
                   role="assistant"
-                  avatar={<AiIcon provider={aiConfig.provider} modelId={aiConfig.modelId} size={28} />}
+                  avatar={
+                    <AiIcon provider={aiConfig.provider} modelId={aiConfig.modelId} size={28} />
+                  }
                 >
                   <Loader2 size={20} className="animate-spin text-gray-400" />
                 </ChatMessageBubble>

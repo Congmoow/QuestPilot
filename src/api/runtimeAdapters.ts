@@ -14,7 +14,11 @@ type SaveDialogResult = {
 };
 
 const toCanceled = (value: MaybeCanceled): boolean =>
-  Boolean((value as Record<string, unknown>)?.canceled ?? (value as Record<string, unknown>)?.cancelled ?? false);
+  Boolean(
+    (value as Record<string, unknown>)?.canceled ??
+    (value as Record<string, unknown>)?.cancelled ??
+    false,
+  );
 
 export const normalizeFileSelectionResult = (result: unknown): FileSelectionResult => {
   if (typeof result === 'string' && result.trim() !== '') {

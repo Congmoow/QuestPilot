@@ -22,18 +22,29 @@ import { questionTypes, useManualEntryForm } from '../features/questions/hooks/u
 const ManualEntry = () => {
   const {
     banks,
-    selectedBankId, setSelectedBankId,
+    selectedBankId,
+    setSelectedBankId,
     activeTab,
-    formData, setFormData,
+    formData,
+    setFormData,
     errors,
-    submitting, submitSuccess,
-    savingDraft, draftLoaded,
+    submitting,
+    submitSuccess,
+    savingDraft,
+    draftLoaded,
     blankCount,
-    selectedBank, currentQuestionType,
+    selectedBank,
+    currentQuestionType,
     handleTabChange,
-    addOption, removeOption, updateOption, toggleMultipleAnswer,
-    insertBlank, updateFillAnswer,
-    handleSubmit, handleSaveDraft, handleBack,
+    addOption,
+    removeOption,
+    updateOption,
+    toggleMultipleAnswer,
+    insertBlank,
+    updateFillAnswer,
+    handleSubmit,
+    handleSaveDraft,
+    handleBack,
   } = useManualEntryForm();
 
   return (
@@ -41,22 +52,32 @@ const ManualEntry = () => {
       <PageHeader
         title="手动录入"
         subtitle="创建新题目到题库中"
-        actions={(
+        actions={
           <ActionButton variant="secondary" icon={ArrowLeft} onClick={handleBack}>
             返回题库
           </ActionButton>
-        )}
+        }
       />
 
       {draftLoaded && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+        >
           <AlertBanner type="info">已恢复上次保存的草稿</AlertBanner>
         </motion.div>
       )}
 
       {submitSuccess && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-          <AlertBanner type="success" title="题目提交成功">已清除草稿，可以继续录入下一题。</AlertBanner>
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+        >
+          <AlertBanner type="success" title="题目提交成功">
+            已清除草稿，可以继续录入下一题。
+          </AlertBanner>
         </motion.div>
       )}
 
@@ -64,7 +85,9 @@ const ManualEntry = () => {
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
           <AlertBanner type="danger" title="请检查以下内容">
             <div className="space-y-1">
-              {errors.map((error, index) => <p key={index}>{error}</p>)}
+              {errors.map((error, index) => (
+                <p key={index}>{error}</p>
+              ))}
             </div>
           </AlertBanner>
         </motion.div>
@@ -74,23 +97,34 @@ const ManualEntry = () => {
         <Field label="选择题库" required hint="题目会保存到当前选择的题库中">
           <SelectInput
             value={selectedBankId || ''}
-            onChange={(e) => setSelectedBankId(e.target.value ? parseInt(e.target.value, 10) : null)}
+            onChange={(e) =>
+              setSelectedBankId(e.target.value ? parseInt(e.target.value, 10) : null)
+            }
           >
             <option value="">请选择题库</option>
             {banks.map((bank) => (
-              <option key={bank.id} value={bank.id}>{bank.name}</option>
+              <option key={bank.id} value={bank.id}>
+                {bank.name}
+              </option>
             ))}
           </SelectInput>
         </Field>
         <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm text-gray-500 dark:bg-gray-700 dark:text-gray-300">
-          <p className="font-semibold text-gray-900 dark:text-white">{selectedBank ? selectedBank.name : '尚未选择题库'}</p>
+          <p className="font-semibold text-gray-900 dark:text-white">
+            {selectedBank ? selectedBank.name : '尚未选择题库'}
+          </p>
           <p className="mt-1">当前题型：{currentQuestionType?.label || '单选题'}</p>
         </div>
       </ToolbarCard>
 
       <SurfaceCard className="overflow-hidden" padding="p-0">
         <div className="flex flex-col gap-4 border-b border-gray-100 p-5 dark:border-gray-700 sm:flex-row sm:items-center sm:justify-between">
-          <SegmentedTabs tabs={questionTypes} value={activeTab} onChange={handleTabChange} className="max-w-full overflow-x-auto" />
+          <SegmentedTabs
+            tabs={questionTypes}
+            value={activeTab}
+            onChange={handleTabChange}
+            className="max-w-full overflow-x-auto"
+          />
           <StatusBadge variant={activeTab === 'fill' && blankCount > 0 ? 'success' : 'primary'}>
             {activeTab === 'fill' ? `空栏 ${blankCount} 个` : currentQuestionType?.label}
           </StatusBadge>
@@ -98,7 +132,13 @@ const ManualEntry = () => {
 
         <div className="grid gap-6 p-6 xl:grid-cols-[minmax(0,1fr)_280px]">
           <div className="space-y-7">
-            <Field label="题目内容" required hint={activeTab === 'fill' && blankCount > 0 ? `已插入 ${blankCount} 个空栏` : undefined}>
+            <Field
+              label="题目内容"
+              required
+              hint={
+                activeTab === 'fill' && blankCount > 0 ? `已插入 ${blankCount} 个空栏` : undefined
+              }
+            >
               <div className="relative">
                 <TextareaInput
                   rows={5}
@@ -144,14 +184,18 @@ const ManualEntry = () => {
                         'flex cursor-pointer items-center gap-3 rounded-2xl border p-4 text-sm font-semibold transition-all',
                         formData.answer === val
                           ? 'border-primary bg-primary-soft text-primary'
-                          : 'border-gray-200 bg-white text-gray-600 hover:border-blue-200 hover:bg-blue-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-blue-200 hover:bg-blue-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300',
                       )}
                     >
-                      <span className={cn(
-                        'flex size-5 items-center justify-center rounded-full border-2 transition-colors',
-                        formData.answer === val ? 'border-primary bg-primary' : 'border-gray-300'
-                      )}>
-                        {formData.answer === val && <span className="size-2 rounded-full bg-white" />}
+                      <span
+                        className={cn(
+                          'flex size-5 items-center justify-center rounded-full border-2 transition-colors',
+                          formData.answer === val ? 'border-primary bg-primary' : 'border-gray-300',
+                        )}
+                      >
+                        {formData.answer === val && (
+                          <span className="size-2 rounded-full bg-white" />
+                        )}
                       </span>
                       <input
                         type="radio"
@@ -207,10 +251,21 @@ const ManualEntry = () => {
         </div>
 
         <div className="flex flex-col gap-3 border-t border-gray-100 px-6 py-5 dark:border-gray-700 sm:flex-row sm:items-center sm:justify-end">
-          <ActionButton variant="secondary" icon={Save} onClick={handleSaveDraft} disabled={savingDraft} loading={savingDraft}>
+          <ActionButton
+            variant="secondary"
+            icon={Save}
+            onClick={handleSaveDraft}
+            disabled={savingDraft}
+            loading={savingDraft}
+          >
             {savingDraft ? '保存中...' : '保存草稿'}
           </ActionButton>
-          <ActionButton icon={Send} onClick={handleSubmit} disabled={submitting} loading={submitting}>
+          <ActionButton
+            icon={Send}
+            onClick={handleSubmit}
+            disabled={submitting}
+            loading={submitting}
+          >
             {submitting ? '提交中...' : '立即提交'}
           </ActionButton>
         </div>

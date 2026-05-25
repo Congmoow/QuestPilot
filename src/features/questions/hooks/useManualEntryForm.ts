@@ -188,8 +188,11 @@ export const useManualEntryForm = () => {
         if (!formData.answer) newErrors.push('请选择正确答案');
         break;
       case 'fill': {
-        if (blankCount === 0) newErrors.push('填空题题干中必须包含至少一个空栏标记（_、___、＿＿、（ ）或( )）');
-        const emptyFill = formData.fillAnswers.filter((a, i) => i < blankCount && (!a || a.trim() === ''));
+        if (blankCount === 0)
+          newErrors.push('填空题题干中必须包含至少一个空栏标记（_、___、＿＿、（ ）或( )）');
+        const emptyFill = formData.fillAnswers.filter(
+          (a, i) => i < blankCount && (!a || a.trim() === ''),
+        );
         if (emptyFill.length > 0) newErrors.push('请填写所有空栏的答案');
         break;
       }
@@ -277,17 +280,28 @@ export const useManualEntryForm = () => {
 
   return {
     banks,
-    selectedBankId, setSelectedBankId,
+    selectedBankId,
+    setSelectedBankId,
     activeTab,
-    formData, setFormData,
+    formData,
+    setFormData,
     errors,
-    submitting, submitSuccess,
-    savingDraft, draftLoaded,
+    submitting,
+    submitSuccess,
+    savingDraft,
+    draftLoaded,
     blankCount,
-    selectedBank, currentQuestionType,
+    selectedBank,
+    currentQuestionType,
     handleTabChange,
-    addOption, removeOption, updateOption, toggleMultipleAnswer,
-    insertBlank, updateFillAnswer,
-    handleSubmit, handleSaveDraft, handleBack,
+    addOption,
+    removeOption,
+    updateOption,
+    toggleMultipleAnswer,
+    insertBlank,
+    updateFillAnswer,
+    handleSubmit,
+    handleSaveDraft,
+    handleBack,
   };
 };

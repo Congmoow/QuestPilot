@@ -6,7 +6,13 @@ type CuotiIconProps = ImgHTMLAttributes<HTMLImageElement> & {
 };
 
 const CuotiIcon = ({ size = 44, ...props }: CuotiIconProps) => (
-  <img src={getPublicAssetPath('/cuoti-icon.webp')} alt="错题本" width={size} height={size} {...props} />
+  <img
+    src={getPublicAssetPath('/cuoti-icon.webp')}
+    alt="错题本"
+    width={size}
+    height={size}
+    {...props}
+  />
 );
 
 export default CuotiIcon;

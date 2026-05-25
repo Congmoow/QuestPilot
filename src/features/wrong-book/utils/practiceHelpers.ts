@@ -1,1 +1,6 @@
-export { shuffleArray, shuffleQuestionOptions, normalizeFillAnswer, isFillAnswerCorrect } from '../../../lib/practiceHelpers';
+export {
+  shuffleArray,
+  shuffleQuestionOptions,
+  normalizeFillAnswer,
+  isFillAnswerCorrect,
+} from '../../../lib/practiceHelpers';

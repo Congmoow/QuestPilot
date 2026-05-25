@@ -30,7 +30,13 @@ const errorMessage = (error: unknown, fallback: string) => {
   return error instanceof Error ? error.message : fallback;
 };
 
-export function QuestionBankDialog({ open, onClose, onSubmit, initialData, loading = false }: QuestionBankDialogProps) {
+export function QuestionBankDialog({
+  open,
+  onClose,
+  onSubmit,
+  initialData,
+  loading = false,
+}: QuestionBankDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [errors, setErrors] = useState<QuestionBankDialogErrors>({});
@@ -69,7 +75,7 @@ export function QuestionBankDialog({ open, onClose, onSubmit, initialData, loadi
   // 提交表单
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     if (!validate()) {
       return;
     }
@@ -86,18 +92,9 @@ export function QuestionBankDialog({ open, onClose, onSubmit, initialData, loadi
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title={isEditMode ? '编辑题库' : '新建题库'}
-    >
+    <Dialog open={open} onClose={onClose} title={isEditMode ? '编辑题库' : '新建题库'}>
       <form onSubmit={handleSubmit} className="space-y-5">
-        <Field
-          label="题库名称"
-          required
-          error={errors.name}
-          hint={`${name.length}/50`}
-        >
+        <Field label="题库名称" required error={errors.name} hint={`${name.length}/50`}>
           <TextInput
             type="text"
             value={name}
@@ -117,9 +114,7 @@ export function QuestionBankDialog({ open, onClose, onSubmit, initialData, loadi
           />
         </Field>
 
-        {errors.submit && (
-          <AlertBanner type="danger">{errors.submit}</AlertBanner>
-        )}
+        {errors.submit && <AlertBanner type="danger">{errors.submit}</AlertBanner>}
 
         <div className="flex justify-end gap-3 pt-2">
           <ActionButton type="button" variant="secondary" onClick={onClose} disabled={loading}>

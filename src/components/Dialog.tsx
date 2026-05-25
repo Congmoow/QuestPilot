@@ -57,18 +57,16 @@ export function Dialog({ open, onClose, title, children, className, size = 'md' 
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              "w-full max-h-[90vh] overflow-hidden rounded-card border border-gray-200 bg-white shadow-popover dark:border-gray-700 dark:bg-gray-800",
+              'w-full max-h-[90vh] overflow-hidden rounded-card border border-gray-200 bg-white shadow-popover dark:border-gray-700 dark:bg-gray-800',
               sizeClasses[size] || sizeClasses.md,
-              className
+              className,
             )}
           >
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-gray-700">
               <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">{title}</h2>
               <IconButton label="关闭弹窗" icon={X} variant="ghost" onClick={onClose} />
             </div>
-            <div className="max-h-[calc(90vh-73px)] overflow-y-auto p-6">
-              {children}
-            </div>
+            <div className="max-h-[calc(90vh-73px)] overflow-y-auto p-6">{children}</div>
           </motion.div>
         </motion.div>
       )}

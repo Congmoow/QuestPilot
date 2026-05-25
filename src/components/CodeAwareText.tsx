@@ -16,7 +16,11 @@ const isProbablyCode = (text: unknown): boolean => {
     if (/[{}();<>]/.test(t) && /\n/.test(t)) return true;
   }
 
-  if (/\b(class|def|import|from|function|const|let|var|public|private|protected|return|async|await)\b/.test(t)) {
+  if (
+    /\b(class|def|import|from|function|const|let|var|public|private|protected|return|async|await)\b/.test(
+      t,
+    )
+  ) {
     return true;
   }
 
@@ -50,7 +54,7 @@ const CodeAwareText = ({ text, className }: CodeAwareTextProps) => {
       <pre
         className={cn(
           'm-0 w-full min-w-0 overflow-x-auto whitespace-pre font-mono text-sm leading-relaxed rounded-lg bg-gray-100/60 dark:bg-gray-700/60 p-3',
-          className
+          className,
         )}
       >
         <code>{content}</code>

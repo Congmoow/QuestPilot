@@ -25,7 +25,12 @@ export const formatOperationTime = (value: unknown): string => {
   const iso = /Z$|[+-]\d\d:\d\d$/.test(s) ? s : `${s}Z`;
   const d = new Date(iso);
   if (!Number.isFinite(d.getTime())) return '';
-  return d.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 };
 
 export const formatNumber = (num: unknown): string => Number(num || 0).toLocaleString('zh-CN');
@@ -57,7 +62,10 @@ export const useDashboard = () => {
         const [stats, logs, allPracticeStats] = await Promise.all([
           getDashboardStats(),
           getOperationLogs(10),
-          api.practice.getAllStats().catch((e: unknown) => { console.error('加载练习统计失败:', e); return []; }),
+          api.practice.getAllStats().catch((e: unknown) => {
+            console.error('加载练习统计失败:', e);
+            return [];
+          }),
         ]);
         setDashboardStats(stats as typeof dashboardStats);
         setOperationLogs(logs as unknown[]);
@@ -71,11 +79,15 @@ export const useDashboard = () => {
       }
     };
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     const loadPracticeRecords = async () => {
-      if (!selectedBankId) { setPracticeRecords([]); return; }
+      if (!selectedBankId) {
+        setPracticeRecords([]);
+        return;
+      }
       setLoadingRecords(true);
       try {
         const records = await api.practice.getRecords(selectedBankId, 10);
@@ -90,30 +102,36 @@ export const useDashboard = () => {
   }, [selectedBankId]);
 
   const practiceLastTimeByBankId = useMemo(
-    () => new Map(
-      (practiceStats as Array<{ bankId: unknown; lastPractice?: unknown }>).map((s) => [
-        Number(s.bankId),
-        s && s.lastPractice ? safeTime(s.lastPractice) : 0,
-      ])
-    ),
-    [practiceStats]
+    () =>
+      new Map(
+        (practiceStats as Array<{ bankId: unknown; lastPractice?: unknown }>).map((s) => [
+          Number(s.bankId),
+          s && s.lastPractice ? safeTime(s.lastPractice) : 0,
+        ]),
+      ),
+    [practiceStats],
   );
 
   const trendBanks = useMemo(
-    () => [...(banks || [])].sort((a, b) => {
-      const aPractice = practiceLastTimeByBankId.get(Number(a.id)) || 0;
-      const bPractice = practiceLastTimeByBankId.get(Number(b.id)) || 0;
-      if (aPractice !== bPractice) return bPractice - aPractice;
-      const aUpdated = (a as { updatedAt?: unknown }).updatedAt ? safeTime((a as { updatedAt?: unknown }).updatedAt) : 0;
-      const bUpdated = (b as { updatedAt?: unknown }).updatedAt ? safeTime((b as { updatedAt?: unknown }).updatedAt) : 0;
-      return bUpdated - aUpdated;
-    }),
-    [banks, practiceLastTimeByBankId]
+    () =>
+      [...(banks || [])].sort((a, b) => {
+        const aPractice = practiceLastTimeByBankId.get(Number(a.id)) || 0;
+        const bPractice = practiceLastTimeByBankId.get(Number(b.id)) || 0;
+        if (aPractice !== bPractice) return bPractice - aPractice;
+        const aUpdated = (a as { updatedAt?: unknown }).updatedAt
+          ? safeTime((a as { updatedAt?: unknown }).updatedAt)
+          : 0;
+        const bUpdated = (b as { updatedAt?: unknown }).updatedAt
+          ? safeTime((b as { updatedAt?: unknown }).updatedAt)
+          : 0;
+        return bUpdated - aUpdated;
+      }),
+    [banks, practiceLastTimeByBankId],
   );
 
   const latestPracticedBankId = useMemo(() => {
     let latest: { bankId: number; time: number } | null = null;
-    for (const s of (practiceStats as Array<{ bankId: unknown; lastPractice?: unknown }>)) {
+    for (const s of practiceStats as Array<{ bankId: unknown; lastPractice?: unknown }>) {
       const bankId = Number(s.bankId);
       const time = s && s.lastPractice ? safeTime(s.lastPractice) : 0;
       if (!Number.isFinite(bankId) || bankId <= 0) continue;
@@ -146,11 +164,22 @@ export const useDashboard = () => {
   }, [selectedTypeBankId]);
 
   const totalPracticeCount = useMemo(
-    () => (practiceStats as Array<{ practiceCount?: unknown }>).reduce((sum, item) => sum + Number(item.practiceCount || 0), 0),
-    [practiceStats]
+    () =>
+      (practiceStats as Array<{ practiceCount?: unknown }>).reduce(
+        (sum, item) => sum + Number(item.practiceCount || 0),
+        0,
+      ),
+    [practiceStats],
   );
 
-  const practiceChartData = (practiceRecords as Array<{ accuracy: number; total?: number; correct?: number; createdAt?: unknown }>).map((record, index) => {
+  const practiceChartData = (
+    practiceRecords as Array<{
+      accuracy: number;
+      total?: number;
+      correct?: number;
+      createdAt?: unknown;
+    }>
+  ).map((record, index) => {
     const createdAt = new Date(normalizeDateString(record.createdAt));
     return {
       name: `第${index + 1}次`,
@@ -171,11 +200,19 @@ export const useDashboard = () => {
   });
 
   return {
-    banks, loading, error,
-    dashboardStats, operationLogs,
-    selectedBankId, setSelectedBankId, isBankManuallySelected, setIsBankManuallySelected,
-    loadingRecords, trendBanks,
-    selectedTypeBankId, setSelectedTypeBankId,
+    banks,
+    loading,
+    error,
+    dashboardStats,
+    operationLogs,
+    selectedBankId,
+    setSelectedBankId,
+    isBankManuallySelected,
+    setIsBankManuallySelected,
+    loadingRecords,
+    trendBanks,
+    selectedTypeBankId,
+    setSelectedTypeBankId,
     typeDistribution: typeDistribution as Array<{ type: string; count: number }>,
     totalPracticeCount,
     practiceChartData,

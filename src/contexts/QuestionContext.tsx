@@ -77,69 +77,78 @@ export function QuestionProvider({ children }: { children: ReactNode }) {
     setSelectedIds([]);
   };
 
-  const fetchQuestions = useCallback(async (bankId: number, options: QueryOptions = {}) => {
-    setLoading(true);
-    setError(null);
-    setCurrentBankId(bankId);
+  const fetchQuestions = useCallback(
+    async (bankId: number, options: QueryOptions = {}) => {
+      setLoading(true);
+      setError(null);
+      setCurrentBankId(bankId);
 
-    const queryOptions: QueryOptions = {
-      page: options.page || page,
-      pageSize: options.pageSize || pageSize,
-      type: options.type !== undefined ? options.type : filterType,
-    };
+      const queryOptions: QueryOptions = {
+        page: options.page || page,
+        pageSize: options.pageSize || pageSize,
+        type: options.type !== undefined ? options.type : filterType,
+      };
 
-    try {
-      const result = searchKeyword
-        ? await searchQuestions(bankId, searchKeyword, queryOptions)
-        : await getQuestionsByBankId(bankId, queryOptions);
-      applyResult(result);
-    } catch (err) {
-      setError(errorMessage(err, '获取题目列表失败'));
-      applyResult(emptyPage());
-    } finally {
-      setLoading(false);
-    }
-  }, [page, pageSize, filterType, searchKeyword]);
-
-  const search = useCallback(async (bankId: number, keyword: string, options: QueryOptions = {}) => {
-    setLoading(true);
-    setError(null);
-    setSearchKeyword(keyword);
-    setCurrentBankId(bankId);
-
-    const queryOptions: QueryOptions = {
-      page: options.page || 1,
-      pageSize: options.pageSize || pageSize,
-      type: options.type !== undefined ? options.type : filterType,
-    };
-
-    try {
-      const result = await searchQuestions(bankId, keyword, queryOptions);
-      applyResult(result);
-    } catch (err) {
-      setError(errorMessage(err, '搜索题目失败'));
-      applyResult(emptyPage());
-    } finally {
-      setLoading(false);
-    }
-  }, [pageSize, filterType]);
-
-  const addQuestion = useCallback(async (data: CreateQuestionInput) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const newQuestion = await createQuestion(data);
-      if (currentBankId) {
-        await fetchQuestions(currentBankId);
+      try {
+        const result = searchKeyword
+          ? await searchQuestions(bankId, searchKeyword, queryOptions)
+          : await getQuestionsByBankId(bankId, queryOptions);
+        applyResult(result);
+      } catch (err) {
+        setError(errorMessage(err, '获取题目列表失败'));
+        applyResult(emptyPage());
+      } finally {
+        setLoading(false);
       }
-      return newQuestion;
-    } catch (err) {
-      setError(errorMessage(err, '创建题目失败'));
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [currentBankId, fetchQuestions]);
+    },
+    [page, pageSize, filterType, searchKeyword],
+  );
+
+  const search = useCallback(
+    async (bankId: number, keyword: string, options: QueryOptions = {}) => {
+      setLoading(true);
+      setError(null);
+      setSearchKeyword(keyword);
+      setCurrentBankId(bankId);
+
+      const queryOptions: QueryOptions = {
+        page: options.page || 1,
+        pageSize: options.pageSize || pageSize,
+        type: options.type !== undefined ? options.type : filterType,
+      };
+
+      try {
+        const result = await searchQuestions(bankId, keyword, queryOptions);
+        applyResult(result);
+      } catch (err) {
+        setError(errorMessage(err, '搜索题目失败'));
+        applyResult(emptyPage());
+      } finally {
+        setLoading(false);
+      }
+    },
+    [pageSize, filterType],
+  );
+
+  const addQuestion = useCallback(
+    async (data: CreateQuestionInput) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const newQuestion = await createQuestion(data);
+        if (currentBankId) {
+          await fetchQuestions(currentBankId);
+        }
+        return newQuestion;
+      } catch (err) {
+        setError(errorMessage(err, '创建题目失败'));
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [currentBankId, fetchQuestions],
+  );
 
   const editQuestion = useCallback(async (id: number, data: Partial<CreateQuestionInput>) => {
     setLoading(true);
@@ -158,24 +167,27 @@ export function QuestionProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const removeQuestions = useCallback(async (ids: number[]) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await deleteQuestions(ids);
-      setQuestions((prev) => prev.filter((q) => !ids.includes(q.id)));
-      setSelectedIds((prev) => prev.filter((id) => !ids.includes(id)));
-      setTotal((prev) => prev - ids.length);
-      if (questions.length === ids.length && page > 1) {
-        setPage(page - 1);
+  const removeQuestions = useCallback(
+    async (ids: number[]) => {
+      setLoading(true);
+      setError(null);
+      try {
+        await deleteQuestions(ids);
+        setQuestions((prev) => prev.filter((q) => !ids.includes(q.id)));
+        setSelectedIds((prev) => prev.filter((id) => !ids.includes(id)));
+        setTotal((prev) => prev - ids.length);
+        if (questions.length === ids.length && page > 1) {
+          setPage(page - 1);
+        }
+      } catch (err) {
+        setError(errorMessage(err, '删除题目失败'));
+        throw err;
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError(errorMessage(err, '删除题目失败'));
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [questions.length, page]);
+    },
+    [questions.length, page],
+  );
 
   const getById = useCallback(async (id: number) => {
     try {

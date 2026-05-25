@@ -1,11 +1,6 @@
 import React, { useState, useEffect, useCallback, type FC } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Moon,
-  Sun,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Moon, Sun } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getTheme, setTheme as setThemeApi } from '../api';
 import {
@@ -67,7 +62,7 @@ const Layout: FC = () => {
         }
       }
     };
-    
+
     loadTheme();
   }, []);
 
@@ -76,7 +71,7 @@ const Layout: FC = () => {
     setThemeState(newTheme);
     // 同时保存到 localStorage 作为后备
     localStorage.setItem('theme', newTheme);
-    
+
     try {
       await setThemeApi(newTheme);
     } catch (error) {
@@ -92,7 +87,7 @@ const Layout: FC = () => {
     const applyTheme = () => {
       // 先移除 dark class，再根据条件添加
       root.classList.remove('dark');
-      
+
       if (theme === 'dark') {
         root.classList.add('dark');
       } else if (theme === 'system' && mediaQuery.matches) {
@@ -135,88 +130,110 @@ const Layout: FC = () => {
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
       <div className="app-canvas flex h-full overflow-hidden">
-      <aside
-        style={{ width: isSidebarOpen ? 264 : 76 }}
-        className="relative z-20 flex shrink-0 flex-col overflow-visible border-r border-gray-200/80 bg-white shadow-[8px_0_28px_rgba(15,23,42,0.04)] transition-all duration-300 dark:border-gray-800 dark:bg-gray-800"
-      >
-        <div className={cn('flex h-20 items-center px-6', !isSidebarOpen && 'justify-center px-0')}>
-          {isSidebarOpen && (
-            <div className="min-w-0">
-              <div>
-                <p className="text-base font-semibold text-gray-600 dark:text-gray-300">你的专属题库管理与学习助手</p>
-                <p className="mt-0.5 text-xs font-medium text-gray-400 dark:text-gray-500">QuestPilot 智能题库与学习助手</p>
+        <aside
+          style={{ width: isSidebarOpen ? 264 : 76 }}
+          className="relative z-20 flex shrink-0 flex-col overflow-visible border-r border-gray-200/80 bg-white shadow-[8px_0_28px_rgba(15,23,42,0.04)] transition-all duration-300 dark:border-gray-800 dark:bg-gray-800"
+        >
+          <div
+            className={cn('flex h-20 items-center px-6', !isSidebarOpen && 'justify-center px-0')}
+          >
+            {isSidebarOpen && (
+              <div className="min-w-0">
+                <div>
+                  <p className="text-base font-semibold text-gray-600 dark:text-gray-300">
+                    你的专属题库管理与学习助手
+                  </p>
+                  <p className="mt-0.5 text-xs font-medium text-gray-400 dark:text-gray-500">
+                    QuestPilot 智能题库与学习助手
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        <nav className="flex-1 space-y-2 px-3 py-4">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => cn(
-                "group relative flex h-12 items-center gap-3 rounded-2xl px-4 text-sm font-semibold transition-all duration-200",
-                isActive 
-                  ? "bg-primary-soft text-primary shadow-sm" 
-                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-white",
-                !isSidebarOpen && "justify-center px-0"
+          <nav className="flex-1 space-y-2 px-3 py-4">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  cn(
+                    'group relative flex h-12 items-center gap-3 rounded-2xl px-4 text-sm font-semibold transition-all duration-200',
+                    isActive
+                      ? 'bg-primary-soft text-primary shadow-sm'
+                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-white',
+                    !isSidebarOpen && 'justify-center px-0',
+                  )
+                }
+              >
+                {() => (
+                  <>
+                    <item.icon size={21} className="min-w-[21px]" />
+                    {isSidebarOpen && (
+                      <span className="animate-fade-in whitespace-nowrap">{item.label}</span>
+                    )}
+                    {!isSidebarOpen && (
+                      <span className="pointer-events-none absolute left-full ml-3 rounded-xl bg-gray-900 px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-popover transition-opacity group-hover:opacity-100">
+                        {item.label}
+                      </span>
+                    )}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="space-y-4 border-t border-gray-100 p-4 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={handleToggleTheme}
+              className={cn(
+                'flex h-12 w-full items-center rounded-2xl px-3 text-gray-700 transition-colors hover:bg-blue-50 dark:text-gray-200 dark:hover:bg-gray-700',
+                !isSidebarOpen && 'justify-center px-0',
               )}
             >
-              {({ isActive }) => (
-                <>
-                  <item.icon size={21} className="min-w-[21px]" />
+              {lightModeActive ? (
+                <Sun size={20} className="shrink-0" />
+              ) : (
+                <Moon size={20} className="shrink-0" />
+              )}
               {isSidebarOpen && (
-                    <span className="animate-fade-in whitespace-nowrap">{item.label}</span>
-              )}
-              {!isSidebarOpen && (
-                    <span className="pointer-events-none absolute left-full ml-3 rounded-xl bg-gray-900 px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-popover transition-opacity group-hover:opacity-100">
-                  {item.label}
-                    </span>
-              )}
-                </>
-              )}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="space-y-4 border-t border-gray-100 p-4 dark:border-gray-700">
-          <button
-            type="button"
-            onClick={handleToggleTheme}
-            className={cn(
-              "flex h-12 w-full items-center rounded-2xl px-3 text-gray-700 transition-colors hover:bg-blue-50 dark:text-gray-200 dark:hover:bg-gray-700",
-              !isSidebarOpen && "justify-center px-0"
-            )}
-          >
-            {lightModeActive ? <Sun size={20} className="shrink-0" /> : <Moon size={20} className="shrink-0" />}
-            {isSidebarOpen && (
-              <span className={cn('relative ml-3 inline-flex h-6 w-11 items-center rounded-full transition-colors', lightModeActive ? 'bg-primary' : 'bg-gray-300')}>
-                <span className={cn('inline-flex size-5 translate-x-5 items-center justify-center rounded-full bg-white text-primary shadow-sm transition-transform', !lightModeActive && 'translate-x-1 text-gray-500')}>
-                  {lightModeActive ? <Sun size={13} /> : <Moon size={13} />}
+                <span
+                  className={cn(
+                    'relative ml-3 inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                    lightModeActive ? 'bg-primary' : 'bg-gray-300',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'inline-flex size-5 translate-x-5 items-center justify-center rounded-full bg-white text-primary shadow-sm transition-transform',
+                      !lightModeActive && 'translate-x-1 text-gray-500',
+                    )}
+                  >
+                    {lightModeActive ? <Sun size={13} /> : <Moon size={13} />}
+                  </span>
                 </span>
-              </span>
-            )}
-          </button>
+              )}
+            </button>
 
-          <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="flex h-10 w-full items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
-            aria-label={isSidebarOpen ? '折叠侧边栏' : '展开侧边栏'}
-            title={isSidebarOpen ? '折叠侧边栏' : '展开侧边栏'}
-          >
-            {isSidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
-          </button>
-        </div>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-auto px-6 py-7 [scrollbar-gutter:stable] lg:px-9 lg:py-8">
-            <Outlet />
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="flex h-10 w-full items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+              aria-label={isSidebarOpen ? '折叠侧边栏' : '展开侧边栏'}
+              title={isSidebarOpen ? '折叠侧边栏' : '展开侧边栏'}
+            >
+              {isSidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+            </button>
           </div>
-        </main>
-      </div>
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-auto px-6 py-7 [scrollbar-gutter:stable] lg:px-9 lg:py-8">
+              <Outlet />
+            </div>
+          </main>
+        </div>
       </div>
     </ThemeContext.Provider>
   );

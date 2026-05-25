@@ -17,8 +17,15 @@ type OptionListProps = {
 };
 
 const OptionList = ({
-  options, activeTab, answer, answers,
-  onUpdateOption, onRemoveOption, onSelectAnswer, onToggleMultiple, onAddOption,
+  options,
+  activeTab,
+  answer,
+  answers,
+  onUpdateOption,
+  onRemoveOption,
+  onSelectAnswer,
+  onToggleMultiple,
+  onAddOption,
 }: OptionListProps) => (
   <div className="space-y-4">
     <div className="flex items-center justify-between gap-3">
@@ -35,7 +42,8 @@ const OptionList = ({
     </div>
     <div className="space-y-3">
       {options.map((option, index) => {
-        const isSelected = activeTab === 'single' ? answer === option.id : answers.includes(option.id);
+        const isSelected =
+          activeTab === 'single' ? answer === option.id : answers.includes(option.id);
         return (
           <motion.div
             layout
@@ -52,12 +60,14 @@ const OptionList = ({
             />
             <button
               type="button"
-              onClick={() => activeTab === 'single' ? onSelectAnswer(option.id) : onToggleMultiple(option.id)}
+              onClick={() =>
+                activeTab === 'single' ? onSelectAnswer(option.id) : onToggleMultiple(option.id)
+              }
               className={cn(
                 'col-start-2 rounded-control border px-3 py-2 text-sm font-semibold transition-colors sm:col-start-auto',
                 isSelected
                   ? 'border-green-200 bg-green-50 text-success dark:border-green-800 dark:bg-green-900/20 dark:text-green-300'
-                  : 'border-transparent bg-white text-gray-400 hover:bg-blue-50 hover:text-primary dark:bg-gray-800 dark:hover:bg-gray-700'
+                  : 'border-transparent bg-white text-gray-400 hover:bg-blue-50 hover:text-primary dark:bg-gray-800 dark:hover:bg-gray-700',
               )}
             >
               {isSelected ? '正确答案' : '设为答案'}

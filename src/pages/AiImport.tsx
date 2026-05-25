@@ -1,11 +1,4 @@
-import {
-  CheckCircle,
-  Code,
-  Save,
-  Trash2,
-  Wand2,
-  XCircle,
-} from 'lucide-react';
+import { CheckCircle, Code, Save, Trash2, Wand2, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
   ActionButton,
@@ -78,13 +71,29 @@ const JSON_PLACEHOLDER = `[
 
 const AiImport = () => {
   const {
-    banks, selectedBankId, setSelectedBankId,
-    mode, inputText, setInputText, jsonInput, setJsonInput,
-    parsing, parsedQuestions,
-    error, importing, importResult,
-    hasApiKey, parseWarnings, showParseWarnings, setShowParseWarnings,
-    handleParse, handleRemoveQuestion, handleImport,
-    handleClear, handleJsonParse, handleModeChange,
+    banks,
+    selectedBankId,
+    setSelectedBankId,
+    mode,
+    inputText,
+    setInputText,
+    jsonInput,
+    setJsonInput,
+    parsing,
+    parsedQuestions,
+    error,
+    importing,
+    importResult,
+    hasApiKey,
+    parseWarnings,
+    showParseWarnings,
+    setShowParseWarnings,
+    handleParse,
+    handleRemoveQuestion,
+    handleImport,
+    handleClear,
+    handleJsonParse,
+    handleModeChange,
   } = useAiImport();
 
   const currentInput = mode === 'ai' ? inputText : jsonInput;
@@ -92,13 +101,10 @@ const AiImport = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="AI 智能录入"
-        subtitle="粘贴 JSON 格式的题目数据，直接批量导入"
-      />
+      <PageHeader title="AI 智能录入" subtitle="粘贴 JSON 格式的题目数据，直接批量导入" />
 
       <SegmentedTabs
-        tabs={MODE_TABS.map(tab => ({
+        tabs={MODE_TABS.map((tab) => ({
           ...tab,
           disabled: tab.id === 'ai' && !hasApiKey,
           title: tab.id === 'ai' && !hasApiKey ? '请先在设置中配置 API Key' : '',
@@ -119,7 +125,9 @@ const AiImport = () => {
             title={mode === 'ai' ? '输入题目文本' : '输入 JSON 数据'}
             supportText="支持单选、多选、判断、填空、简答题"
             value={currentInput}
-            onChange={(e) => (mode === 'ai' ? setInputText(e.target.value) : setJsonInput(e.target.value))}
+            onChange={(e) =>
+              mode === 'ai' ? setInputText(e.target.value) : setJsonInput(e.target.value)
+            }
             placeholder={currentPlaceholder}
           />
 
@@ -144,7 +152,12 @@ const AiImport = () => {
                 解析 JSON
               </ActionButton>
             )}
-            <ActionButton variant="secondary" icon={Trash2} onClick={handleClear} disabled={parsing}>
+            <ActionButton
+              variant="secondary"
+              icon={Trash2}
+              onClick={handleClear}
+              disabled={parsing}
+            >
               清空
             </ActionButton>
           </div>
@@ -169,8 +182,10 @@ const AiImport = () => {
                   className="h-10 min-h-10 w-full sm:w-52"
                 >
                   <option value="">选择题库</option>
-                  {banks.map(bank => (
-                    <option key={bank.id} value={bank.id}>{bank.name}</option>
+                  {banks.map((bank) => (
+                    <option key={bank.id} value={bank.id}>
+                      {bank.name}
+                    </option>
                   ))}
                 </SelectInput>
               )}
@@ -180,11 +195,12 @@ const AiImport = () => {
               <AlertBanner type="warning" className="mb-4">
                 <button
                   type="button"
-                  onClick={() => setShowParseWarnings(prev => !prev)}
+                  onClick={() => setShowParseWarnings((prev) => !prev)}
                   className="flex w-full items-center justify-between gap-3 text-left"
                 >
                   <span>
-                    已解析 {parseWarnings.questionCount} 道题目，有 {parseWarnings.chunkErrors.length} 个片段未能识别
+                    已解析 {parseWarnings.questionCount} 道题目，有{' '}
+                    {parseWarnings.chunkErrors.length} 个片段未能识别
                   </span>
                   <span className="text-xs">{showParseWarnings ? '收起' : '展开'}</span>
                 </button>
@@ -193,7 +209,10 @@ const AiImport = () => {
                     {parseWarnings.chunkErrors.map((item, index) => {
                       const chunkIndex = getChunkIndex(item, index);
                       return (
-                        <div key={`${chunkIndex}-${index}`} className="rounded-xl bg-white/70 px-3 py-2 text-sm dark:bg-gray-900/30">
+                        <div
+                          key={`${chunkIndex}-${index}`}
+                          className="rounded-xl bg-white/70 px-3 py-2 text-sm dark:bg-gray-900/30"
+                        >
                           <span className="font-semibold">第 {chunkIndex + 1} 个片段：</span>
                           {item.message || '解析失败'}
                         </div>
@@ -250,7 +269,10 @@ const AiImport = () => {
               {importResult.failed > 0 && importResult.errors?.length > 0 && (
                 <div className="mt-3 space-y-2">
                   {importResult.errors.map((item, index) => (
-                    <div key={`${item.index ?? index}-${index}`} className="rounded-xl bg-white/60 px-3 py-2 text-sm dark:bg-gray-900/30">
+                    <div
+                      key={`${item.index ?? index}-${index}`}
+                      className="rounded-xl bg-white/60 px-3 py-2 text-sm dark:bg-gray-900/30"
+                    >
                       <span className="font-semibold">第 {(item.index ?? index) + 1} 道：</span>
                       {item.message || '导入失败'}
                     </div>

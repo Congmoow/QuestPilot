@@ -2,9 +2,18 @@ import { useEffect, useState } from 'react';
 import api from '../../../api';
 import type { WrongBookPracticeResult } from '../../../api';
 import { countFillBlanks } from '../../../lib/fillBlank';
-import { isFillAnswerCorrect, normalizeFillAnswer, shuffleArray, shuffleQuestionOptions } from '../../../lib/practiceHelpers';
+import {
+  isFillAnswerCorrect,
+  normalizeFillAnswer,
+  shuffleQuestionOptions,
+} from '../../../lib/practiceHelpers';
 import { useQuestionBanks } from '../../../contexts/QuestionBankContext';
-import type { PracticeAnswerMap, PracticeAnswerValue, PracticeQuestion, PracticeResultView } from '../../../types/viewModels';
+import type {
+  PracticeAnswerMap,
+  PracticeAnswerValue,
+  PracticeQuestion,
+  PracticeResultView,
+} from '../../../types/viewModels';
 
 export const usePractice = () => {
   const { banks, fetchBanks: refreshBanks } = useQuestionBanks();
@@ -21,6 +30,7 @@ export const usePractice = () => {
 
   useEffect(() => {
     refreshBanks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const startPractice = async (bankId: number | null = selectedBankId) => {
@@ -28,12 +38,13 @@ export const usePractice = () => {
     setLoading(true);
     try {
       const data = await api.question.getRandom(bankId, { limit: 1000 });
-      if (data.length === 0) { alert('该题库暂无题目'); return; }
+      if (data.length === 0) {
+        alert('该题库暂无题目');
+        return;
+      }
 
       const shuffled = data.map((q) =>
-        (q.type === 'single' || q.type === 'multiple') && q.options
-          ? shuffleQuestionOptions(q)
-          : q
+        (q.type === 'single' || q.type === 'multiple') && q.options ? shuffleQuestionOptions(q) : q,
       );
       setQuestions(shuffled);
       setCurrentIndex(0);
@@ -55,7 +66,12 @@ export const usePractice = () => {
     setUserAnswers((prev) => ({ ...prev, [questionId]: answer }));
   };
 
-  const handleFillAnswer = (questionId: number, blankCount: number, index: number, value: string) => {
+  const handleFillAnswer = (
+    questionId: number,
+    blankCount: number,
+    index: number,
+    value: string,
+  ) => {
     if (submitted) return;
     setUserAnswers((prev) => {
       const current = normalizeFillAnswer(prev[questionId], blankCount);
@@ -66,14 +82,19 @@ export const usePractice = () => {
 
   const toggleMultipleAnswer = (questionId: number, option: string) => {
     if (submitted) return;
-    const current: PracticeAnswerValue = Array.isArray(userAnswers[questionId]) ? userAnswers[questionId] : [];
+    const current: PracticeAnswerValue = Array.isArray(userAnswers[questionId])
+      ? userAnswers[questionId]
+      : [];
     const newAnswer = (current as string[]).includes(option)
       ? (current as string[]).filter((o) => o !== option)
       : [...(current as string[]), option].sort();
     setUserAnswers((prev) => ({ ...prev, [questionId]: newAnswer }));
   };
 
-  const submitAnswer = () => { setSubmitted(true); setShowResult(true); };
+  const submitAnswer = () => {
+    setSubmitted(true);
+    setShowResult(true);
+  };
 
   const finishPractice = async () => {
     let correct = 0;
@@ -99,9 +120,11 @@ export const usePractice = () => {
 
     const accuracy = Math.round((correct / questions.length) * 100);
     const result: PracticeResultView = {
-      total: questions.length, correct,
+      total: questions.length,
+      correct,
       wrong: questions.length - correct,
-      accuracy, bankId: selectedBankId,
+      accuracy,
+      bankId: selectedBankId,
       timestamp: new Date().toISOString(),
     };
     setPracticeResult(result);
@@ -109,15 +132,22 @@ export const usePractice = () => {
     try {
       if (result.bankId !== null) {
         await api.practice.saveRecord({
-          bankId: result.bankId!, total: result.total,
-          correct: result.correct, wrong: result.wrong, accuracy: result.accuracy,
+          bankId: result.bankId!,
+          total: result.total,
+          correct: result.correct,
+          wrong: result.wrong,
+          accuracy: result.accuracy,
         });
       }
-    } catch (error) { console.error('保存练习记录失败:', error); }
+    } catch (error) {
+      console.error('保存练习记录失败:', error);
+    }
 
     try {
       await api.wrongBook.updateFromPractice(perQuestionResults);
-    } catch (error) { console.error('同步错题本失败:', error); }
+    } catch (error) {
+      console.error('同步错题本失败:', error);
+    }
   };
 
   const nextQuestion = () => {
@@ -164,12 +194,27 @@ export const usePractice = () => {
   })();
 
   return {
-    banks, selectedBankId, setSelectedBankId,
-    questions, currentIndex, currentQuestion,
-    userAnswers, showResult, submitted, loading, practicing, practiceResult,
+    banks,
+    selectedBankId,
+    setSelectedBankId,
+    questions,
+    currentIndex,
+    currentQuestion,
+    userAnswers,
+    showResult,
+    submitted,
+    loading,
+    practicing,
+    practiceResult,
     canSubmit,
-    startPractice, handleAnswer, handleFillAnswer, toggleMultipleAnswer,
-    submitAnswer, nextQuestion, restart, isCorrect,
+    startPractice,
+    handleAnswer,
+    handleFillAnswer,
+    toggleMultipleAnswer,
+    submitAnswer,
+    nextQuestion,
+    restart,
+    isCorrect,
     normalizeFillAnswer,
   };
 };

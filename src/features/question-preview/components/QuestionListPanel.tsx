@@ -1,4 +1,15 @@
-import { ArrowLeft, BookOpen, Download, Edit, Filter, Loader2, Plus, Search, Trash2, Upload } from 'lucide-react';
+import {
+  ArrowLeft,
+  BookOpen,
+  Download,
+  Edit,
+  Filter,
+  Loader2,
+  Plus,
+  Search,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
 import { cn } from '../../../lib/utils';
@@ -33,39 +44,73 @@ type TypeFilterValue = QuestionType | 'all';
 type QuestionListPanelProps = Pick<
   QuestionPreviewState,
   | 'selectedBank'
-  | 'questions' | 'total' | 'page' | 'pageSize' | 'totalPages'
-  | 'questionsLoading' | 'questionsError'
-  | 'searchKeyword' | 'filterType' | 'selectedIds'
-  | 'searchInput' | 'setSearchInput'
-  | 'submitting' | 'exporting'
-  | 'deleteQuestionsDialogOpen' | 'setDeleteQuestionsDialogOpen'
-  | 'editQuestionDialogOpen' | 'setEditQuestionDialogOpen'
+  | 'questions'
+  | 'total'
+  | 'page'
+  | 'pageSize'
+  | 'totalPages'
+  | 'questionsLoading'
+  | 'questionsError'
+  | 'searchKeyword'
+  | 'filterType'
+  | 'selectedIds'
+  | 'searchInput'
+  | 'setSearchInput'
+  | 'submitting'
+  | 'exporting'
+  | 'deleteQuestionsDialogOpen'
+  | 'setDeleteQuestionsDialogOpen'
+  | 'editQuestionDialogOpen'
+  | 'setEditQuestionDialogOpen'
   | 'editingQuestion'
-  | 'handleSelectAll' | 'handleSelectOne'
+  | 'handleSelectAll'
+  | 'handleSelectOne'
   | 'handleBackToList'
-  | 'handleSearch' | 'handleClearSearch' | 'handleTypeFilter' | 'handlePageChange'
+  | 'handleSearch'
+  | 'handleClearSearch'
+  | 'handleTypeFilter'
+  | 'handlePageChange'
   | 'handleDeleteQuestions'
-  | 'handleOpenEditQuestion' | 'handleDeleteSingleQuestion'
-  | 'handleExportBank' | 'handleSaveEditQuestion'
+  | 'handleOpenEditQuestion'
+  | 'handleDeleteSingleQuestion'
+  | 'handleExportBank'
+  | 'handleSaveEditQuestion'
   | 'clearSelection'
 >;
 
 const QuestionListPanel = ({
   selectedBank,
-  questions, total, page, pageSize, totalPages,
-  questionsLoading, questionsError,
-  searchKeyword, filterType, selectedIds,
-  searchInput, setSearchInput,
-  submitting, exporting,
-  deleteQuestionsDialogOpen, setDeleteQuestionsDialogOpen,
-  editQuestionDialogOpen, setEditQuestionDialogOpen,
+  questions,
+  total,
+  page,
+  pageSize,
+  totalPages,
+  questionsLoading,
+  questionsError,
+  searchKeyword,
+  filterType,
+  selectedIds,
+  searchInput,
+  setSearchInput,
+  submitting,
+  exporting,
+  deleteQuestionsDialogOpen,
+  setDeleteQuestionsDialogOpen,
+  editQuestionDialogOpen,
+  setEditQuestionDialogOpen,
   editingQuestion,
-  handleSelectAll, handleSelectOne,
+  handleSelectAll,
+  handleSelectOne,
   handleBackToList,
-  handleSearch, handleClearSearch, handleTypeFilter, handlePageChange,
+  handleSearch,
+  handleClearSearch,
+  handleTypeFilter,
+  handlePageChange,
   handleDeleteQuestions,
-  handleOpenEditQuestion, handleDeleteSingleQuestion,
-  handleExportBank, handleSaveEditQuestion,
+  handleOpenEditQuestion,
+  handleDeleteSingleQuestion,
+  handleExportBank,
+  handleSaveEditQuestion,
   clearSelection,
 }: QuestionListPanelProps) => {
   if (!selectedBank) return null;
@@ -75,13 +120,15 @@ const QuestionListPanel = ({
       <PageHeader
         title={selectedBank.name}
         subtitle={selectedBank.description || '暂无描述'}
-        actions={(
+        actions={
           <>
             <NavLink to={`/manual-entry?bankId=${selectedBank.id}`}>
               <ActionButton icon={Plus}>手动录入</ActionButton>
             </NavLink>
             <NavLink to={`/csv-import?bankId=${selectedBank.id}`}>
-              <ActionButton variant="secondary" icon={Upload}>CSV导入</ActionButton>
+              <ActionButton variant="secondary" icon={Upload}>
+                CSV导入
+              </ActionButton>
             </NavLink>
             <ActionButton
               variant="secondary"
@@ -93,17 +140,28 @@ const QuestionListPanel = ({
               {exporting ? '导出中' : '导出'}
             </ActionButton>
             {selectedIds.length > 0 && (
-              <ActionButton variant="danger" icon={Trash2} onClick={() => setDeleteQuestionsDialogOpen(true)}>
+              <ActionButton
+                variant="danger"
+                icon={Trash2}
+                onClick={() => setDeleteQuestionsDialogOpen(true)}
+              >
                 删除 ({selectedIds.length})
               </ActionButton>
             )}
           </>
-        )}
+        }
       />
 
       <div className="flex items-center gap-3">
-        <IconButton label="返回题库列表" icon={ArrowLeft} variant="secondary" onClick={handleBackToList} />
-        <span className="rounded-xl bg-primary-soft px-3 py-1.5 text-sm font-bold text-primary">{total} 题</span>
+        <IconButton
+          label="返回题库列表"
+          icon={ArrowLeft}
+          variant="secondary"
+          onClick={handleBackToList}
+        />
+        <span className="rounded-xl bg-primary-soft px-3 py-1.5 text-sm font-bold text-primary">
+          {total} 题
+        </span>
       </div>
 
       <ToolbarCard>
@@ -116,7 +174,9 @@ const QuestionListPanel = ({
             placeholder="搜索题目内容..."
             className="w-full lg:max-w-md"
           />
-          <ActionButton icon={Search} onClick={handleSearch}>搜索</ActionButton>
+          <ActionButton icon={Search} onClick={handleSearch}>
+            搜索
+          </ActionButton>
           <div className="flex items-center gap-2 text-sm font-semibold text-gray-500">
             <Filter size={18} />
             题型筛选
@@ -139,7 +199,11 @@ const QuestionListPanel = ({
       {searchKeyword && (
         <AlertBanner type="info">
           搜索"{searchKeyword}"的结果：{total} 条
-          <button type="button" onClick={handleClearSearch} className="ml-2 font-semibold text-primary hover:underline">
+          <button
+            type="button"
+            onClick={handleClearSearch}
+            className="ml-2 font-semibold text-primary hover:underline"
+          >
             清除搜索
           </button>
         </AlertBanner>
@@ -159,7 +223,11 @@ const QuestionListPanel = ({
           <EmptyState
             icon={BookOpen}
             title={searchKeyword ? '未找到匹配的题目' : '暂无题目'}
-            description={searchKeyword ? '尝试使用其他关键词搜索。' : '点击上方按钮添加题目，题目会显示在这里。'}
+            description={
+              searchKeyword
+                ? '尝试使用其他关键词搜索。'
+                : '点击上方按钮添加题目，题目会显示在这里。'
+            }
           />
         </SurfaceCard>
       )}
@@ -188,7 +256,9 @@ const QuestionListPanel = ({
                   transition={{ delay: index * 0.03 }}
                   className={cn(
                     'ui-card group p-6 transition-all duration-200',
-                    selectedIds.includes(q.id) ? 'border-primary ring-2 ring-primary/20' : 'hover:border-blue-200'
+                    selectedIds.includes(q.id)
+                      ? 'border-primary ring-2 ring-primary/20'
+                      : 'hover:border-blue-200',
                   )}
                 >
                   <div className="flex items-start gap-4">
@@ -217,24 +287,33 @@ const QuestionListPanel = ({
                                 'rounded-2xl border px-4 py-3 text-sm',
                                 q.answer?.includes(opt.id)
                                   ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300'
-                                  : 'border-gray-100 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                                  : 'border-gray-100 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300',
                               )}
                             >
                               <div className="flex gap-2">
                                 <span className="shrink-0 font-bold">{opt.id}.</span>
-                                <CodeAwareText text={opt.text} className="min-w-0 flex-1 bg-transparent p-0" />
+                                <CodeAwareText
+                                  text={opt.text}
+                                  className="min-w-0 flex-1 bg-transparent p-0"
+                                />
                               </div>
                             </div>
                           ))}
                         </div>
                       )}
                       <div className="rounded-2xl bg-green-50 px-4 py-3 text-sm text-gray-600 dark:bg-green-900/20 dark:text-gray-300">
-                        <span className="font-semibold text-gray-700 dark:text-gray-200">答案：</span>
-                        <span className="font-bold text-green-700 dark:text-green-300">{q.answer}</span>
+                        <span className="font-semibold text-gray-700 dark:text-gray-200">
+                          答案：
+                        </span>
+                        <span className="font-bold text-green-700 dark:text-green-300">
+                          {q.answer}
+                        </span>
                       </div>
                       {q.analysis && (
                         <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm text-gray-600 dark:bg-blue-900/20 dark:text-gray-300">
-                          <span className="font-semibold text-gray-700 dark:text-gray-200">解析：</span>
+                          <span className="font-semibold text-gray-700 dark:text-gray-200">
+                            解析：
+                          </span>
                           <div className="mt-1">
                             <CodeAwareText text={q.analysis} className="bg-transparent p-0" />
                           </div>
@@ -242,7 +321,11 @@ const QuestionListPanel = ({
                       )}
                     </div>
                     <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
-                      <IconButton label="编辑题目" icon={Edit} onClick={(e) => handleOpenEditQuestion(q, e)} />
+                      <IconButton
+                        label="编辑题目"
+                        icon={Edit}
+                        onClick={(e) => handleOpenEditQuestion(q, e)}
+                      />
                       <IconButton
                         label="删除题目"
                         icon={Trash2}
@@ -259,16 +342,31 @@ const QuestionListPanel = ({
       )}
 
       {!questionsLoading && totalPages > 0 && (
-        <SurfaceCard className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" padding="px-5 py-4">
+        <SurfaceCard
+          className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+          padding="px-5 py-4"
+        >
           <span className="text-sm text-gray-500">
             显示 {(page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, total)} 条，共 {total} 条
           </span>
           <div className="flex flex-wrap items-center gap-2">
-            <ActionButton variant="secondary" size="sm" disabled={page === 1} onClick={() => handlePageChange(page - 1)}>
+            <ActionButton
+              variant="secondary"
+              size="sm"
+              disabled={page === 1}
+              onClick={() => handlePageChange(page - 1)}
+            >
               上一页
             </ActionButton>
-            <span className="px-3 text-sm font-bold text-gray-500">{page} / {totalPages}</span>
-            <ActionButton variant="secondary" size="sm" disabled={page === totalPages} onClick={() => handlePageChange(page + 1)}>
+            <span className="px-3 text-sm font-bold text-gray-500">
+              {page} / {totalPages}
+            </span>
+            <ActionButton
+              variant="secondary"
+              size="sm"
+              disabled={page === totalPages}
+              onClick={() => handlePageChange(page + 1)}
+            >
               下一页
             </ActionButton>
           </div>
@@ -292,7 +390,9 @@ const QuestionListPanel = ({
       {editQuestionDialogOpen && editingQuestion && (
         <QuestionEditDialog
           open={editQuestionDialogOpen}
-          onClose={() => { setEditQuestionDialogOpen(false); }}
+          onClose={() => {
+            setEditQuestionDialogOpen(false);
+          }}
           question={editingQuestion}
           onSave={handleSaveEditQuestion}
         />
