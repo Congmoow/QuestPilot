@@ -5,6 +5,13 @@
 
 import { getDesktopRuntime, invokeTauriCommand } from '../lib/desktopRuntime';
 import { normalizeFileSelectionResult, normalizeSaveDialogResult } from './runtimeAdapters';
+import {
+  AiParseResultSchema,
+  ApiConfigSchema,
+  QuestionBankSchema,
+  safeValidate,
+  strictValidate,
+} from './schemas';
 import type {
   AiChatResult,
   AiMessage,
@@ -91,7 +98,9 @@ export const createQuestionBank = async (data: CreateQuestionBankInput): Promise
 
 export const getAllQuestionBanks = async (): Promise<QuestionBank[]> => {
   const banks = await invokeTauriCommand<QuestionBank[]>('question_bank_get_all');
-  return banks.map(normalizeBank);
+  return banks
+    .map(normalizeBank)
+    .map((b) => safeValidate(QuestionBankSchema, b, 'getAllQuestionBanks'));
 };
 
 export const getQuestionBankById = async (id: number): Promise<QuestionBank | null> => {
@@ -246,8 +255,10 @@ export const clearDraft = async (): Promise<{ success: boolean }> =>
 
 // ==================== 设置扩展 API ====================
 
-export const getApiConfig = async (): Promise<ApiConfig> =>
-  invokeTauriCommand('settings_get_api_config');
+export const getApiConfig = async (): Promise<ApiConfig> => {
+  const raw = await invokeTauriCommand('settings_get_api_config');
+  return safeValidate(ApiConfigSchema, raw, 'getApiConfig');
+};
 
 export const setApiConfig = async (
   config: Pick<ApiConfig, 'apiKey' | 'apiUrl' | 'modelId' | 'provider'>,
@@ -276,7 +287,8 @@ export const backupAndReplaceFromLegacy = async (
 // ==================== AI API ====================
 
 export const parseQuestionsWithAI = async (content: string): Promise<AiParseResult> => {
-  return invokeTauriCommand('ai_parse_questions', { content });
+  const raw = await invokeTauriCommand('ai_parse_questions', { content });
+  return strictValidate(AiParseResultSchema, raw, 'AI 解析题目');
 };
 
 export const chatWithAI = async (

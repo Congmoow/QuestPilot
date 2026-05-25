@@ -1,32 +1,21 @@
-export type QuestionType = 'single' | 'multiple' | 'boolean' | 'fill' | 'short';
-export type ThemeType = 'light' | 'dark' | 'system';
+import type { z } from 'zod';
+import type {
+  QuestionTypeSchema,
+  ThemeTypeSchema,
+  QuestionBankSchema,
+  QuestionOptionSchema,
+  QuestionSchema,
+  ApiConfigSchema,
+  AiParseResultSchema,
+} from './schemas';
 
-export interface QuestionBank {
-  id: number;
-  name: string;
-  description: string | null;
-  createdAt: string;
-  updatedAt: string;
-  questionCount?: number;
-  question_count?: number;
-}
-
-export interface QuestionOption {
-  id: string;
-  text: string;
-}
-
-export interface Question {
-  id: number;
-  bankId: number;
-  type: QuestionType;
-  content: string;
-  options: QuestionOption[] | null;
-  answer: string;
-  analysis: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+export type QuestionType = z.infer<typeof QuestionTypeSchema>;
+export type ThemeType = z.infer<typeof ThemeTypeSchema>;
+export type QuestionBank = z.infer<typeof QuestionBankSchema>;
+export type QuestionOption = z.infer<typeof QuestionOptionSchema>;
+export type Question = z.infer<typeof QuestionSchema>;
+export type ApiConfig = z.infer<typeof ApiConfigSchema>;
+export type AiParseResult = z.infer<typeof AiParseResultSchema>;
 
 export interface CreateQuestionBankInput {
   name: string;
@@ -113,15 +102,6 @@ export interface SaveDialogResult {
   count?: number;
 }
 
-export interface ApiConfig {
-  apiKey: string;
-  apiKeyPreview: string;
-  hasApiKey: boolean;
-  apiUrl: string;
-  modelId: string;
-  provider: string;
-}
-
 export interface ApiConnectionResult {
   success: boolean;
   message?: string;
@@ -151,12 +131,6 @@ export interface LegacyDatabaseReplaceResult {
 export interface AiMessage {
   role: string;
   content: string;
-}
-
-export interface AiParseResult {
-  questions: CreateQuestionInput[];
-  chunkErrors?: unknown[];
-  chunks?: unknown;
 }
 
 export interface AiChatResult {
