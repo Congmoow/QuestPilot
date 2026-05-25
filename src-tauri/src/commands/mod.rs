@@ -16,11 +16,11 @@ use tauri::{AppHandle, Manager, WebviewWindow};
 
 use crate::database;
 
-pub(super) fn main_window(window: &WebviewWindow) -> Result<WebviewWindow, String> {
+pub(super) fn main_window(window: &WebviewWindow) -> Result<WebviewWindow, crate::error::AppError> {
     window
         .app_handle()
         .get_webview_window("main")
-        .ok_or_else(|| "主窗口不存在".to_string())
+        .ok_or_else(|| crate::error::AppError::Config("主窗口不存在".into()))
 }
 
 pub(super) fn app_data_dir(app: &AppHandle) -> Result<PathBuf, String> {

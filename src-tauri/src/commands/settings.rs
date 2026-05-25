@@ -3,6 +3,7 @@ use std::path::Path;
 use tauri::AppHandle;
 
 use crate::database;
+use crate::error::AppError;
 
 use super::{ai_config_from_database, database_path, legacy_candidates, open_store};
 
@@ -51,62 +52,74 @@ pub fn mask_api_key(api_key: &str) -> String {
 }
 
 #[tauri::command(rename_all = "camelCase")]
-pub fn settings_get_theme(app: AppHandle) -> Result<String, String> {
-    open_store(&app)?.get_theme()
+#[tracing::instrument(skip(app), err)]
+pub fn settings_get_theme(app: AppHandle) -> Result<String, AppError> {
+    Ok(open_store(&app)?.get_theme()?)
 }
 
 #[tauri::command(rename_all = "camelCase")]
-pub fn settings_set_theme(app: AppHandle, theme: String) -> Result<(), String> {
-    open_store(&app)?.set_theme(theme)
+#[tracing::instrument(skip(app), err)]
+pub fn settings_set_theme(app: AppHandle, theme: String) -> Result<(), AppError> {
+    Ok(open_store(&app)?.set_theme(theme)?)
 }
 
 #[tauri::command(rename_all = "camelCase")]
-pub fn settings_get_wrong_book_threshold(app: AppHandle) -> Result<i64, String> {
-    open_store(&app)?.get_wrong_book_threshold()
+#[tracing::instrument(skip(app), err)]
+pub fn settings_get_wrong_book_threshold(app: AppHandle) -> Result<i64, AppError> {
+    Ok(open_store(&app)?.get_wrong_book_threshold()?)
 }
 
 #[tauri::command(rename_all = "camelCase")]
-pub fn settings_set_wrong_book_threshold(app: AppHandle, threshold: i64) -> Result<(), String> {
-    open_store(&app)?.set_wrong_book_threshold(threshold)
+#[tracing::instrument(skip(app), err)]
+pub fn settings_set_wrong_book_threshold(app: AppHandle, threshold: i64) -> Result<(), AppError> {
+    Ok(open_store(&app)?.set_wrong_book_threshold(threshold)?)
 }
 
 #[tauri::command(rename_all = "camelCase")]
-pub fn settings_get_api_config(app: AppHandle) -> Result<PublicApiConfig, String> {
+#[tracing::instrument(skip(app), err)]
+pub fn settings_get_api_config(app: AppHandle) -> Result<PublicApiConfig, AppError> {
     open_store(&app)?
         .get_api_config()
         .map(public_api_config_from_database)
+        .map_err(AppError::from)
 }
 
 #[tauri::command(rename_all = "camelCase")]
+#[tracing::instrument(skip(app, config), err)]
 pub fn settings_set_api_config(
     app: AppHandle,
     config: database::ApiConfig,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, AppError> {
     open_store(&app)?.set_api_config(config)?;
     Ok(serde_json::json!({ "success": true }))
 }
 
 #[tauri::command(rename_all = "camelCase")]
-pub async fn settings_test_api_connection(app: AppHandle) -> Result<serde_json::Value, String> {
+#[tracing::instrument(skip(app), err)]
+pub async fn settings_test_api_connection(app: AppHandle) -> Result<serde_json::Value, AppError> {
     let config = open_store(&app)?.get_api_config()?;
-    crate::ai::test_connection(&ai_config_from_database(config)).await
+    crate::ai::test_connection(&ai_config_from_database(config))
+        .await
+        .map_err(AppError::Ai)
 }
 
 #[tauri::command(rename_all = "camelCase")]
+#[tracing::instrument(skip(app), err)]
 pub fn migration_get_legacy_status(
     app: AppHandle,
-) -> Result<database::LegacyDatabaseStatus, String> {
+) -> Result<database::LegacyDatabaseStatus, AppError> {
     let target_path = database_path(&app)?;
     let candidates = legacy_candidates(&app)?;
-    database::legacy_database_status(&target_path, &candidates)
+    database::legacy_database_status(&target_path, &candidates).map_err(AppError::from)
 }
 
 #[tauri::command(rename_all = "camelCase")]
+#[tracing::instrument(skip(app), err)]
 pub fn migration_backup_and_replace_from_legacy(
     app: AppHandle,
     legacy_path: String,
     confirmation: String,
-) -> Result<database::LegacyDatabaseReplaceResult, String> {
+) -> Result<database::LegacyDatabaseReplaceResult, AppError> {
     let target_path = database_path(&app)?;
     let candidates = legacy_candidates(&app)?;
     database::replace_target_with_legacy_candidate(
@@ -115,6 +128,7 @@ pub fn migration_backup_and_replace_from_legacy(
         &candidates,
         confirmation.as_str(),
     )
+    .map_err(AppError::from)
 }
 
 #[cfg(test)]

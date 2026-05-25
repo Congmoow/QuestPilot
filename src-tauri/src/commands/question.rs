@@ -1,6 +1,7 @@
 use tauri::AppHandle;
 
 use crate::database;
+use crate::error::AppError;
 
 use super::open_store;
 
@@ -38,31 +39,34 @@ fn paginated_questions(
 }
 
 #[tauri::command(rename_all = "camelCase")]
+#[tracing::instrument(skip(app), err)]
 pub fn question_create(
     app: AppHandle,
     data: database::CreateQuestionInput,
     bank_id: i64,
-) -> Result<database::Question, String> {
-    open_store(&app)?.create_question(bank_id, data)
+) -> Result<database::Question, AppError> {
+    Ok(open_store(&app)?.create_question(bank_id, data)?)
 }
 
 #[tauri::command(rename_all = "camelCase")]
+#[tracing::instrument(skip(app), err)]
 pub fn question_create_batch(
     app: AppHandle,
     bank_id: i64,
     questions: Vec<database::CreateQuestionInput>,
-) -> Result<database::ImportResult, String> {
-    open_store(&app)?.create_questions_batch(bank_id, questions)
+) -> Result<database::ImportResult, AppError> {
+    Ok(open_store(&app)?.create_questions_batch(bank_id, questions)?)
 }
 
 #[tauri::command(rename_all = "camelCase")]
+#[tracing::instrument(skip(app), err)]
 pub fn question_get_by_bank_id(
     app: AppHandle,
     bank_id: i64,
     page: Option<u32>,
     page_size: Option<u32>,
     question_type: Option<String>,
-) -> Result<PaginatedQuestions, String> {
+) -> Result<PaginatedQuestions, AppError> {
     let page = page.unwrap_or(1).max(1);
     let page_size = page_size.unwrap_or(20).clamp(1, 1000);
     let offset = (page - 1) * page_size;
@@ -73,41 +77,43 @@ pub fn question_get_by_bank_id(
 }
 
 #[tauri::command(rename_all = "camelCase")]
+#[tracing::instrument(skip(app), err)]
 pub fn question_get_random(
     app: AppHandle,
     bank_id: i64,
     limit: Option<u32>,
     question_type: Option<String>,
-) -> Result<Vec<database::Question>, String> {
-    open_store(&app)?.get_random_questions(bank_id, limit, question_type)
+) -> Result<Vec<database::Question>, AppError> {
+    Ok(open_store(&app)?.get_random_questions(bank_id, limit, question_type)?)
 }
 
 #[tauri::command(rename_all = "camelCase")]
-pub fn question_get_by_id(
-    app: AppHandle,
-    id: i64,
-) -> Result<Option<database::Question>, String> {
-    open_store(&app)?.get_question_by_id(id)
+#[tracing::instrument(skip(app), err)]
+pub fn question_get_by_id(app: AppHandle, id: i64) -> Result<Option<database::Question>, AppError> {
+    Ok(open_store(&app)?.get_question_by_id(id)?)
 }
 
 #[tauri::command(rename_all = "camelCase")]
+#[tracing::instrument(skip(app), err)]
 pub fn question_update(
     app: AppHandle,
     id: i64,
     data: database::CreateQuestionInput,
-) -> Result<Option<database::Question>, String> {
-    open_store(&app)?.update_question(id, data)
+) -> Result<Option<database::Question>, AppError> {
+    Ok(open_store(&app)?.update_question(id, data)?)
 }
 
 #[tauri::command(rename_all = "camelCase")]
-pub fn question_delete(app: AppHandle, ids: Vec<i64>) -> Result<(), String> {
+#[tracing::instrument(skip(app), err)]
+pub fn question_delete(app: AppHandle, ids: Vec<i64>) -> Result<(), AppError> {
     if ids.is_empty() {
-        return Err("请选择要删除的题目".to_string());
+        return Err(AppError::Database("请选择要删除的题目".into()));
     }
-    open_store(&app)?.delete_questions(&ids)
+    Ok(open_store(&app)?.delete_questions(&ids)?)
 }
 
 #[tauri::command(rename_all = "camelCase")]
+#[tracing::instrument(skip(app), err)]
 pub fn question_search(
     app: AppHandle,
     bank_id: i64,
@@ -115,7 +121,7 @@ pub fn question_search(
     page: Option<u32>,
     page_size: Option<u32>,
     question_type: Option<String>,
-) -> Result<PaginatedQuestions, String> {
+) -> Result<PaginatedQuestions, AppError> {
     let page = page.unwrap_or(1).max(1);
     let page_size = page_size.unwrap_or(20).clamp(1, 1000);
     let offset = (page - 1) * page_size;
