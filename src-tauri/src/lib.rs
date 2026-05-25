@@ -726,7 +726,7 @@ pub fn run() {
             csv_export
         ])
         .run(tauri::generate_context!())
-        .expect("启动 QuestPilot Tauri PoC 失败");
+        .expect("启动 QuestPilot Tauri 应用失败");
 }
 
 #[cfg(test)]

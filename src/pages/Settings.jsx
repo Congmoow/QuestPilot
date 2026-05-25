@@ -71,7 +71,6 @@ const Settings = () => {
   const [replacingLegacyPath, setReplacingLegacyPath] = useState(null);
   const [migrationResult, setMigrationResult] = useState(null);
   const [migrationError, setMigrationError] = useState('');
-  const isTauriRuntime = api.migration.getRuntimeName() === 'tauri';
 
   const [prompts, setPrompts] = useState([]);
   const [editingPrompt, setEditingPrompt] = useState(null);
@@ -113,9 +112,8 @@ const Settings = () => {
   }, []);
 
   useEffect(() => {
-    if (!isTauriRuntime) return;
     loadMigrationStatus();
-  }, [isTauriRuntime]);
+  }, []);
 
   const handleProviderChange = (providerId) => {
     setProvider(providerId);
@@ -346,7 +344,6 @@ const Settings = () => {
         </div>
       </SurfaceCard>
 
-      {isTauriRuntime && (
       <SurfaceCard padding="p-6">
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-4">
@@ -435,7 +432,6 @@ const Settings = () => {
           )}
         </div>
       </SurfaceCard>
-      )}
 
       <SurfaceCard padding="p-6">
         <div className="mb-4 flex items-start gap-4">

@@ -23,7 +23,7 @@ test('将 Tauri 取消选择归一化为 canceled 字段', () => {
   });
 });
 
-test('保留 Electron 文件选择结果并补齐 canceled 字段', () => {
+test('保留对象形式的文件选择结果并补齐 canceled 字段', () => {
   assert.deepEqual(
     normalizeFileSelectionResult({ success: true, filePath: 'C:\\tmp\\items.csv' }),
     {
