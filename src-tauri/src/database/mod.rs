@@ -11,6 +11,14 @@ mod schema;
 mod types;
 mod validation;
 
+mod ai;
+mod practice;
+mod question;
+mod question_bank;
+mod settings;
+mod stats;
+mod wrong_book;
+
 pub use legacy::{
     legacy_database_candidates, legacy_database_status, replace_target_with_legacy_candidate,
     LegacyDatabaseCandidate, LegacyDatabaseReplaceResult, LegacyDatabaseStatus,
