@@ -1,11 +1,16 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 import { cn } from '../lib/utils';
 
-const isProbablyCode = (text) => {
+type CodeAwareTextProps = {
+  text?: ReactNode;
+  className?: string;
+};
+
+const isProbablyCode = (text: unknown): boolean => {
   if (!text) return false;
-  if (text.includes('```')) return true;
 
   const t = String(text);
+  if (t.includes('```')) return true;
   if (t.includes('\n')) {
     if (/\n\s{2,}\S/.test(t)) return true;
     if (/[{}();<>]/.test(t) && /\n/.test(t)) return true;
@@ -30,7 +35,7 @@ const isProbablyCode = (text) => {
   return false;
 };
 
-const CodeAwareText = ({ text, className }) => {
+const CodeAwareText = ({ text, className }: CodeAwareTextProps) => {
   if (text == null || text === '') return null;
 
   const value = String(text);

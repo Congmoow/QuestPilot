@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, type FC } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import {
   ChevronLeft,
@@ -18,14 +18,21 @@ import {
   SidebarWrongBookIcon,
 } from './SidebarIcons';
 
-export const ThemeContext = React.createContext({
+type Theme = 'light' | 'dark' | 'system';
+
+type ThemeContextValue = {
+  theme: Theme;
+  setTheme: (t: Theme) => void;
+};
+
+export const ThemeContext = React.createContext<ThemeContextValue>({
   theme: 'system',
   setTheme: () => {},
 });
 
-const Layout = () => {
+const Layout: FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [theme, setThemeState] = useState('system');
+  const [theme, setThemeState] = useState<Theme>('system');
 
   // 处理侧边栏响应式展开状态
   useEffect(() => {
@@ -65,7 +72,7 @@ const Layout = () => {
   }, []);
 
   // 设置主题并持久化到数据库
-  const setTheme = useCallback(async (newTheme) => {
+  const setTheme = useCallback(async (newTheme: Theme) => {
     setThemeState(newTheme);
     // 同时保存到 localStorage 作为后备
     localStorage.setItem('theme', newTheme);

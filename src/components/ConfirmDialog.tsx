@@ -1,21 +1,20 @@
-import React from 'react';
+import { type ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import Dialog from './Dialog';
 import { ActionButton } from './ui';
 
-/**
- * 确认对话框组件
- * @param {Object} props
- * @param {boolean} props.open - 是否显示对话框
- * @param {() => void} props.onClose - 关闭回调
- * @param {() => Promise<void>} props.onConfirm - 确认回调
- * @param {string} props.title - 对话框标题
- * @param {string} props.message - 确认消息
- * @param {string} [props.confirmText] - 确认按钮文本
- * @param {string} [props.cancelText] - 取消按钮文本
- * @param {'danger' | 'warning' | 'primary'} [props.type] - 对话框类型
- * @param {boolean} [props.loading] - 加载状态
- */
+type ConfirmDialogProps = {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => Promise<void> | void;
+  title: ReactNode;
+  message: ReactNode;
+  confirmText?: string;
+  cancelText?: string;
+  type?: 'danger' | 'warning' | 'primary';
+  loading?: boolean;
+};
+
 export function ConfirmDialog({
   open,
   onClose,
@@ -26,7 +25,7 @@ export function ConfirmDialog({
   cancelText = '取消',
   type = 'danger',
   loading = false,
-}) {
+}: ConfirmDialogProps) {
   const handleConfirm = async () => {
     try {
       await onConfirm();

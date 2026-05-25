@@ -1,4 +1,8 @@
-const SidebarIcon = ({ size = 20, children, ...props }) => (
+import type { SVGAttributes } from 'react';
+
+type SidebarIconProps = SVGAttributes<SVGElement> & { size?: number };
+
+const SidebarIcon = ({ size = 20, children, ...props }: SidebarIconProps) => (
   <svg
     {...props}
     xmlns="http://www.w3.org/2000/svg"
@@ -16,7 +20,7 @@ const SidebarIcon = ({ size = 20, children, ...props }) => (
   </svg>
 );
 
-export const SidebarDashboardIcon = (props) => (
+export const SidebarDashboardIcon = (props: SidebarIconProps) => (
   <SidebarIcon {...props}>
     <rect width="7" height="9" x="3" y="3" rx="1" />
     <rect width="7" height="5" x="14" y="3" rx="1" />
@@ -25,7 +29,7 @@ export const SidebarDashboardIcon = (props) => (
   </SidebarIcon>
 );
 
-export const SidebarQuestionBankIcon = (props) => (
+export const SidebarQuestionBankIcon = (props: SidebarIconProps) => (
   <SidebarIcon {...props}>
     <path d="M15 2h-4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8" />
     <path d="M16.706 2.706A2.4 2.4 0 0 0 15 2v5a1 1 0 0 0 1 1h5a2.4 2.4 0 0 0-.706-1.706z" />
@@ -33,14 +37,14 @@ export const SidebarQuestionBankIcon = (props) => (
   </SidebarIcon>
 );
 
-export const SidebarPracticeIcon = (props) => (
+export const SidebarPracticeIcon = (props: SidebarIconProps) => (
   <SidebarIcon {...props}>
     <circle cx="12" cy="12" r="10" />
     <path d="m10 8l6 4l-6 4z" />
   </SidebarIcon>
 );
 
-export const SidebarWrongBookIcon = (props) => (
+export const SidebarWrongBookIcon = (props: SidebarIconProps) => (
   <SidebarIcon {...props}>
     <path d="M12 21V7" />
     <path d="M16 12l2 2l4-4" />
@@ -48,7 +52,7 @@ export const SidebarWrongBookIcon = (props) => (
   </SidebarIcon>
 );
 
-export const SidebarAiImportIcon = (props) => (
+export const SidebarAiImportIcon = (props: SidebarIconProps) => (
   <SidebarIcon {...props}>
     <path d="m21.64 3.64l-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72" />
     <path d="M14 7l3 3" />
@@ -61,7 +65,7 @@ export const SidebarAiImportIcon = (props) => (
   </SidebarIcon>
 );
 
-export const SidebarAiChatIcon = (props) => (
+export const SidebarAiChatIcon = (props: SidebarIconProps) => (
   <SidebarIcon {...props}>
     <path d="M12 6V2H8" />
     <path d="M15 11v2" />
@@ -72,7 +76,7 @@ export const SidebarAiChatIcon = (props) => (
   </SidebarIcon>
 );
 
-export const SidebarSettingsIcon = (props) => (
+export const SidebarSettingsIcon = (props: SidebarIconProps) => (
   <SidebarIcon {...props}>
     <path d="M4 21v-7" />
     <path d="M4 10V3" />

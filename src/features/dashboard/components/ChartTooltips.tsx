@@ -1,4 +1,20 @@
-export function AccuracyTooltip({ active, payload }) {
+type TooltipEntry = {
+  payload: {
+    accuracy: number;
+    fullDate: string;
+    time: string;
+    index: number;
+    totalQuestions: number;
+    correctCount: number;
+  };
+};
+
+type TooltipProps = {
+  active?: boolean;
+  payload?: TooltipEntry[];
+};
+
+export function AccuracyTooltip({ active, payload }: TooltipProps) {
   if (!active || !payload?.length) return null;
   const data = payload[0].payload;
 
@@ -18,7 +34,10 @@ export function AccuracyTooltip({ active, payload }) {
   );
 }
 
-export function PieTooltip({ active, payload }) {
+type PieEntry = { name: string; value: number };
+type PieTooltipProps = { active?: boolean; payload?: PieEntry[] };
+
+export function PieTooltip({ active, payload }: PieTooltipProps) {
   if (!active || !payload?.length) return null;
   const data = payload[0];
 

@@ -1,20 +1,19 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { IconButton } from './ui';
 
-/**
- * 通用对话框组件
- * @param {Object} props
- * @param {boolean} props.open - 是否显示对话框
- * @param {() => void} props.onClose - 关闭回调
- * @param {string} props.title - 对话框标题
- * @param {React.ReactNode} props.children - 对话框内容
- * @param {string} [props.className] - 额外的样式类
- * @param {'sm' | 'md' | 'lg' | 'xl'} [props.size='md'] - 对话框尺寸
- */
-export function Dialog({ open, onClose, title, children, className, size = 'md' }) {
+export type DialogProps = {
+  open: boolean;
+  onClose: () => void;
+  title: ReactNode;
+  children?: ReactNode;
+  className?: string;
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+};
+
+export function Dialog({ open, onClose, title, children, className, size = 'md' }: DialogProps) {
   const sizeClasses = {
     sm: 'max-w-sm',
     md: 'max-w-md',
@@ -25,7 +24,7 @@ export function Dialog({ open, onClose, title, children, className, size = 'md' 
 
   // ESC 键关闭
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && open) {
         onClose();
       }
@@ -35,7 +34,7 @@ export function Dialog({ open, onClose, title, children, className, size = 'md' 
   }, [open, onClose]);
 
   // 点击遮罩关闭
-  const handleOverlayClick = (e) => {
+  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === overlayRef.current) {
       onClose();
     }

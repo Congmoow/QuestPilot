@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FC } from 'react';
 import { Minus, Square, X, Copy } from 'lucide-react';
 import { getPublicAssetPath } from '../lib/assets';
 import { windowControls } from '../lib/desktopRuntime';
 
 const BRAND_FONT_FAMILY = 'QuestPilotBrand';
-let brandFontLoading = null;
+let brandFontLoading: Promise<void> | null = null;
 
 const loadBrandFont = () => {
   if (brandFontLoading || typeof FontFace === 'undefined' || !document.fonts) {
@@ -41,7 +41,7 @@ const getIconPath = () => {
   return getPublicAssetPath('/icon.png');
 };
 
-const TitleBar = () => {
+const TitleBar: FC = () => {
   const [isMaximized, setIsMaximized] = useState(false);
   const iconPath = getIconPath();
 
