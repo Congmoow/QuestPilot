@@ -69,6 +69,7 @@ Tauri 已作为后续开发主线推进，并已完成阶段 2-6 的架构治理
 | `npm run tauri:info` | 记录 Tauri 环境。 | 发布前建议重跑；若命令不退出，记录为环境输出而非完整通过。 |
 | `npm run tauri:dev` 或预览级 smoke | 验证 Tauri 真实窗口核心流程。 | 待人工/运行时验收。 |
 | `npm run tauri:build` | 验证 Tauri 打包产物。 | 2026-05-25 通过，生成 `QuestPilot_1.6.7_x64-setup.exe` 和 release exe。 |
+| GitHub Actions `Build and Release` | 验证 tag 或手动发布使用 Tauri 打包链路。 | 已切换为 `npm run tauri:build`，上传 `src-tauri/target/release/bundle/nsis/*.exe`。 |
 
 ## 阶段 7.1 P0 收口记录
 
@@ -79,6 +80,7 @@ Tauri 已作为后续开发主线推进，并已完成阶段 2-6 的架构治理
 | 目标 Tauri 库已有用户数据时缺少显式处置流程 | 已验证到代码和契约层 | 新增 `migration_get_legacy_status` 和 `migration_backup_and_replace_from_legacy` Tauri 命令；设置页仅在 Tauri 中显示数据迁移卡片；替换前要求确认，替换时先移动当前库为备份，再用旧库替换；`cargo test` 覆盖状态、备份替换、错误确认短语和非候选路径拒绝。 |
 | Tauri 保存对话框权限 | 已补齐配置 | `src-tauri/capabilities/main.json` 增加 `dialog:allow-save`；仍需真实窗口点击保存对话框。 |
 | 打包产物 | 已验证到构建和启动层 | `npm run tauri:build` 通过，产物为 `src-tauri/target/release/questpilot-tauri.exe` 和 `src-tauri/target/release/bundle/nsis/QuestPilot_1.6.7_x64-setup.exe`；release exe 启动 8 秒后仍存活，随后主动结束进程。 |
+| GitHub Release 工作流 | 已切到 Tauri 主线 | `.github/workflows/release.yml` 使用 Rust stable 与 `npm run tauri:build` 构建，并只上传 Tauri NSIS 安装包。 |
 | 真实 AI | 已由用户人工验收通过 | 用户在 Tauri 真实窗口中测试 API 接入，反馈人工测试没有问题。 |
 | CSV 保存对话框 | 已由用户人工验收通过 | 用户在 Tauri 真实窗口中测试 CSV 保存，反馈人工测试没有问题。 |
 

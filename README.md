@@ -1,8 +1,8 @@
 # QuestPilot
 
-QuestPilot 是一款基于 Electron + React + Vite 构建的桌面端题库管理与刷题工具，支持 CSV / JSON / AI 导入、随机练题、错题本、统计面板与 AI 问答。
+QuestPilot 是一款基于 Tauri + React + Vite 构建的桌面端题库管理与刷题工具，支持 CSV / JSON / AI 导入、随机练题、错题本、统计面板与 AI 问答。Electron 运行时当前保留为回退参考线。
 
-![Electron](https://img.shields.io/badge/Electron-33.x-47848F?logo=electron&logoColor=white)
+![Tauri](https://img.shields.io/badge/Tauri-2.x-24C8DB?logo=tauri&logoColor=white)
 ![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-5.x-646CFF?logo=vite&logoColor=white)
 ![License](https://img.shields.io/badge/License-Study%20Only-lightgrey)
@@ -48,15 +48,13 @@ QuestPilot 是一款基于 Electron + React + Vite 构建的桌面端题库管�
 
 ### 从 GitHub Releases 下载
 
-前往仓库的 Releases 页面下载对应平台的安装包：
+前往仓库的 Releases 页面下载 Tauri 安装包：
 
-- Windows：`QuestPilot-<version>-Setup.exe`
-- macOS：`QuestPilot-<version>-<arch>.dmg`
-- Linux：`QuestPilot-<version>-<arch>.AppImage`
+- Windows：`QuestPilot_<version>_x64-setup.exe`
 
 ### 本地构建产物
 
-执行 `npm run electron:build`（或 `npm run electron:build:win` 等）后，安装包会生成在 `release/` 目录下。
+执行 `npm run tauri:build` 后，Windows 安装包会生成在 `src-tauri/target/release/bundle/nsis/` 目录下。
 
 ## 快速开始
 
@@ -74,10 +72,10 @@ npm install
 ### 开发（桌面应用）
 
 ```bash
-npm run electron:dev
+npm run tauri:dev
 ```
 
-该命令会同时启动 Vite 开发服务器（默认端口 `5173`）与 Electron 主进程。
+该命令会同时启动 Vite 开发服务器（默认端口 `5173`）与 Tauri 桌面窗口。
 
 ### 开发（仅前端预览）
 
@@ -91,29 +89,14 @@ npm run dev
 http://localhost:5173
 ```
 
-### 本地预览（使用 dist）
-
-```bash
-npm run electron:preview
-```
-
 ### 构建与打包
 
 ```bash
-# 全平台默认（取决于你的当前 OS）
-npm run electron:build
-
-# Windows
-npm run electron:build:win
-
-# macOS
-npm run electron:build:mac
-
-# Linux
-npm run electron:build:linux
+# Tauri Windows 安装包
+npm run tauri:build
 ```
 
-构建完成后，安装包位于 `release/` 目录。
+构建完成后，安装包位于 `src-tauri/target/release/bundle/nsis/` 目录。
 
 ### 清理构建产物
 
@@ -162,9 +145,9 @@ npm run clean
 所有数据默认保存在本地（不会自动上传）。
 
 - **数据库文件**：`questpilot.db`
-- **旧版数据兼容**：首次启动时会尝试从旧版 `question-bank.db` 复制迁移
-- **数据库位置**：Electron `app.getPath('userData')` 目录下
-  - 启动应用后，主进程控制台会输出数据库路径：`数据库初始化完成，路径: ...`
+- **Tauri 数据库位置**：`%APPDATA%\com.questpilot.desktop\questpilot.db`
+- **旧版数据兼容**：首次启动时会尝试从旧版 Electron 数据目录迁移 `questpilot.db` 或 `question-bank.db`
+- **迁移冲突处理**：如果 Tauri 目标库已有用户数据，不会静默覆盖；可在设置页通过数据迁移卡片执行备份替换
 
 数据库中包含：题库、题目、设置（含 AI 配置）、草稿、练习记录、错题本、AI Prompt、聊天记录等。
 
@@ -269,21 +252,28 @@ Explanation: 支持英文答案和解析标记。
 questpilot/
 ├── image/                    # README 文档图片
 │   └── README/               # README 中引用的界面截图
-├── electron/                 # Electron 主进程
-│   ├── main.cjs              # 主进程入口（窗口创建、IPC、业务编排）
-│   ├── preload.cjs           # 预加载脚本（向渲染进程暴露 electronAPI）
-│   ├── ai/                   # AI 调用封装
-│   ├── csv/                  # CSV 模板/解析/导出
-│   ├── database/             # 本地数据库（sql.js）
-│   └── validation/           # 数据校验
+├── src-tauri/                # Tauri 主线运行时
+│   ├── src/                  # Rust 命令、数据库、AI、CSV 与窗口能力
+│   ├── capabilities/         # Tauri capability 权限配置
+│   ├── icons/                # Tauri 打包图标
+│   ├── tests/                # Rust 集成测试
+│   ├── tauri.conf.json       # Tauri 应用与打包配置
+│   └── target/release/bundle/nsis/
+│                              # 本地构建生成的 Tauri Windows 安装包
 ├── src/                      # React 渲染进程
 │   ├── pages/                # 页面（仪表盘/导入/练习/错题本/设置/AI问答等）
 │   ├── components/           # 通用组件
 │   ├── contexts/             # React Context
-│   └── api/                  # 对 window.electronAPI 的封装
+│   └── api/                  # 桌面 API 适配层（Tauri 主线，Electron 回退）
+├── electron/                 # Electron 回退线主进程
+│   ├── main.cjs              # Electron 窗口创建、IPC 与业务编排
+│   ├── preload.cjs           # Electron 预加载脚本
+│   ├── database/             # Electron 本地数据库回退实现
+│   └── validation/           # Electron 数据校验
+├── docs/                     # 架构、迁移、验收与发布闸门文档
+├── scripts/                  # Node 测试与辅助脚本
 ├── build/                    # 构建资源（图标等）
-├── dist/                     # Vite 构建产物
-└── release/                  # electron-builder 打包输出
+└── dist/                     # Vite 构建产物
 ```
 
 ---
@@ -292,11 +282,11 @@ questpilot/
 
 | 类别          | 技术                     |
 | ------------- | ------------------------ |
-| 桌面框架      | Electron                 |
+| 桌面框架      | Tauri 2                 |
 | 前端框架      | React 18 + React Router  |
 | 构建工具      | Vite                     |
 | 样式方案      | Tailwind CSS + PostCSS   |
-| 本地存储      | sql.js（SQLite in WASM） |
+| 本地存储      | SQLite（Tauri 主线）     |
 | CSV           | PapaParse                |
 | 图表          | Recharts                 |
 | 动画          | Framer Motion            |
@@ -310,14 +300,12 @@ questpilot/
 - **`npm run dev`**：启动 Vite
 - **`npm run build`**：构建渲染进程到 `dist/`
 - **`npm run preview`**：预览 Vite 构建产物
-- **`npm run electron:dev`**：开发模式（Vite + Electron）
-- **`npm run electron:preview`**：构建 `dist/` 后启动 Electron 预览
-- **`npm run electron:build`**：构建并调用 electron-builder 打包
-- **`npm run electron:build:win`**：打 Windows 安装包
-- **`npm run electron:build:mac`**：打 macOS 安装包
-- **`npm run electron:build:linux`**：打 Linux 安装包
-- **`npm run electron:pack`**：仅生成未打包目录（`--dir`）
-- **`npm run clean`**：清理 `dist/` 与 `release/`
+- **`npm run tauri:dev`**：开发模式（Vite + Tauri）
+- **`npm run tauri:build`**：构建 Tauri release exe 与 Windows NSIS 安装包
+- **`npm run tauri:info`**：查看 Tauri 环境信息
+- **`npm run electron:dev`**：Electron 回退线开发模式
+- **`npm run electron:build:win`**：Electron 回退线 Windows 安装包
+- **`npm run clean`**：清理 `dist/` 与 Electron 回退线 `release/`
 
 ---
 
@@ -327,16 +315,23 @@ questpilot/
 
 1. 推送 tag（形如 `v1.0.0`）触发工作流
 2. CI 使用 Node.js 20 执行 `npm ci`
-3. 运行 `npm run electron:build`
-4. 上传 `release/` 下的安装包到 GitHub Releases
+3. 安装 Rust stable toolchain
+4. 运行 `npm run tauri:build`
+5. 上传 `src-tauri/target/release/bundle/nsis/*.exe` 到 GitHub Releases
 
 ---
 
 ## 常见问题（FAQ）
 
-### electron:dev 启动失败或白屏
+### tauri:dev 启动失败或白屏
 
 - 确认 `5173` 端口未被占用（Vite 配置固定端口：`vite.config.js`）
+- 确认本机已安装 Rust stable、Windows WebView2 Runtime 和 Tauri 依赖环境
+- 若你修改了端口，需要同步修改 `src-tauri/tauri.conf.json` 中的 `devUrl`
+
+### Electron 回退线启动失败
+
+- Electron 当前仅作为回退参考线保留
 - 若你修改了端口，需要同步修改 `electron/main.cjs` 中开发环境加载的 URL
 
 ### AI 调用失败
