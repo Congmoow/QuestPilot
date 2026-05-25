@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -12,22 +11,15 @@ import {
   YAxis,
 } from 'recharts';
 import {
-  Activity,
   CalendarDays,
-  CheckCircle2,
   Clock,
   Database,
-  FileQuestion,
   Loader2,
   PieChart as PieChartIcon,
   RefreshCw,
   TrendingUp,
-  Zap,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { getDashboardStats, getOperationLogs, getTypeDistribution } from '../api';
-import api from '../api';
-import { useQuestionBanks } from '../contexts/QuestionBankContext';
 import {
   ActionButton,
   AlertBanner,
@@ -39,210 +31,21 @@ import {
   SurfaceCard,
   TimelineLog,
 } from '../components/ui';
-
-const TYPE_LABELS = {
-  single: '单选题',
-  multiple: '多选题',
-  boolean: '判断题',
-  fill: '填空题',
-  short: '简答题',
-};
-
-const TYPE_COLORS = ['#2563EB', '#16A34A', '#F97316', '#8B5CF6', '#38BDF8'];
-const TYPE_ORDER = ['single', 'multiple', 'boolean', 'fill', 'short'];
-
-function AccuracyTooltip({ active, payload }) {
-  if (!active || !payload?.length) return null;
-  const data = payload[0].payload;
-
-  return (
-    <div className="min-w-[168px] rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-popover dark:border-gray-700 dark:bg-gray-800">
-      <p className="text-xs text-gray-400">{data.fullDate} {data.time}</p>
-      <div className="mt-2 flex items-end gap-2">
-        <span className="text-2xl font-extrabold text-primary">{data.accuracy}%</span>
-        <span className="pb-1 text-xs font-semibold text-gray-500">第 {data.index} 次练习</span>
-      </div>
-      {data.totalQuestions > 0 && (
-        <p className="mt-2 text-xs text-gray-500">
-          答对 <span className="font-semibold text-success">{data.correctCount}</span> / {data.totalQuestions} 题
-        </p>
-      )}
-    </div>
-  );
-}
-
-function PieTooltip({ active, payload }) {
-  if (!active || !payload?.length) return null;
-  const data = payload[0];
-
-  return (
-    <div className="rounded-2xl border border-gray-100 bg-white px-4 py-3 text-sm shadow-popover dark:border-gray-700 dark:bg-gray-800">
-      <p className="font-semibold text-gray-900 dark:text-white">{data.name}</p>
-      <p className="mt-1 text-gray-500">数量：{data.value}</p>
-    </div>
-  );
-}
+import { TYPE_LABELS } from '../lib/questionLabels';
+import { AccuracyTooltip, PieTooltip } from '../features/dashboard/components/ChartTooltips';
+import { TYPE_ORDER, TYPE_COLORS, formatOperationTime, formatNumber, useDashboard } from '../features/dashboard/hooks/useDashboard';
 
 const Dashboard = () => {
-  const { banks, fetchBanks: refreshBanks } = useQuestionBanks();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [dashboardStats, setDashboardStats] = useState({
-    totalQuestions: 0,
-    todayQuestions: 0,
-    weekQuestions: 0,
-    typeDistribution: [],
-  });
-  const [operationLogs, setOperationLogs] = useState([]);
-  const [selectedBankId, setSelectedBankId] = useState(null);
-  const [isBankManuallySelected, setIsBankManuallySelected] = useState(false);
-  const [practiceRecords, setPracticeRecords] = useState([]);
-  const [loadingRecords, setLoadingRecords] = useState(false);
-  const [practiceStats, setPracticeStats] = useState([]);
-  const [selectedTypeBankId, setSelectedTypeBankId] = useState(null);
-  const [typeDistribution, setTypeDistribution] = useState([]);
-
-  const normalizeDateString = (value) => {
-    if (!value) return '';
-    const s = String(value);
-    if (s.includes('T')) return s;
-    return s.replace(' ', 'T');
-  };
-
-  const safeTime = (value) => {
-    const s = normalizeDateString(value);
-    if (!s) return 0;
-    const t = new Date(s).getTime();
-    return Number.isFinite(t) ? t : 0;
-  };
-
-  const formatOperationTime = (value) => {
-    const s = normalizeDateString(value);
-    if (!s) return '';
-    const iso = /Z$|[+-]\d\d:\d\d$/.test(s) ? s : `${s}Z`;
-    const d = new Date(iso);
-    if (!Number.isFinite(d.getTime())) return '';
-    return d.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const [stats, logs, allPracticeStats] = await Promise.all([
-          getDashboardStats(),
-          getOperationLogs(10),
-          api.practice.getAllStats().catch((e) => {
-            console.error('加载练习统计失败:', e);
-            return [];
-          }),
-        ]);
-
-        setDashboardStats(stats);
-        setOperationLogs(logs);
-        setPracticeStats(Array.isArray(allPracticeStats) ? allPracticeStats : []);
-        await refreshBanks();
-      } catch (err) {
-        console.error('加载数据失败:', err);
-        setError(err.message || '加载数据失败');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    const loadPracticeRecords = async () => {
-      if (!selectedBankId) {
-        setPracticeRecords([]);
-        return;
-      }
-
-      setLoadingRecords(true);
-      try {
-        const records = await api.practice.getRecords(selectedBankId, 10);
-        setPracticeRecords(records.reverse());
-      } catch (error) {
-        console.error('加载练习记录失败:', error);
-      } finally {
-        setLoadingRecords(false);
-      }
-    };
-
-    loadPracticeRecords();
-  }, [selectedBankId]);
-
-  const practiceLastTimeByBankId = useMemo(
-    () => new Map(
-      (practiceStats || []).map(s => [
-        Number(s.bankId),
-        s && s.lastPractice ? safeTime(s.lastPractice) : 0,
-      ])
-    ),
-    [practiceStats]
-  );
-
-  const trendBanks = useMemo(() => [...(banks || [])].sort((a, b) => {
-    const aPractice = practiceLastTimeByBankId.get(Number(a.id)) || 0;
-    const bPractice = practiceLastTimeByBankId.get(Number(b.id)) || 0;
-
-    if (aPractice !== bPractice) return bPractice - aPractice;
-
-    const aUpdated = a && a.updatedAt ? safeTime(a.updatedAt) : 0;
-    const bUpdated = b && b.updatedAt ? safeTime(b.updatedAt) : 0;
-    return bUpdated - aUpdated;
-  }), [banks, practiceLastTimeByBankId]);
-
-  const latestPracticedBankId = useMemo(() => {
-    let latest = null;
-    for (const s of practiceStats || []) {
-      const bankId = Number(s.bankId);
-      const time = s && s.lastPractice ? safeTime(s.lastPractice) : 0;
-      if (!Number.isFinite(bankId) || bankId <= 0) continue;
-      if (!time) continue;
-      if (!latest || time > latest.time) latest = { bankId, time };
-    }
-    if (!latest) return null;
-    return trendBanks.some(b => Number(b.id) === latest.bankId) ? latest.bankId : null;
-  }, [practiceStats, trendBanks]);
-
-  useEffect(() => {
-    if (isBankManuallySelected) return;
-
-    if (latestPracticedBankId) {
-      if (selectedBankId !== latestPracticedBankId) {
-        setSelectedBankId(latestPracticedBankId);
-      }
-      return;
-    }
-
-    if (!selectedBankId && trendBanks.length > 0) {
-      setSelectedBankId(trendBanks[0].id);
-    }
-  }, [isBankManuallySelected, latestPracticedBankId, selectedBankId, trendBanks]);
-
-  useEffect(() => {
-    const loadTypeDistribution = async () => {
-      try {
-        const data = await getTypeDistribution(selectedTypeBankId);
-        setTypeDistribution(data);
-      } catch (error) {
-        console.error('加载题型分布失败:', error);
-      }
-    };
-    loadTypeDistribution();
-  }, [selectedTypeBankId]);
-
-  const formatNumber = (num) => Number(num || 0).toLocaleString('zh-CN');
-
-  const totalPracticeCount = useMemo(
-    () => (practiceStats || []).reduce((sum, item) => sum + Number(item.practiceCount || 0), 0),
-    [practiceStats]
-  );
+  const {
+    banks, loading, error,
+    dashboardStats, operationLogs,
+    selectedBankId, setSelectedBankId, isBankManuallySelected, setIsBankManuallySelected,
+    loadingRecords, trendBanks,
+    selectedTypeBankId, setSelectedTypeBankId,
+    typeDistribution,
+    totalPracticeCount,
+    practiceChartData,
+  } = useDashboard();
 
   const stats = [
     {
@@ -282,26 +85,6 @@ const Dashboard = () => {
 
   const displayChartData = chartData.length > 0 ? chartData : [{ name: '暂无数据', value: 1, type: 'empty' }];
   const currentTotalQuestions = typeDistribution.reduce((sum, item) => sum + item.count, 0);
-
-  const practiceChartData = practiceRecords.map((record, index) => {
-    const createdAt = new Date(normalizeDateString(record.createdAt));
-    return {
-      name: `第${index + 1}次`,
-      accuracy: record.accuracy,
-      date: Number.isFinite(createdAt.getTime())
-        ? createdAt.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
-        : `第${index + 1}次`,
-      fullDate: Number.isFinite(createdAt.getTime())
-        ? createdAt.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
-        : '',
-      time: Number.isFinite(createdAt.getTime())
-        ? createdAt.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-        : '',
-      totalQuestions: record.total || 0,
-      correctCount: record.correct || 0,
-      index: index + 1,
-    };
-  });
 
   const todayText = new Date().toLocaleDateString('zh-CN', {
     year: 'numeric',
