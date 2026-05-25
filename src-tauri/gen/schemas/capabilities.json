@@ -1,1 +1,1 @@
-{"main":{"identifier":"main","description":"QuestPilot Tauri PoC 主窗口权限","local":true,"windows":["main"],"permissions":["core:default","core:window:default","dialog:allow-open"]}}
+{"main":{"identifier":"main","description":"QuestPilot Tauri PoC 主窗口权限","local":true,"windows":["main"],"permissions":["core:default","core:window:default","dialog:allow-open","dialog:allow-save"]}}

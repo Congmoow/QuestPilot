@@ -527,6 +527,11 @@
 - 已把真实 AI、CSV 保存对话框、Tauri 打包产物和目标 Tauri 库已有用户数据时的显式处置流程列为 P0 发布阻塞项。
 - 已把 Tauri 窗口控制、文件选择真实点击、Electron 最终回退 smoke 和发布命令人工记录列为 P1 或待验收项。
 - 已同步 `docs/architecture/runtime-acceptance.md` 和 `docs/architecture/tauri-mainline-readiness.md` 的阶段 7 入口。
+- 阶段 7.1 已补齐目标 Tauri 库已有用户数据时的显式备份替换流程：新增 Tauri 命令、前端 API 和设置页迁移卡片，替换前会先移动当前库为备份，且后端只接受后端计算出的旧库候选路径。
+- 阶段 7.1 已补齐 Tauri 保存对话框权限：`dialog:allow-save` 已加入主窗口 capability。
+- 阶段 7.1 已执行 Tauri 打包并完成 release exe 8 秒启动 smoke，产物为 `src-tauri/target/release/bundle/nsis/QuestPilot_1.6.7_x64-setup.exe`。
+- 真实 AI 仍未验收：本机 Tauri 数据库布尔检查显示 `hasSavedApiKey=false`，没有真实 API Key。
+- CSV 保存对话框仍未验收：原生保存对话框取消路径和实际写入路径仍需真实 Tauri 窗口人工点击。
 
 **已验证：**
 
@@ -540,3 +545,16 @@
 | `npm run test:db-migrations` | 通过，3 个数据库迁移脚本测试通过。 |
 | `npm run build` | 通过。 |
 | `git diff --check` | 通过，仅保留 Git 行尾提示。 |
+
+**阶段 7.1 已验证：**
+
+| 命令或 smoke | 结果 |
+| --- | --- |
+| `cargo fmt -- --check` | 通过。 |
+| `cargo test` | 通过，Rust 全量测试通过；数据库集成测试 20 个通过。 |
+| `npm run test:api-contract` | 通过，6 个 API 契约测试通过。 |
+| `npm run test:api-config-security` | 通过，3 个 API Key 安全测试通过。 |
+| `npm run test:db-migrations` | 通过，3 个数据库迁移脚本测试通过。 |
+| `npm run build` | 通过。 |
+| `npm run tauri:build` | 通过，生成 release exe 和 NSIS 安装包。 |
+| release exe 8 秒启动 smoke | 通过，`questpilot-tauri.exe` 启动后 8 秒仍存活，随后主动结束。 |

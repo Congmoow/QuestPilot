@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 import {
   normalizeFileSelectionResult,
@@ -54,4 +55,15 @@ test('保存对话框成功结果只暴露稳定字段', () => {
       count: 12,
     }
   );
+});
+
+test('Tauri 迁移冲突处置暴露显式备份替换入口', () => {
+  const apiSource = fs.readFileSync('src/api/index.js', 'utf8');
+  const settingsSource = fs.readFileSync('src/pages/Settings.jsx', 'utf8');
+
+  assert.match(apiSource, /migration_get_legacy_status/);
+  assert.match(apiSource, /migration_backup_and_replace_from_legacy/);
+  assert.match(apiSource, /BACKUP_AND_REPLACE/);
+  assert.match(settingsSource, /requires_explicit_reset/);
+  assert.match(settingsSource, /备份并使用旧库替换/);
 });

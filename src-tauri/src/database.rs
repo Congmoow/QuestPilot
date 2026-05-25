@@ -11,7 +11,10 @@ mod schema;
 mod types;
 mod validation;
 
-pub use legacy::legacy_database_candidates;
+pub use legacy::{
+    legacy_database_candidates, legacy_database_status, replace_target_with_legacy_candidate,
+    LegacyDatabaseCandidate, LegacyDatabaseReplaceResult, LegacyDatabaseStatus,
+};
 pub use types::{
     ApiConfig, ChatHistory, ChatHistoryInput, CreatePromptInput, CreateQuestionBankInput,
     CreateQuestionInput, DashboardStats, ImportError, ImportResult, OperationLog, PracticeRecord,

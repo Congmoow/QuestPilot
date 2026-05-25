@@ -25,9 +25,13 @@ fn database_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(app_data_dir(app)?.join(database::DATABASE_FILE_NAME))
 }
 
+fn legacy_candidates(app: &AppHandle) -> Result<Vec<PathBuf>, String> {
+    Ok(database::legacy_database_candidates(&database_path(app)?))
+}
+
 fn open_store(app: &AppHandle) -> Result<database::DatabaseStore, String> {
     let path = database_path(app)?;
-    let legacy_candidates = database::legacy_database_candidates(&path);
+    let legacy_candidates = legacy_candidates(app)?;
     database::DatabaseStore::open_with_legacy_candidates(&path, &legacy_candidates)
 }
 
@@ -320,6 +324,29 @@ fn settings_set_api_config(
 fn settings_test_api_connection(app: AppHandle) -> Result<serde_json::Value, String> {
     let config = open_store(&app)?.get_api_config()?;
     ai::test_connection(&ai_config_from_database(config))
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn migration_get_legacy_status(app: AppHandle) -> Result<database::LegacyDatabaseStatus, String> {
+    let target_path = database_path(&app)?;
+    let candidates = legacy_candidates(&app)?;
+    database::legacy_database_status(&target_path, &candidates)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn migration_backup_and_replace_from_legacy(
+    app: AppHandle,
+    legacy_path: String,
+    confirmation: String,
+) -> Result<database::LegacyDatabaseReplaceResult, String> {
+    let target_path = database_path(&app)?;
+    let candidates = legacy_candidates(&app)?;
+    database::replace_target_with_legacy_candidate(
+        &target_path,
+        Path::new(legacy_path.as_str()),
+        &candidates,
+        confirmation.as_str(),
+    )
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -664,6 +691,8 @@ pub fn run() {
             settings_get_api_config,
             settings_set_api_config,
             settings_test_api_connection,
+            migration_get_legacy_status,
+            migration_backup_and_replace_from_legacy,
             ai_parse_questions,
             ai_chat,
             settings_get_wrong_book_threshold,

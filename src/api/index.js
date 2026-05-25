@@ -6,6 +6,7 @@
 import {
   getDesktopApiUnavailableError,
   getElectronAPI,
+  getDesktopRuntime,
   getUnsupportedTauriApiError,
   invokeTauriCommand,
   isTauriRuntime,
@@ -549,6 +550,31 @@ export const testApiConnection = async () => {
   throw getDesktopApiUnavailableError()
 }
 
+// ==================== 数据迁移 API ====================
+
+export const getLegacyDatabaseStatus = async () => {
+  if (isTauriRuntime()) return invokeTauriCommand('migration_get_legacy_status')
+  return {
+    targetPath: '',
+    targetExists: false,
+    targetHasUserData: false,
+    candidates: [],
+    recommendedAction: 'none',
+  }
+}
+
+export const getRuntimeName = () => getDesktopRuntime()
+
+export const backupAndReplaceFromLegacy = async (legacyPath) => {
+  if (isTauriRuntime()) {
+    return invokeTauriCommand('migration_backup_and_replace_from_legacy', {
+      legacyPath,
+      confirmation: 'BACKUP_AND_REPLACE',
+    })
+  }
+  throw getUnsupportedTauriApiError('migration_backup_and_replace_from_legacy')
+}
+
 // ==================== AI API ====================
 
 /**
@@ -689,6 +715,11 @@ export default {
     testApiConnection: testApiConnection,
     getWrongBookThreshold: getWrongBookThreshold,
     setWrongBookThreshold: setWrongBookThreshold,
+  },
+  migration: {
+    getRuntimeName: getRuntimeName,
+    getLegacyStatus: getLegacyDatabaseStatus,
+    backupAndReplaceFromLegacy: backupAndReplaceFromLegacy,
   },
   // 草稿
   draft: {

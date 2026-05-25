@@ -1,7 +1,7 @@
 use questpilot_tauri_lib::database::{
-    legacy_database_candidates, ApiConfig, ChatHistoryInput, CreatePromptInput,
-    CreateQuestionBankInput, CreateQuestionInput, DatabaseStore, PracticeRecordInput,
-    WrongBookPracticeResult,
+    legacy_database_candidates, legacy_database_status, replace_target_with_legacy_candidate,
+    ApiConfig, ChatHistoryInput, CreatePromptInput, CreateQuestionBankInput, CreateQuestionInput,
+    DatabaseStore, PracticeRecordInput, WrongBookPracticeResult,
 };
 use rusqlite::Connection;
 use serde_json::json;
@@ -273,6 +273,139 @@ fn database_store_keeps_target_when_it_has_user_data() {
 
     assert_eq!(banks.len(), 1);
     assert_eq!(banks[0].name, "Tauri 题库");
+}
+
+#[test]
+fn legacy_database_status_reports_explicit_reset_needed() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let target_path = temp_dir.path().join("questpilot.db");
+    let legacy_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
+
+    let target = DatabaseStore::open(&target_path).expect("应能创建 Tauri 库");
+    target
+        .create_bank(CreateQuestionBankInput {
+            name: "Tauri 题库".to_string(),
+            description: None,
+        })
+        .expect("Tauri 库应能写入题库");
+    drop(target);
+
+    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库");
+    legacy
+        .create_bank(CreateQuestionBankInput {
+            name: "Electron 题库".to_string(),
+            description: None,
+        })
+        .expect("Electron 候选库应能写入题库");
+    drop(legacy);
+
+    let status =
+        legacy_database_status(&target_path, &[legacy_path.clone()]).expect("应能读取旧库迁移状态");
+
+    assert!(status.target_exists);
+    assert!(status.target_has_user_data);
+    assert_eq!(status.recommended_action, "requires_explicit_reset");
+    assert_eq!(status.candidates.len(), 1);
+    assert!(status.candidates[0].has_user_data);
+}
+
+#[test]
+fn replace_target_with_legacy_candidate_backs_up_existing_target() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let target_path = temp_dir.path().join("questpilot.db");
+    let legacy_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
+
+    let target = DatabaseStore::open(&target_path).expect("应能创建 Tauri 库");
+    target
+        .create_bank(CreateQuestionBankInput {
+            name: "Tauri 题库".to_string(),
+            description: None,
+        })
+        .expect("Tauri 库应能写入题库");
+    drop(target);
+
+    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库");
+    legacy
+        .create_bank(CreateQuestionBankInput {
+            name: "Electron 题库".to_string(),
+            description: None,
+        })
+        .expect("Electron 候选库应能写入题库");
+    drop(legacy);
+
+    let result = replace_target_with_legacy_candidate(
+        &target_path,
+        &legacy_path,
+        &[legacy_path.clone()],
+        "BACKUP_AND_REPLACE",
+    )
+    .expect("应能显式备份并替换目标库");
+
+    let backup_path = result.backup_path.expect("已有目标库时应创建备份");
+    let backup = DatabaseStore::open(&backup_path).expect("应能打开备份库");
+    let backup_banks = backup.get_all_banks().expect("应能读取备份库题库");
+    assert_eq!(backup_banks.len(), 1);
+    assert_eq!(backup_banks[0].name, "Tauri 题库");
+
+    let replaced = DatabaseStore::open(&target_path).expect("应能打开替换后的目标库");
+    let replaced_banks = replaced.get_all_banks().expect("应能读取替换后的题库");
+    assert_eq!(replaced_banks.len(), 1);
+    assert_eq!(replaced_banks[0].name, "Electron 题库");
+}
+
+#[test]
+fn replace_target_with_legacy_candidate_requires_confirmation() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let target_path = temp_dir.path().join("questpilot.db");
+    let legacy_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
+
+    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库");
+    legacy
+        .create_bank(CreateQuestionBankInput {
+            name: "Electron 题库".to_string(),
+            description: None,
+        })
+        .expect("Electron 候选库应能写入题库");
+    drop(legacy);
+
+    let error = replace_target_with_legacy_candidate(
+        &target_path,
+        &legacy_path,
+        &[legacy_path.clone()],
+        "WRONG",
+    )
+    .expect_err("确认短语错误时不得替换目标库");
+
+    assert!(error.contains("确认"));
+    assert!(!target_path.exists());
+}
+
+#[test]
+fn replace_target_with_legacy_candidate_rejects_non_candidate_path() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let target_path = temp_dir.path().join("questpilot.db");
+    let allowed_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
+    let external_path = temp_dir.path().join("Other").join("questpilot.db");
+
+    let external = DatabaseStore::open(&external_path).expect("应能创建外部库");
+    external
+        .create_bank(CreateQuestionBankInput {
+            name: "不应导入的题库".to_string(),
+            description: None,
+        })
+        .expect("外部库应能写入题库");
+    drop(external);
+
+    let error = replace_target_with_legacy_candidate(
+        &target_path,
+        &external_path,
+        &[allowed_path],
+        "BACKUP_AND_REPLACE",
+    )
+    .expect_err("非候选路径不得替换目标库");
+
+    assert!(error.contains("候选列表"));
+    assert!(!target_path.exists());
 }
 
 #[test]
