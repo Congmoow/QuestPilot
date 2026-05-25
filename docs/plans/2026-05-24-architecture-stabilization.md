@@ -308,7 +308,7 @@
 - Electron CDP smoke 已覆盖公开配置脱敏、设置保存、题库 CRUD、题目 CRUD、随机练习数据、CSV 导入、练习记录、错题本、Prompt、聊天历史和 8 个核心路由。
 - Tauri `npm run tauri:dev` 已完成启动 smoke，WebView2 CDP 可见 `QuestPilot` 页面目标，8 个核心路由均可加载根节点内容。
 - Tauri WebView2 CDP API smoke 已覆盖 Tauri runtime 识别、无 Electron API、公开配置脱敏、设置保存、题库 CRUD、题目 CRUD、CSV 导入、练习记录、错题本、Prompt 和聊天历史，并清理临时数据。
-- 明确 CSV 模板下载、CSV 导出、真实 AI 解析、真实 AI 聊天、Tauri 窗口控制、Electron 到 Tauri 数据迁移和打包产物 smoke 仍是发布前阻塞项或待人工验收项。
+- 当时明确 CSV 模板下载、CSV 导出、真实 AI 解析、真实 AI 聊天、Tauri 窗口控制、Electron 到 Tauri 数据迁移和打包产物 smoke 仍是发布前阻塞项或待人工验收项；阶段 7.2 已补记 Tauri API 接入和 CSV 保存人工验收通过。
 
 **取舍决策：**
 
@@ -398,8 +398,8 @@
 - 新增 `docs/architecture/tauri-mainline-readiness.md`，记录准入证据、阻塞项、数据目录结论和主线化决策。
 - 准入结论为 `Tauri-continue-validation`：Tauri 继续作为迁移验证线，暂不替换 Electron，也不冻结 Electron。
 - Tauri WebView2 CDP smoke 已覆盖 8 个核心路由、Tauri runtime 识别、无 Electron API、公开配置脱敏、窗口最大化切换、设置保存、题库 CRUD、题目 CRUD、CSV 导入、练习记录和错题本。
-- Tauri 本机公开配置显示 `hasSavedApiKey=false`，真实 AI 解析和 AI 聊天未执行，继续作为准入阻塞项。
-- CSV 模板下载和题库导出仍需真实保存对话框验收，继续作为准入阻塞项。
+- Tauri 本机公开配置当时显示 `hasSavedApiKey=false`，真实 AI 解析和 AI 聊天未执行；阶段 7.2 已补记用户人工 API 接入验收通过。
+- 当时 CSV 模板下载和题库导出仍需真实保存对话框验收；阶段 7.2 已补记 Tauri CSV 保存人工验收通过。
 - 已补齐 Tauri 旧库候选路径，覆盖当前 Electron `QuestPilot`/`questpilot` 数据目录和 `questpilot.db` 文件名，并新增 Rust 测试。
 - 已补齐已有 Tauri 空库迁移策略：目标库无用户数据且 Electron 候选库有用户数据时自动替换空目标库；目标 Tauri 库已有用户数据时不静默覆盖。
 
@@ -523,15 +523,15 @@
 **已完成记录：**
 
 - 已新增 `docs/architecture/release-gate.md`，固化发布前自动化命令、人工验收清单、P0/P1 阻塞项和当前可发布判断。
-- 已明确阶段 7 结论：允许继续 Tauri 主线开发；不允许删除 Electron 回退线；不允许把 Tauri 设为默认发布运行时；不允许在 P0 阻塞项清零前更新发布版本或打正式包。
-- 已把真实 AI、CSV 保存对话框、Tauri 打包产物和目标 Tauri 库已有用户数据时的显式处置流程列为 P0 发布阻塞项。
+- 已明确阶段 7 结论：允许继续 Tauri 主线开发；不允许删除 Electron 回退线；阶段 7.2 已补记用户人工验收并清零发布 P0。
+- 曾把真实 AI、CSV 保存对话框、Tauri 打包产物和目标 Tauri 库已有用户数据时的显式处置流程列为发布阻塞项；阶段 7.1 已补齐工程侧阻塞，阶段 7.2 已补记用户人工验收。
 - 已把 Tauri 窗口控制、文件选择真实点击、Electron 最终回退 smoke 和发布命令人工记录列为 P1 或待验收项。
 - 已同步 `docs/architecture/runtime-acceptance.md` 和 `docs/architecture/tauri-mainline-readiness.md` 的阶段 7 入口。
 - 阶段 7.1 已补齐目标 Tauri 库已有用户数据时的显式备份替换流程：新增 Tauri 命令、前端 API 和设置页迁移卡片，替换前会先移动当前库为备份，且后端只接受后端计算出的旧库候选路径。
 - 阶段 7.1 已补齐 Tauri 保存对话框权限：`dialog:allow-save` 已加入主窗口 capability。
 - 阶段 7.1 已执行 Tauri 打包并完成 release exe 8 秒启动 smoke，产物为 `src-tauri/target/release/bundle/nsis/QuestPilot_1.6.7_x64-setup.exe`。
-- 真实 AI 仍未验收：本机 Tauri 数据库布尔检查显示 `hasSavedApiKey=false`，没有真实 API Key。
-- CSV 保存对话框仍未验收：原生保存对话框取消路径和实际写入路径仍需真实 Tauri 窗口人工点击。
+- 阶段 7.2 用户已在 Tauri 真实窗口中人工验收 API 接入和 CSV 保存，并反馈没有问题。
+- 阶段 7.2 后发布 P0 已清零；安装包核心流程、窗口控制和数据迁移点击仍建议在正式发布记录中补记。
 
 **已验证：**
 
@@ -558,3 +558,10 @@
 | `npm run build` | 通过。 |
 | `npm run tauri:build` | 通过，生成 release exe 和 NSIS 安装包。 |
 | release exe 8 秒启动 smoke | 通过，`questpilot-tauri.exe` 启动后 8 秒仍存活，随后主动结束。 |
+
+**阶段 7.2 人工验收：**
+
+| 项目 | 结果 |
+| --- | --- |
+| Tauri API 接入 | 用户人工验收通过，反馈没有问题。 |
+| Tauri CSV 保存 | 用户人工验收通过，反馈没有问题。 |
