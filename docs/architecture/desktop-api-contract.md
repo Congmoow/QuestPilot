@@ -2,13 +2,13 @@
 
 ## 目标
 
-本文件定义前端 `src/api/index.js` 对页面层暴露的稳定契约。Tauri-only 主线下，页面组件只调用本 API 门面，不直接调用 Tauri `invoke`。
+本文件定义前端 `src/api/index.ts` 对页面层暴露的稳定契约。Tauri-only 主线下，页面组件只调用本 API 门面，不直接调用 Tauri `invoke`。
 
 ## 当前运行时定位
 
 - Tauri：当前远端唯一发布运行时。
 - Electron：仅作为旧版数据来源和历史实现参考，不再作为远端运行时、构建或 CI 对象。
-- React/Vite：共用渲染层。页面只调用 `src/api/index.js`，不直接调用 Tauri `invoke`。
+- React/Vite：共用渲染层。页面只调用 `src/api/index.ts`，不直接调用 Tauri `invoke`。
 
 ## 通用契约规则
 
@@ -99,7 +99,7 @@
 新增或修改桌面 API 时必须同步更新：
 
 - 本契约文档。
-- `src/api/index.js`。
+- `src/api/index.ts`。
 - 必要的 `src/api/runtimeAdapters.js` 适配逻辑。
 - `scripts/__tests__/runtime-adapters.test.mjs` 或对应契约测试。
 - 涉及 Tauri 数据库参数边界时，同步更新 Rust 数据库测试。

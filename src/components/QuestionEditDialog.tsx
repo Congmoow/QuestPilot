@@ -5,12 +5,6 @@ import Dialog from './Dialog';
 import { countFillBlanks } from '../lib/fillBlank';
 import type { CreateQuestionInput, Question, QuestionOption, QuestionType } from '../api';
 
-/**
- * @typedef {import('../api').Question} Question
- * @typedef {import('../api').QuestionOption} QuestionOption
- * @typedef {import('../api').QuestionType} QuestionType
- */
-
 const typeOptions = [
   { value: 'single', label: '单选题' },
   { value: 'multiple', label: '多选题' },
@@ -33,16 +27,6 @@ type QuestionEditDialogProps = {
   loading?: boolean;
 };
 
-/**
- * 题目编辑对话框
- * @param {{
- *   open: boolean,
- *   onClose: () => void,
- *   question: Question,
- *   onSave: (data: Partial<Question>) => Promise<void>,
- *   loading?: boolean
- * }} props
- */
 const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }: QuestionEditDialogProps) => {
   const [type, setType] = useState<QuestionType>(question?.type || 'single');
   const [content, setContent] = useState(question?.content || '');

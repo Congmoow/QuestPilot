@@ -46,8 +46,8 @@ Tauri 可以继续作为主线化候选方向推进，但当前不能升级为�
 - `src-tauri/src/database/legacy.rs`
 - `src-tauri/src/lib.rs`
 - `src-tauri/tests/database_store.rs`
-- `src/api/index.js`
-- `src/pages/Settings.jsx`
+- `src/api/index.ts`
+- `src/pages/Settings.tsx`
 
 ## 运行时准入 smoke
 
