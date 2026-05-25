@@ -3,7 +3,7 @@ import { Upload, FileDown, CheckCircle, AlertCircle, FileText, X, ArrowLeft } fr
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { downloadCsvTemplate, selectCsvFile, parseCsvFile, importQuestions, getQuestionBankById } from '../api';
+import { downloadCsvTemplate, selectCsvFile, parseCsvFile, importQuestions, getQuestionBankById, type ImportResult, type ParseResult, type QuestionBank } from '../api';
 import {
   ActionButton,
   AlertBanner,
@@ -20,13 +20,13 @@ const CsvImport = () => {
   const bankId = searchParams.get('bankId');
   
   const [currentStep, setCurrentStep] = useState(1);
-  const [file, setFile] = useState(null);
-  const [filePath, setFilePath] = useState(null);
-  const [uploadStatus, setUploadStatus] = useState('idle'); // idle, uploading, parsing, parsed, importing, success, error
-  const [parseResult, setParseResult] = useState(null); // { valid: [], errors: [], totalRows: 0 }
-  const [importResult, setImportResult] = useState(null); // { success: 0, failed: 0, errors: [] }
+  const [file, setFile] = useState<{ name: string; path: string } | null>(null);
+  const [filePath, setFilePath] = useState<string | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'parsing' | 'parsed' | 'importing' | 'success' | 'error'>('idle');
+  const [parseResult, setParseResult] = useState<ParseResult | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
-  const [bank, setBank] = useState(null);
+  const [bank, setBank] = useState<QuestionBank | null>(null);
   const [downloading, setDownloading] = useState(false);
 
   const steps = [
@@ -38,7 +38,7 @@ const CsvImport = () => {
   // 加载题库信息
   useEffect(() => {
     if (bankId) {
-      getQuestionBankById(parseInt(bankId)).then(setBank).catch(console.error);
+      getQuestionBankById(parseInt(bankId, 10)).then(setBank).catch(console.error);
     }
   }, [bankId]);
 
@@ -54,7 +54,7 @@ const CsvImport = () => {
         setErrorMessage('下载模板失败');
       }
     } catch (error) {
-      setErrorMessage(error.message || '下载模板失败');
+      setErrorMessage(error instanceof Error ? error.message : '下载模板失败');
     } finally {
       setDownloading(false);
     }
@@ -66,7 +66,7 @@ const CsvImport = () => {
     try {
       const result = await selectCsvFile();
       if (result.success && result.filePath) {
-        const fileName = result.filePath.split(/[/\\]/).pop();
+        const fileName = result.filePath.split(/[/\\]/).pop() || result.filePath;
         setFile({ name: fileName, path: result.filePath });
         setFilePath(result.filePath);
         setUploadStatus('idle');
@@ -74,7 +74,7 @@ const CsvImport = () => {
         setImportResult(null);
       }
     } catch (error) {
-      setErrorMessage(error.message || '选择文件失败');
+      setErrorMessage(error instanceof Error ? error.message : '选择文件失败');
     }
   };
 
@@ -91,7 +91,7 @@ const CsvImport = () => {
       setUploadStatus('parsed');
     } catch (error) {
       setUploadStatus('error');
-      setErrorMessage(error.message || '解析文件失败');
+      setErrorMessage(error instanceof Error ? error.message : '解析文件失败');
     }
   };
 
@@ -111,12 +111,12 @@ const CsvImport = () => {
     setErrorMessage('');
     
     try {
-      const result = await importQuestions(parseInt(bankId), parseResult.valid);
+      const result = await importQuestions(parseInt(bankId, 10), parseResult.valid);
       setImportResult(result);
       setUploadStatus('success');
     } catch (error) {
       setUploadStatus('error');
-      setErrorMessage(error.message || '导入失败');
+      setErrorMessage(error instanceof Error ? error.message : '导入失败');
     }
   };
 

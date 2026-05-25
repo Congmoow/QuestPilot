@@ -8,9 +8,12 @@ import {
   Wand2,
   XCircle,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useQuestionBanks } from '../contexts/QuestionBankContext';
 import api from '../api';
+import type { CreateQuestionInput, ImportResult, ParseError, QuestionType } from '../api';
 import { countFillBlanks } from '../lib/fillBlank';
+import type { TypeLabelMap } from '../types/viewModels';
 import {
   ActionButton,
   AlertBanner,
@@ -23,12 +26,39 @@ import {
   SurfaceCard,
 } from '../components/ui';
 
-const MODE_TABS = [
+type ImportMode = 'ai' | 'json';
+
+type ParseChunkError = {
+  chunkIndex?: number;
+  message?: string;
+};
+
+type ParseWarnings = {
+  questionCount: number;
+  chunkErrors: ParseChunkError[];
+  chunks?: unknown;
+};
+
+type RawJsonQuestion = {
+  type?: unknown;
+  content?: unknown;
+  question?: unknown;
+  answer?: unknown;
+  analysis?: unknown;
+  options?: unknown;
+  题型?: unknown;
+  题目?: unknown;
+  答案?: unknown;
+  解析?: unknown;
+  选项?: unknown;
+};
+
+const MODE_TABS: Array<{ id: ImportMode; label: string; icon: LucideIcon }> = [
   { id: 'ai', label: 'AI 智能解析', icon: Wand2 },
   { id: 'json', label: 'JSON 批量导入', icon: Code },
 ];
 
-const TYPE_LABELS = {
+const TYPE_LABELS: TypeLabelMap = {
   single: '单选题',
   multiple: '多选题',
   boolean: '判断题',
@@ -83,7 +113,7 @@ const JSON_PLACEHOLDER = `[
   }
 ]`;
 
-const normalizeBooleanAnswer = (answer) => {
+const normalizeBooleanAnswer = (answer: unknown): string => {
   if (answer === true) return '正确';
   if (answer === false) return '错误';
 
@@ -97,7 +127,7 @@ const normalizeBooleanAnswer = (answer) => {
   return raw;
 };
 
-const normalizeChoiceAnswer = (answer, multiple = false) => {
+const normalizeChoiceAnswer = (answer: unknown, multiple = false): string => {
   if (Array.isArray(answer)) {
     return answer.map(a => normalizeChoiceAnswer(a, false)).filter(Boolean).join('|');
   }
@@ -127,25 +157,25 @@ const normalizeChoiceAnswer = (answer, multiple = false) => {
   return uniqueLetters[0] || raw;
 };
 
-const getChunkIndex = (item, fallbackIndex) => {
+const getChunkIndex = (item: ParseChunkError, fallbackIndex: number) => {
   const parsed = Number(item?.chunkIndex);
   return Number.isFinite(parsed) ? parsed : fallbackIndex;
 };
 
 const AiImport = () => {
   const { banks, fetchBanks } = useQuestionBanks();
-  const [selectedBankId, setSelectedBankId] = useState(null);
+  const [selectedBankId, setSelectedBankId] = useState<number | null>(null);
 
-  const [mode, setMode] = useState('ai');
+  const [mode, setMode] = useState<ImportMode>('ai');
   const [inputText, setInputText] = useState('');
   const [jsonInput, setJsonInput] = useState('');
   const [parsing, setParsing] = useState(false);
-  const [parsedQuestions, setParsedQuestions] = useState([]);
-  const [error, setError] = useState(null);
+  const [parsedQuestions, setParsedQuestions] = useState<CreateQuestionInput[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [hasApiKey, setHasApiKey] = useState(false);
-  const [parseWarnings, setParseWarnings] = useState(null);
+  const [parseWarnings, setParseWarnings] = useState<ParseWarnings | null>(null);
   const [showParseWarnings, setShowParseWarnings] = useState(false);
 
   useEffect(() => {
@@ -179,7 +209,7 @@ const AiImport = () => {
 
     try {
       const result = await api.ai.parseQuestions(inputText);
-      const chunkErrors = Array.isArray(result.chunkErrors) ? result.chunkErrors : [];
+      const chunkErrors: ParseChunkError[] = Array.isArray(result.chunkErrors) ? result.chunkErrors as ParseChunkError[] : [];
       if (result.questions && result.questions.length > 0) {
         setParsedQuestions(result.questions);
         if (chunkErrors.length > 0) {
@@ -200,13 +230,13 @@ const AiImport = () => {
         }
       }
     } catch (error) {
-      setError(error.message || 'AI 解析失败，请稍后重试');
+      setError(error instanceof Error ? error.message : 'AI 解析失败，请稍后重试');
     } finally {
       setParsing(false);
     }
   };
 
-  const handleRemoveQuestion = (index) => {
+  const handleRemoveQuestion = (index: number) => {
     setParsedQuestions(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -238,13 +268,13 @@ const AiImport = () => {
           setParsedQuestions([]);
           setInputText('');
         } else {
-          const failedIndices = errors.map(e => e.index);
+          const failedIndices = errors.map((e: ParseError) => e.index);
           setParsedQuestions(prev => prev.filter((_, i) => failedIndices.includes(i)));
         }
         fetchBanks();
       }
     } catch (error) {
-      setError(error.message || '导入失败');
+      setError(error instanceof Error ? error.message : '导入失败');
     } finally {
       setImporting(false);
     }
@@ -279,14 +309,14 @@ const AiImport = () => {
         data = [data];
       }
 
-      const questions = data.map((item, index) => {
+      const questions: CreateQuestionInput[] = (data as RawJsonQuestion[]).map((item, index) => {
         const type = item.type || item.题型 || 'short';
-        const content = item.content || item.题目 || item.question || '';
+        const content = String(item.content || item.题目 || item.question || '');
         const answer = item.answer ?? item.答案 ?? '';
-        const analysis = item.analysis || item.解析 || '';
+        const analysis = String(item.analysis || item.解析 || '');
         const options = item.options || item.选项 || null;
 
-        const typeMap = {
+        const typeMap: Record<string, QuestionType> = {
           '单选题': 'single', '单选': 'single', 'single': 'single',
           '多选题': 'multiple', '多选': 'multiple', 'multiple': 'multiple',
           '判断题': 'boolean', '判断': 'boolean', 'boolean': 'boolean',
@@ -294,7 +324,7 @@ const AiImport = () => {
           '简答题': 'short', '简答': 'short', 'short': 'short',
         };
 
-        const normalizedType = typeMap[type] || 'short';
+        const normalizedType = typeMap[String(type)] || 'short';
 
         if (!content) {
           throw new Error(`第 ${index + 1} 道题目缺少题目内容`);
@@ -311,7 +341,7 @@ const AiImport = () => {
                 }
                 return { id: String.fromCharCode(65 + i), text: opt };
               }
-              return opt;
+              return opt as { id: string; text: string };
             });
           }
         }
@@ -369,12 +399,12 @@ const AiImport = () => {
       if (err instanceof SyntaxError) {
         setError('JSON 格式错误，请检查语法');
       } else {
-        setError(err.message || '解析失败');
+        setError(err instanceof Error ? err.message : '解析失败');
       }
     }
   };
 
-  const handleModeChange = (newMode) => {
+  const handleModeChange = (newMode: ImportMode) => {
     setMode(newMode);
     setError(null);
     setImportResult(null);

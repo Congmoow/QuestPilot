@@ -16,6 +16,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import api from '../api';
+import type { ApiConnectionResult, LegacyDatabaseCandidate, LegacyDatabaseReplaceResult, LegacyDatabaseStatus, Prompt } from '../api';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { Dialog } from '../components/Dialog';
 import {
@@ -31,7 +32,23 @@ import {
   TextInput,
 } from '../components/ui';
 
-const AI_PROVIDERS = [
+type AiProvider = {
+  id: string;
+  name: string;
+  url: string;
+  models: string[];
+  placeholder: string;
+};
+
+type TestResult = ApiConnectionResult & {
+  message: string;
+};
+
+const errorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error ? error.message : fallback;
+};
+
+const AI_PROVIDERS: AiProvider[] = [
   { id: 'custom', name: '自定义', url: '', models: [], placeholder: '请输入 API 地址' },
   { id: 'openai', name: 'OpenAI', url: 'https://api.openai.com', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'], placeholder: 'sk-...' },
   { id: 'anthropic', name: 'Claude (Anthropic)', url: 'https://api.anthropic.com', models: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'], placeholder: 'sk-ant-...' },
@@ -58,7 +75,7 @@ const Settings = () => {
   const [modelId, setModelId] = useState('minimax-m2');
   const [showApiKey, setShowApiKey] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState(null);
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -66,20 +83,20 @@ const Settings = () => {
   const [savingWrongBook, setSavingWrongBook] = useState(false);
   const [savedWrongBook, setSavedWrongBook] = useState(false);
 
-  const [migrationStatus, setMigrationStatus] = useState(null);
+  const [migrationStatus, setMigrationStatus] = useState<LegacyDatabaseStatus | null>(null);
   const [loadingMigrationStatus, setLoadingMigrationStatus] = useState(false);
-  const [replacingLegacyPath, setReplacingLegacyPath] = useState(null);
-  const [migrationResult, setMigrationResult] = useState(null);
+  const [replacingLegacyPath, setReplacingLegacyPath] = useState<string | null>(null);
+  const [migrationResult, setMigrationResult] = useState<LegacyDatabaseReplaceResult | null>(null);
   const [migrationError, setMigrationError] = useState('');
 
-  const [prompts, setPrompts] = useState([]);
-  const [editingPrompt, setEditingPrompt] = useState(null);
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
   const [promptName, setPromptName] = useState('');
   const [promptContent, setPromptContent] = useState('');
   const [showPromptForm, setShowPromptForm] = useState(false);
   const [savingPrompt, setSavingPrompt] = useState(false);
   const [deletePromptDialogOpen, setDeletePromptDialogOpen] = useState(false);
-  const [deletingPrompt, setDeletingPrompt] = useState(null);
+  const [deletingPrompt, setDeletingPrompt] = useState<Prompt | null>(null);
   const [deletingPromptLoading, setDeletingPromptLoading] = useState(false);
 
   useEffect(() => {
@@ -115,7 +132,7 @@ const Settings = () => {
     loadMigrationStatus();
   }, []);
 
-  const handleProviderChange = (providerId) => {
+  const handleProviderChange = (providerId: string) => {
     setProvider(providerId);
     const selected = AI_PROVIDERS.find(p => p.id === providerId);
     if (selected && selected.url) {
@@ -168,16 +185,16 @@ const Settings = () => {
       const status = await api.migration.getLegacyStatus();
       setMigrationStatus(status);
     } catch (error) {
-      setMigrationError(error.message || '读取旧库迁移状态失败');
+      setMigrationError(errorMessage(error, '读取旧库迁移状态失败'));
     } finally {
       setLoadingMigrationStatus(false);
     }
   };
 
-  const legacyCandidatesWithData = (migrationStatus?.candidates || []).filter(candidate => candidate.hasUserData);
+  const legacyCandidatesWithData = (migrationStatus?.candidates || []).filter((candidate: LegacyDatabaseCandidate) => candidate.hasUserData);
   const needsExplicitReset = migrationStatus?.recommendedAction === 'requires_explicit_reset';
 
-  const handleBackupAndReplace = async (legacyPath) => {
+  const handleBackupAndReplace = async (legacyPath: string) => {
     const confirmed = window.confirm(
       '此操作会先备份当前 Tauri 数据库，然后使用选中的旧数据库替换当前数据库。替换后建议重启应用继续使用。是否继续？'
     );
@@ -191,7 +208,7 @@ const Settings = () => {
       setMigrationResult(result);
       await loadMigrationStatus();
     } catch (error) {
-      setMigrationError(error.message || '备份并替换旧库失败');
+      setMigrationError(errorMessage(error, '备份并替换旧库失败'));
     } finally {
       setReplacingLegacyPath(null);
     }
@@ -222,14 +239,14 @@ const Settings = () => {
     }
   };
 
-  const handleEditPrompt = (prompt) => {
+  const handleEditPrompt = (prompt: Prompt) => {
     setEditingPrompt(prompt);
     setPromptName(prompt.name);
     setPromptContent(prompt.content);
     setShowPromptForm(true);
   };
 
-  const handleOpenDeletePromptDialog = (prompt) => {
+  const handleOpenDeletePromptDialog = (prompt: Prompt) => {
     setDeletingPrompt(prompt);
     setDeletePromptDialogOpen(true);
   };
@@ -250,7 +267,7 @@ const Settings = () => {
         resetPromptForm();
       }
     } catch (error) {
-      alert(error.message || '删除失败');
+      alert(errorMessage(error, '删除失败'));
       throw error;
     } finally {
       setDeletingPromptLoading(false);
@@ -300,7 +317,7 @@ const Settings = () => {
       setHasSavedApiKey(Boolean(config.hasApiKey || config.apiKey));
       setTestResult({ success: true, message: result.message || 'API 连接成功' });
     } catch (error) {
-      setTestResult({ success: false, message: error.message || 'API 连接失败' });
+      setTestResult({ success: false, message: errorMessage(error, 'API 连接失败') });
     } finally {
       setTesting(false);
     }
