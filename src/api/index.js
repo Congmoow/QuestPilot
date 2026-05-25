@@ -6,10 +6,15 @@
 import {
   getDesktopApiUnavailableError,
   getElectronAPI,
+  getDesktopRuntime,
   getUnsupportedTauriApiError,
   invokeTauriCommand,
   isTauriRuntime,
 } from '../lib/desktopRuntime'
+import {
+  normalizeFileSelectionResult,
+  normalizeSaveDialogResult,
+} from './runtimeAdapters'
 
 /**
  * @typedef {'single' | 'multiple' | 'boolean' | 'fill' | 'short'} QuestionType
@@ -338,23 +343,23 @@ export const searchQuestions = async (bankId, keyword, options = {}) => {
 
 /**
  * 下载 CSV 模板
- * @returns {Promise<void>}
+ * @returns {Promise<{success: boolean, canceled: boolean, filePath?: string}>}
  */
 export const downloadCsvTemplate = async () => {
   const api = getElectronAPI()
-  if (api) return api.csv.downloadTemplate()
-  if (isTauriRuntime()) return invokeTauriCommand('csv_download_template')
+  if (api) return normalizeSaveDialogResult(await api.csv.downloadTemplate())
+  if (isTauriRuntime()) return normalizeSaveDialogResult(await invokeTauriCommand('csv_download_template'))
   throw getDesktopApiUnavailableError()
 }
 
 /**
  * 选择 CSV 文件
- * @returns {Promise<string|null>}
+ * @returns {Promise<{success: boolean, canceled: boolean, filePath: string|null}>}
  */
 export const selectCsvFile = async () => {
   const api = getElectronAPI()
-  if (api) return api.csv.selectFile()
-  if (isTauriRuntime()) return invokeTauriCommand('csv_select_file')
+  if (api) return normalizeFileSelectionResult(await api.csv.selectFile())
+  if (isTauriRuntime()) return normalizeFileSelectionResult(await invokeTauriCommand('csv_select_file'))
   throw getDesktopApiUnavailableError()
 }
 
@@ -386,12 +391,12 @@ export const importQuestions = async (bankId, questions) => {
 /**
  * 导出题库
  * @param {number} bankId
- * @returns {Promise<void>}
+ * @returns {Promise<{success: boolean, canceled: boolean, filePath?: string, count?: number}>}
  */
 export const exportQuestionBank = async (bankId) => {
   const api = getElectronAPI()
-  if (api) return api.csv.exportBank(bankId)
-  if (isTauriRuntime()) return invokeTauriCommand('csv_export', { bankId })
+  if (api) return normalizeSaveDialogResult(await api.csv.exportBank(bankId))
+  if (isTauriRuntime()) return normalizeSaveDialogResult(await invokeTauriCommand('csv_export', { bankId }))
   throw getDesktopApiUnavailableError()
 }
 
@@ -513,7 +518,7 @@ export const clearDraft = async () => {
 
 /**
  * 获取 API 配置
- * @returns {Promise<{apiKey: string, apiUrl: string, modelId: string}>}
+ * @returns {Promise<{apiKey: string, apiKeyPreview: string, hasApiKey: boolean, apiUrl: string, modelId: string, provider: string}>}
  */
 export const getApiConfig = async () => {
   const api = getElectronAPI()
@@ -524,7 +529,7 @@ export const getApiConfig = async () => {
 
 /**
  * 设置 API 配置
- * @param {{apiKey: string, apiUrl: string, modelId: string}} config
+ * @param {{apiKey: string, apiUrl: string, modelId: string, provider: string}} config
  * @returns {Promise<void>}
  */
 export const setApiConfig = async (config) => {
@@ -543,6 +548,31 @@ export const testApiConnection = async () => {
   if (api) return api.settings.testApiConnection()
   if (isTauriRuntime()) return invokeTauriCommand('settings_test_api_connection')
   throw getDesktopApiUnavailableError()
+}
+
+// ==================== 数据迁移 API ====================
+
+export const getLegacyDatabaseStatus = async () => {
+  if (isTauriRuntime()) return invokeTauriCommand('migration_get_legacy_status')
+  return {
+    targetPath: '',
+    targetExists: false,
+    targetHasUserData: false,
+    candidates: [],
+    recommendedAction: 'none',
+  }
+}
+
+export const getRuntimeName = () => getDesktopRuntime()
+
+export const backupAndReplaceFromLegacy = async (legacyPath) => {
+  if (isTauriRuntime()) {
+    return invokeTauriCommand('migration_backup_and_replace_from_legacy', {
+      legacyPath,
+      confirmation: 'BACKUP_AND_REPLACE',
+    })
+  }
+  throw getUnsupportedTauriApiError('migration_backup_and_replace_from_legacy')
 }
 
 // ==================== AI API ====================
@@ -685,6 +715,11 @@ export default {
     testApiConnection: testApiConnection,
     getWrongBookThreshold: getWrongBookThreshold,
     setWrongBookThreshold: setWrongBookThreshold,
+  },
+  migration: {
+    getRuntimeName: getRuntimeName,
+    getLegacyStatus: getLegacyDatabaseStatus,
+    backupAndReplaceFromLegacy: backupAndReplaceFromLegacy,
   },
   // 草稿
   draft: {

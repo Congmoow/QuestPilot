@@ -8,6 +8,14 @@ const ai = require('./ai/index.cjs')
 const { normalizeAiParseResult } = require('./ai-normalize.cjs')
 const { splitMarkdownIntoChunks } = require('./ai-import-chunker.cjs')
 const { resolveWindowEntry } = require('./window-entry.cjs')
+const { createPublicApiConfig, normalizeApiConfigUpdate } = require('./security/apiConfig.cjs')
+const {
+  normalizeIdList,
+  normalizeLimit,
+  normalizePagination,
+  normalizePositiveInteger,
+  normalizeQuestionType
+} = require('./database/queryGuards.cjs')
 
 app.setName('QuestPilot')
 
@@ -197,7 +205,7 @@ ipcMain.handle('questionBank:getAll', async () => {
 // 根据ID获取题库
 ipcMain.handle('questionBank:getById', async (event, id) => {
   try {
-    return database.getBankById(id)
+    return database.getBankById(normalizePositiveInteger(id, '题库 ID'))
   } catch (error) {
     console.error('获取题库失败:', error)
     throw error
@@ -207,6 +215,7 @@ ipcMain.handle('questionBank:getById', async (event, id) => {
 // 更新题库
 ipcMain.handle('questionBank:update', async (event, id, data) => {
   try {
+    const safeId = normalizePositiveInteger(id, '题库 ID')
     const { name, description } = data
     
     // 验证题库名称
@@ -215,7 +224,7 @@ ipcMain.handle('questionBank:update', async (event, id, data) => {
       throw new Error(validationResult.errors[0])
     }
     
-    const bank = database.updateBank(id, name, description)
+    const bank = database.updateBank(safeId, name, description)
     database.addOperationLog('更新题库', `更新题库: ${name}`)
     return bank
   } catch (error) {
@@ -227,10 +236,11 @@ ipcMain.handle('questionBank:update', async (event, id, data) => {
 // 删除题库
 ipcMain.handle('questionBank:delete', async (event, id) => {
   try {
-    const bank = database.getBankById(id)
-    const bankName = bank ? bank.name : `ID:${id}`
+    const safeId = normalizePositiveInteger(id, '题库 ID')
+    const bank = database.getBankById(safeId)
+    const bankName = bank ? bank.name : `ID:${safeId}`
     
-    database.deleteBank(id)
+    database.deleteBank(safeId)
     database.addOperationLog('删除题库', `删除题库: ${bankName}`)
   } catch (error) {
     console.error('删除题库失败:', error)
@@ -244,6 +254,7 @@ ipcMain.handle('questionBank:delete', async (event, id) => {
 ipcMain.handle('question:create', async (event, data) => {
   try {
     const { bankId, ...questionData } = data
+    const safeBankId = normalizePositiveInteger(bankId, '题库 ID')
     
     // 验证题目数据
     const validationResult = validation.validateQuestion(questionData)
@@ -251,7 +262,7 @@ ipcMain.handle('question:create', async (event, data) => {
       throw new Error(validationResult.errors[0])
     }
     
-    const question = database.createQuestion(bankId, questionData)
+    const question = database.createQuestion(safeBankId, questionData)
     database.addOperationLog('添加题目', `添加${getTypeLabel(questionData.type)}到题库`)
     return question
   } catch (error) {
@@ -263,7 +274,8 @@ ipcMain.handle('question:create', async (event, data) => {
 // 批量创建题目
 ipcMain.handle('question:createBatch', async (event, bankId, questions) => {
   try {
-    const result = importQuestionsInBatch(bankId, questions)
+    const safeBankId = normalizePositiveInteger(bankId, '题库 ID')
+    const result = importQuestionsInBatch(safeBankId, questions)
     if (result.success > 0) {
       database.addOperationLog('批量添加题目', `添加 ${result.success} 道题目到题库`)
     }
@@ -277,18 +289,19 @@ ipcMain.handle('question:createBatch', async (event, bankId, questions) => {
 // 根据题库ID获取题目列表（分页）
 ipcMain.handle('question:getByBankId', async (event, bankId, options = {}) => {
   try {
-    const { page = 1, pageSize = 20, type } = options
-    const offset = (page - 1) * pageSize
+    const safeBankId = normalizePositiveInteger(bankId, '题库 ID')
+    const { page, pageSize, offset, limit } = normalizePagination(options)
+    const type = normalizeQuestionType(options.type)
     
     let questions
     let total
     
     if (type) {
-      questions = database.searchQuestions(bankId, '', type, offset, pageSize)
-      total = database.countQuestions(bankId, '', type)
+      questions = database.searchQuestions(safeBankId, '', type, offset, limit)
+      total = database.countQuestions(safeBankId, '', type)
     } else {
-      questions = database.getQuestionsByBankId(bankId, offset, pageSize)
-      total = database.countQuestions(bankId)
+      questions = database.getQuestionsByBankId(safeBankId, offset, limit)
+      total = database.countQuestions(safeBankId)
     }
     
     return {
@@ -307,9 +320,10 @@ ipcMain.handle('question:getByBankId', async (event, bankId, options = {}) => {
 // 随机获取题目
 ipcMain.handle('question:getRandom', async (event, bankId, options = {}) => {
   try {
-    const { limit = 20, type } = options
-    const realLimit = Math.max(1, Math.min(Number(limit) || 20, 1000))
-    return database.getRandomQuestions(bankId, realLimit, type || null)
+    const safeBankId = normalizePositiveInteger(bankId, '题库 ID')
+    const realLimit = normalizeLimit(options.limit)
+    const type = normalizeQuestionType(options.type)
+    return database.getRandomQuestions(safeBankId, realLimit, type)
   } catch (error) {
     console.error('随机获取题目失败:', error)
     throw error
@@ -319,7 +333,7 @@ ipcMain.handle('question:getRandom', async (event, bankId, options = {}) => {
 // 根据ID获取题目
 ipcMain.handle('question:getById', async (event, id) => {
   try {
-    return database.getQuestionById(id)
+    return database.getQuestionById(normalizePositiveInteger(id, '题目 ID'))
   } catch (error) {
     console.error('获取题目失败:', error)
     throw error
@@ -329,13 +343,14 @@ ipcMain.handle('question:getById', async (event, id) => {
 // 更新题目
 ipcMain.handle('question:update', async (event, id, data) => {
   try {
+    const safeId = normalizePositiveInteger(id, '题目 ID')
     // 验证题目数据
     const validationResult = validation.validateQuestion(data)
     if (!validationResult.valid) {
       throw new Error(validationResult.errors[0])
     }
     
-    const question = database.updateQuestion(id, data)
+    const question = database.updateQuestion(safeId, data)
     database.addOperationLog('更新题目', `更新${getTypeLabel(data.type)}`)
     return question
   } catch (error) {
@@ -351,7 +366,8 @@ ipcMain.handle('question:delete', async (event, ids) => {
       throw new Error('请选择要删除的题目')
     }
     
-    database.deleteQuestions(ids)
+    const safeIds = normalizeIdList(ids, '题目 ID')
+    database.deleteQuestions(safeIds)
     database.addOperationLog('删除题目', `删除 ${ids.length} 道题目`)
   } catch (error) {
     console.error('删除题目失败:', error)
@@ -362,11 +378,12 @@ ipcMain.handle('question:delete', async (event, ids) => {
 // 搜索题目
 ipcMain.handle('question:search', async (event, bankId, keyword, options = {}) => {
   try {
-    const { page = 1, pageSize = 20, type } = options
-    const offset = (page - 1) * pageSize
+    const safeBankId = normalizePositiveInteger(bankId, '题库 ID')
+    const { page, pageSize, offset, limit } = normalizePagination(options)
+    const type = normalizeQuestionType(options.type)
     
-    const questions = database.searchQuestions(bankId, keyword, type, offset, pageSize)
-    const total = database.countQuestions(bankId, keyword, type)
+    const questions = database.searchQuestions(safeBankId, keyword, type, offset, limit)
+    const total = database.countQuestions(safeBankId, keyword, type)
     
     return {
       data: questions,
@@ -506,7 +523,7 @@ ipcMain.handle('csv:parseFile', async (event, filePath) => {
 // 导入题目
 ipcMain.handle('csv:import', async (event, bankId, questions) => {
   try {
-    const result = importQuestionsInBatch(bankId, questions)
+    const result = importQuestionsInBatch(normalizePositiveInteger(bankId, '题库 ID'), questions)
     database.addOperationLog('导入题目', `导入 ${result.success} 道题目`)
     return result
   } catch (error) {
@@ -518,15 +535,16 @@ ipcMain.handle('csv:import', async (event, bankId, questions) => {
 // 导出题库为CSV
 ipcMain.handle('csv:export', async (event, bankId) => {
   try {
+    const safeBankId = normalizePositiveInteger(bankId, '题库 ID')
     // 获取题库信息
-    const bank = database.getBankById(bankId)
+    const bank = database.getBankById(safeBankId)
     if (!bank) {
       throw new Error('题库不存在')
     }
     
     // 获取所有题目
-    const total = database.countQuestions(bankId)
-    const questions = database.getQuestionsByBankId(bankId, 0, total)
+    const total = database.countQuestions(safeBankId)
+    const questions = database.getQuestionsByBankId(safeBankId, 0, total)
     
     if (questions.length === 0) {
       throw new Error('题库中没有题目')
@@ -688,7 +706,7 @@ ipcMain.handle('settings:getApiConfig', async () => {
     const apiUrl = database.getSetting('ai_api_url') || 'https://api.openai.com'
     const modelId = database.getSetting('ai_model_id') || 'gpt-3.5-turbo'
     const provider = database.getSetting('ai_provider') || 'custom'
-    return { apiKey, apiUrl, modelId, provider }
+    return createPublicApiConfig({ apiKey, apiUrl, modelId, provider })
   } catch (error) {
     console.error('获取 API 配置失败:', error)
     throw error
@@ -698,11 +716,13 @@ ipcMain.handle('settings:getApiConfig', async () => {
 // 设置 API 配置
 ipcMain.handle('settings:setApiConfig', async (event, config) => {
   try {
-    const { apiKey, apiUrl, modelId, provider } = config
-    database.setSetting('ai_api_key', apiKey || '')
-    database.setSetting('ai_api_url', apiUrl || 'https://api.openai.com')
-    database.setSetting('ai_model_id', modelId || 'gpt-3.5-turbo')
-    database.setSetting('ai_provider', provider || 'custom')
+    const normalized = normalizeApiConfigUpdate(config, {
+      apiKey: database.getSetting('ai_api_key') || ''
+    })
+    database.setSetting('ai_api_key', normalized.apiKey)
+    database.setSetting('ai_api_url', normalized.apiUrl)
+    database.setSetting('ai_model_id', normalized.modelId)
+    database.setSetting('ai_provider', normalized.provider)
     database.addOperationLog('更改设置', '更新 AI API 配置')
     return { success: true }
   } catch (error) {

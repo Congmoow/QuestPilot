@@ -22,6 +22,10 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "tauri:info": "tauri info",
+    "test:api-contract": "node --test scripts/__tests__/runtime-adapters.test.mjs",
+    "test:api-config-security": "node --test scripts/__tests__/api-config-secrets.test.mjs",
+    "test:db-migrations": "node --test scripts/__tests__/electron-database-migrations.test.mjs",
+    "test:electron-db-safety": "node --test scripts/__tests__/electron-query-guards.test.mjs scripts/__tests__/electron-sql-safety.test.mjs",
     "clean": "rimraf dist release",
     "optimize:assets": "node scripts/optimize-assets.cjs"
   },

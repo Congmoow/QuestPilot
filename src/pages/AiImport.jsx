@@ -152,7 +152,7 @@ const AiImport = () => {
     const checkApiConfig = async () => {
       try {
         const config = await api.settings.getApiConfig();
-        setHasApiKey(!!config.apiKey);
+        setHasApiKey(Boolean(config.hasApiKey || config.apiKey));
       } catch (error) {
         console.error('检查 API 配置失败:', error);
       }

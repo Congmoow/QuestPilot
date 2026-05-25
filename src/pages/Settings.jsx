@@ -3,6 +3,7 @@ import {
   BookOpen,
   CheckCircle,
   Cpu,
+  DatabaseBackup,
   Globe,
   Key,
   Loader2,
@@ -11,6 +12,7 @@ import {
   Plus,
   TestTube,
   Trash2,
+  RefreshCw,
   XCircle,
 } from 'lucide-react';
 import api from '../api';
@@ -50,6 +52,8 @@ const AI_PROVIDERS = [
 const Settings = () => {
   const [provider, setProvider] = useState('custom');
   const [apiKey, setApiKey] = useState('');
+  const [apiKeyPreview, setApiKeyPreview] = useState('');
+  const [hasSavedApiKey, setHasSavedApiKey] = useState(false);
   const [apiUrl, setApiUrl] = useState('https://api.newcoin.top');
   const [modelId, setModelId] = useState('minimax-m2');
   const [showApiKey, setShowApiKey] = useState(false);
@@ -61,6 +65,13 @@ const Settings = () => {
   const [wrongBookThreshold, setWrongBookThreshold] = useState('3');
   const [savingWrongBook, setSavingWrongBook] = useState(false);
   const [savedWrongBook, setSavedWrongBook] = useState(false);
+
+  const [migrationStatus, setMigrationStatus] = useState(null);
+  const [loadingMigrationStatus, setLoadingMigrationStatus] = useState(false);
+  const [replacingLegacyPath, setReplacingLegacyPath] = useState(null);
+  const [migrationResult, setMigrationResult] = useState(null);
+  const [migrationError, setMigrationError] = useState('');
+  const isTauriRuntime = api.migration.getRuntimeName() === 'tauri';
 
   const [prompts, setPrompts] = useState([]);
   const [editingPrompt, setEditingPrompt] = useState(null);
@@ -76,7 +87,9 @@ const Settings = () => {
     const loadConfig = async () => {
       try {
         const config = await api.settings.getApiConfig();
-        setApiKey(config.apiKey || '');
+        setApiKey('');
+        setApiKeyPreview(config.apiKeyPreview || '');
+        setHasSavedApiKey(Boolean(config.hasApiKey || config.apiKey));
         setApiUrl(config.apiUrl || 'https://api.newcoin.top');
         setModelId(config.modelId || 'minimax-m2');
         setProvider(config.provider || 'custom');
@@ -98,6 +111,11 @@ const Settings = () => {
     };
     loadWrongBookThreshold();
   }, []);
+
+  useEffect(() => {
+    if (!isTauriRuntime) return;
+    loadMigrationStatus();
+  }, [isTauriRuntime]);
 
   const handleProviderChange = (providerId) => {
     setProvider(providerId);
@@ -142,6 +160,42 @@ const Settings = () => {
       console.error('保存错题本阈值失败:', error);
     } finally {
       setSavingWrongBook(false);
+    }
+  };
+
+  const loadMigrationStatus = async () => {
+    setLoadingMigrationStatus(true);
+    setMigrationError('');
+    try {
+      const status = await api.migration.getLegacyStatus();
+      setMigrationStatus(status);
+    } catch (error) {
+      setMigrationError(error.message || '读取旧库迁移状态失败');
+    } finally {
+      setLoadingMigrationStatus(false);
+    }
+  };
+
+  const legacyCandidatesWithData = (migrationStatus?.candidates || []).filter(candidate => candidate.hasUserData);
+  const needsExplicitReset = migrationStatus?.recommendedAction === 'requires_explicit_reset';
+
+  const handleBackupAndReplace = async (legacyPath) => {
+    const confirmed = window.confirm(
+      '此操作会先备份当前 Tauri 数据库，然后使用选中的旧数据库替换当前数据库。替换后建议重启应用继续使用。是否继续？'
+    );
+    if (!confirmed) return;
+
+    setReplacingLegacyPath(legacyPath);
+    setMigrationError('');
+    setMigrationResult(null);
+    try {
+      const result = await api.migration.backupAndReplaceFromLegacy(legacyPath);
+      setMigrationResult(result);
+      await loadMigrationStatus();
+    } catch (error) {
+      setMigrationError(error.message || '备份并替换旧库失败');
+    } finally {
+      setReplacingLegacyPath(null);
     }
   };
 
@@ -217,7 +271,11 @@ const Settings = () => {
     setSaved(false);
     setTestResult(null);
     try {
-      await api.settings.setApiConfig({ apiKey, apiUrl, modelId, provider });
+      await api.settings.setApiConfig({ apiKey: apiKey.trim(), apiUrl, modelId, provider });
+      const config = await api.settings.getApiConfig();
+      setApiKey('');
+      setApiKeyPreview(config.apiKeyPreview || '');
+      setHasSavedApiKey(Boolean(config.hasApiKey || config.apiKey));
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {
@@ -228,7 +286,7 @@ const Settings = () => {
   };
 
   const handleTestConnection = async () => {
-    if (!apiKey) {
+    if (!apiKey.trim() && !hasSavedApiKey) {
       setTestResult({ success: false, message: '请先输入 API Key' });
       return;
     }
@@ -236,8 +294,12 @@ const Settings = () => {
     setTesting(true);
     setTestResult(null);
     try {
-      await api.settings.setApiConfig({ apiKey, apiUrl, modelId, provider });
+      await api.settings.setApiConfig({ apiKey: apiKey.trim(), apiUrl, modelId, provider });
       const result = await api.settings.testApiConnection();
+      const config = await api.settings.getApiConfig();
+      setApiKey('');
+      setApiKeyPreview(config.apiKeyPreview || '');
+      setHasSavedApiKey(Boolean(config.hasApiKey || config.apiKey));
       setTestResult({ success: true, message: result.message || 'API 连接成功' });
     } catch (error) {
       setTestResult({ success: false, message: error.message || 'API 连接失败' });
@@ -284,6 +346,97 @@ const Settings = () => {
         </div>
       </SurfaceCard>
 
+      {isTauriRuntime && (
+      <SurfaceCard padding="p-6">
+        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="ui-icon-tile size-12 bg-amber-50 text-amber-600">
+              <DatabaseBackup size={24} />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-gray-900 dark:text-white">Tauri 数据迁移</h2>
+              <p className="mt-1 max-w-4xl text-xs leading-5 text-gray-500 dark:text-gray-400">
+                当当前 Tauri 数据库已有数据时，旧 Electron 数据库不会被自动覆盖；如需切换旧库，必须先备份当前库再显式替换。
+              </p>
+            </div>
+          </div>
+          <ActionButton
+            variant="secondary"
+            icon={RefreshCw}
+            onClick={loadMigrationStatus}
+            disabled={loadingMigrationStatus}
+            loading={loadingMigrationStatus}
+          >
+            刷新状态
+          </ActionButton>
+        </div>
+
+        <div className="space-y-4">
+          {migrationError && (
+            <AlertBanner type="danger" title="迁移状态异常">
+              {migrationError}
+            </AlertBanner>
+          )}
+
+          {migrationResult && (
+            <AlertBanner type="success" title="已备份并使用旧库替换">
+              当前数据库已替换；备份路径：{migrationResult.backupPath || '无旧库备份'}。请重启应用确认数据。
+            </AlertBanner>
+          )}
+
+          {migrationStatus ? (
+            <>
+              {needsExplicitReset ? (
+                <AlertBanner type="warning" title="检测到旧库数据">
+                  当前 Tauri 数据库和旧数据库都包含用户数据，系统不会自动覆盖。请确认后选择一个旧库执行备份替换。
+                </AlertBanner>
+              ) : (
+                <AlertBanner type={migrationStatus.recommendedAction === 'auto_migrate' ? 'info' : 'success'}>
+                  {migrationStatus.recommendedAction === 'auto_migrate'
+                    ? '检测到旧库数据，当前目标库为空或缺失时会自动迁移。'
+                    : '未检测到需要人工处置的旧库冲突。'}
+                </AlertBanner>
+              )}
+
+              <div className="grid gap-3">
+                {legacyCandidatesWithData.length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">暂无包含用户数据的旧数据库候选。</p>
+                ) : legacyCandidatesWithData.map((candidate) => {
+                  const fileName = candidate.path.split(/[/\\]/).pop() || candidate.path;
+                  const isReplacing = replacingLegacyPath === candidate.path;
+                  return (
+                    <div key={candidate.path} className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900 dark:text-white">{fileName}</p>
+                          <p className="mt-1 truncate text-xs text-gray-500 dark:text-gray-400" title={candidate.path}>
+                            {candidate.path}
+                          </p>
+                          {candidate.inspectError && (
+                            <p className="mt-2 text-xs text-danger">{candidate.inspectError}</p>
+                          )}
+                        </div>
+                        <ActionButton
+                          variant="danger"
+                          onClick={() => handleBackupAndReplace(candidate.path)}
+                          disabled={!needsExplicitReset || isReplacing}
+                          loading={isReplacing}
+                        >
+                          备份并使用旧库替换
+                        </ActionButton>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <AlertBanner type="info">正在读取旧库迁移状态...</AlertBanner>
+          )}
+        </div>
+      </SurfaceCard>
+      )}
+
       <SurfaceCard padding="p-6">
         <div className="mb-4 flex items-start gap-4">
           <div className="ui-icon-tile size-12 bg-violet-50 text-violet-600">
@@ -315,13 +468,16 @@ const Settings = () => {
             />
           </Field>
 
-          <Field label={<span className="inline-flex items-center gap-2"><Key size={16} />API Key</span>}>
+          <Field
+            label={<span className="inline-flex items-center gap-2"><Key size={16} />API Key</span>}
+            hint={hasSavedApiKey ? `已保存：${apiKeyPreview || '已隐藏'}；留空保存会保留现有 Key` : '保存后不会在界面回显完整 Key'}
+          >
             <PasswordInput
               show={showApiKey}
               onToggleShow={() => setShowApiKey(!showApiKey)}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder={currentProvider.placeholder || 'sk-xxxxxxxxxxxxxxxx'}
+              placeholder={hasSavedApiKey ? '留空则保留已保存 Key' : (currentProvider.placeholder || '输入 API Key')}
             />
           </Field>
 
@@ -372,7 +528,7 @@ const Settings = () => {
               variant="secondary"
               icon={TestTube}
               onClick={handleTestConnection}
-              disabled={testing || !apiKey}
+              disabled={testing || (!apiKey.trim() && !hasSavedApiKey)}
               loading={testing}
             >
               测试连接

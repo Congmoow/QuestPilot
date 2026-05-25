@@ -1,9 +1,27 @@
 use questpilot_tauri_lib::database::{
+    legacy_database_candidates, legacy_database_status, replace_target_with_legacy_candidate,
     ApiConfig, ChatHistoryInput, CreatePromptInput, CreateQuestionBankInput, CreateQuestionInput,
     DatabaseStore, PracticeRecordInput, WrongBookPracticeResult,
 };
+use rusqlite::Connection;
 use serde_json::json;
+use std::path::Path;
 use tempfile::tempdir;
+
+fn read_schema_migrations(db_path: &Path) -> Vec<(i64, String)> {
+    let connection = Connection::open(db_path).expect("应能打开迁移元数据数据库");
+    let mut statement = connection
+        .prepare("SELECT version, name FROM schema_migrations ORDER BY version")
+        .expect("应能读取迁移元数据");
+
+    statement
+        .query_map([], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+        })
+        .expect("应能查询迁移元数据")
+        .map(|row| row.expect("应能解析迁移元数据行"))
+        .collect()
+}
 
 fn sample_single_question(content: &str, answer: &str) -> CreateQuestionInput {
     CreateQuestionInput {
@@ -45,10 +63,64 @@ fn database_store_initializes_core_tables() {
             "chat_history",
             "wrong_book",
             "practice_records",
+            "schema_migrations",
         ])
         .expect("应能统计核心表");
 
-    assert_eq!(table_count, 9);
+    assert_eq!(table_count, 10);
+}
+
+#[test]
+fn database_store_records_current_schema_migration_once() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let db_path = temp_dir.path().join("questpilot.db");
+
+    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
+    drop(store);
+
+    assert_eq!(
+        read_schema_migrations(&db_path),
+        vec![(1, "001_initial_schema".to_string())]
+    );
+
+    let reopened = DatabaseStore::open(&db_path).expect("应能重复打开数据库");
+    drop(reopened);
+
+    assert_eq!(
+        read_schema_migrations(&db_path),
+        vec![(1, "001_initial_schema".to_string())]
+    );
+}
+
+#[test]
+fn database_store_upgrades_file_without_schema_migration_metadata() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let db_path = temp_dir.path().join("questpilot.db");
+
+    {
+        let connection = Connection::open(&db_path).expect("应能创建旧数据库文件");
+        connection
+            .execute_batch(
+                "
+                CREATE TABLE question_banks (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  name TEXT NOT NULL,
+                  description TEXT,
+                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                ",
+            )
+            .expect("应能创建旧版题库表");
+    }
+
+    let upgraded = DatabaseStore::open(&db_path).expect("应能升级旧数据库文件");
+    drop(upgraded);
+
+    assert_eq!(
+        read_schema_migrations(&db_path),
+        vec![(1, "001_initial_schema".to_string())]
+    );
 }
 
 #[test]
@@ -142,6 +214,219 @@ fn database_store_can_open_from_legacy_candidate_when_target_is_missing() {
     assert!(target_path.exists());
     assert_eq!(banks.len(), 1);
     assert_eq!(banks[0].name, "旧题库");
+}
+
+#[test]
+fn database_store_replaces_empty_target_with_legacy_candidate() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let target_path = temp_dir.path().join("questpilot.db");
+    let legacy_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
+
+    let target = DatabaseStore::open(&target_path).expect("应能创建 Tauri 空库");
+    assert!(target.get_all_banks().expect("应能读取空库题库").is_empty());
+    drop(target);
+
+    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库");
+    legacy
+        .create_bank(CreateQuestionBankInput {
+            name: "Electron 题库".to_string(),
+            description: Some("来自 Electron 当前数据目录".to_string()),
+        })
+        .expect("候选库应能写入题库");
+    drop(legacy);
+
+    let migrated = DatabaseStore::open_with_legacy_candidates(&target_path, &[legacy_path])
+        .expect("应能用候选库替换无用户数据的 Tauri 空库");
+    let banks = migrated.get_all_banks().expect("应能读取迁移后的题库");
+
+    assert_eq!(banks.len(), 1);
+    assert_eq!(banks[0].name, "Electron 题库");
+}
+
+#[test]
+fn database_store_keeps_target_when_it_has_user_data() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let target_path = temp_dir.path().join("questpilot.db");
+    let legacy_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
+
+    let target = DatabaseStore::open(&target_path).expect("应能创建 Tauri 库");
+    target
+        .create_bank(CreateQuestionBankInput {
+            name: "Tauri 题库".to_string(),
+            description: None,
+        })
+        .expect("Tauri 库应能写入题库");
+    drop(target);
+
+    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库");
+    legacy
+        .create_bank(CreateQuestionBankInput {
+            name: "Electron 题库".to_string(),
+            description: None,
+        })
+        .expect("Electron 候选库应能写入题库");
+    drop(legacy);
+
+    let migrated = DatabaseStore::open_with_legacy_candidates(&target_path, &[legacy_path])
+        .expect("目标库已有用户数据时应保留目标库");
+    let banks = migrated.get_all_banks().expect("应能读取目标库题库");
+
+    assert_eq!(banks.len(), 1);
+    assert_eq!(banks[0].name, "Tauri 题库");
+}
+
+#[test]
+fn legacy_database_status_reports_explicit_reset_needed() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let target_path = temp_dir.path().join("questpilot.db");
+    let legacy_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
+
+    let target = DatabaseStore::open(&target_path).expect("应能创建 Tauri 库");
+    target
+        .create_bank(CreateQuestionBankInput {
+            name: "Tauri 题库".to_string(),
+            description: None,
+        })
+        .expect("Tauri 库应能写入题库");
+    drop(target);
+
+    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库");
+    legacy
+        .create_bank(CreateQuestionBankInput {
+            name: "Electron 题库".to_string(),
+            description: None,
+        })
+        .expect("Electron 候选库应能写入题库");
+    drop(legacy);
+
+    let status =
+        legacy_database_status(&target_path, &[legacy_path.clone()]).expect("应能读取旧库迁移状态");
+
+    assert!(status.target_exists);
+    assert!(status.target_has_user_data);
+    assert_eq!(status.recommended_action, "requires_explicit_reset");
+    assert_eq!(status.candidates.len(), 1);
+    assert!(status.candidates[0].has_user_data);
+}
+
+#[test]
+fn replace_target_with_legacy_candidate_backs_up_existing_target() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let target_path = temp_dir.path().join("questpilot.db");
+    let legacy_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
+
+    let target = DatabaseStore::open(&target_path).expect("应能创建 Tauri 库");
+    target
+        .create_bank(CreateQuestionBankInput {
+            name: "Tauri 题库".to_string(),
+            description: None,
+        })
+        .expect("Tauri 库应能写入题库");
+    drop(target);
+
+    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库");
+    legacy
+        .create_bank(CreateQuestionBankInput {
+            name: "Electron 题库".to_string(),
+            description: None,
+        })
+        .expect("Electron 候选库应能写入题库");
+    drop(legacy);
+
+    let result = replace_target_with_legacy_candidate(
+        &target_path,
+        &legacy_path,
+        &[legacy_path.clone()],
+        "BACKUP_AND_REPLACE",
+    )
+    .expect("应能显式备份并替换目标库");
+
+    let backup_path = result.backup_path.expect("已有目标库时应创建备份");
+    let backup = DatabaseStore::open(&backup_path).expect("应能打开备份库");
+    let backup_banks = backup.get_all_banks().expect("应能读取备份库题库");
+    assert_eq!(backup_banks.len(), 1);
+    assert_eq!(backup_banks[0].name, "Tauri 题库");
+
+    let replaced = DatabaseStore::open(&target_path).expect("应能打开替换后的目标库");
+    let replaced_banks = replaced.get_all_banks().expect("应能读取替换后的题库");
+    assert_eq!(replaced_banks.len(), 1);
+    assert_eq!(replaced_banks[0].name, "Electron 题库");
+}
+
+#[test]
+fn replace_target_with_legacy_candidate_requires_confirmation() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let target_path = temp_dir.path().join("questpilot.db");
+    let legacy_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
+
+    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库");
+    legacy
+        .create_bank(CreateQuestionBankInput {
+            name: "Electron 题库".to_string(),
+            description: None,
+        })
+        .expect("Electron 候选库应能写入题库");
+    drop(legacy);
+
+    let error = replace_target_with_legacy_candidate(
+        &target_path,
+        &legacy_path,
+        &[legacy_path.clone()],
+        "WRONG",
+    )
+    .expect_err("确认短语错误时不得替换目标库");
+
+    assert!(error.contains("确认"));
+    assert!(!target_path.exists());
+}
+
+#[test]
+fn replace_target_with_legacy_candidate_rejects_non_candidate_path() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let target_path = temp_dir.path().join("questpilot.db");
+    let allowed_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
+    let external_path = temp_dir.path().join("Other").join("questpilot.db");
+
+    let external = DatabaseStore::open(&external_path).expect("应能创建外部库");
+    external
+        .create_bank(CreateQuestionBankInput {
+            name: "不应导入的题库".to_string(),
+            description: None,
+        })
+        .expect("外部库应能写入题库");
+    drop(external);
+
+    let error = replace_target_with_legacy_candidate(
+        &target_path,
+        &external_path,
+        &[allowed_path],
+        "BACKUP_AND_REPLACE",
+    )
+    .expect_err("非候选路径不得替换目标库");
+
+    assert!(error.contains("候选列表"));
+    assert!(!target_path.exists());
+}
+
+#[test]
+fn legacy_database_candidates_include_current_electron_data_dirs() {
+    let temp_dir = tempdir().expect("应能创建临时目录");
+    let target_path = temp_dir
+        .path()
+        .join("com.questpilot.desktop")
+        .join("questpilot.db");
+
+    let candidates = legacy_database_candidates(&target_path);
+
+    assert!(candidates.contains(&temp_dir.path().join("QuestPilot").join("questpilot.db")));
+    assert!(candidates.contains(&temp_dir.path().join("questpilot").join("questpilot.db")));
+    assert!(candidates.contains(
+        &temp_dir
+            .path()
+            .join("question-bank-assistant")
+            .join("question-bank.db")
+    ));
+    assert!(!candidates.contains(&target_path));
 }
 
 #[test]
@@ -487,17 +772,31 @@ fn database_store_supports_draft_and_api_config() {
 
     store
         .set_api_config(ApiConfig {
-            api_key: "sk-test".to_string(),
+            api_key: "token-test".to_string(),
             api_url: "https://api.example.com".to_string(),
             model_id: "model-x".to_string(),
             provider: "openai".to_string(),
         })
         .expect("应能保存 API 配置");
     let saved_config = store.get_api_config().expect("应能读取保存后的 API 配置");
-    assert_eq!(saved_config.api_key, "sk-test");
+    assert_eq!(saved_config.api_key, "token-test");
     assert_eq!(saved_config.api_url, "https://api.example.com");
     assert_eq!(saved_config.model_id, "model-x");
     assert_eq!(saved_config.provider, "openai");
+
+    store
+        .set_api_config(ApiConfig {
+            api_key: "   ".to_string(),
+            api_url: "https://api.updated.example.com".to_string(),
+            model_id: "model-y".to_string(),
+            provider: "custom".to_string(),
+        })
+        .expect("空 API Key 应保留已有配置");
+    let preserved_config = store.get_api_config().expect("应能读取保留后的 API 配置");
+    assert_eq!(preserved_config.api_key, "token-test");
+    assert_eq!(preserved_config.api_url, "https://api.updated.example.com");
+    assert_eq!(preserved_config.model_id, "model-y");
+    assert_eq!(preserved_config.provider, "custom");
 }
 
 #[test]
