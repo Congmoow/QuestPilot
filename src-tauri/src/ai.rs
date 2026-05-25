@@ -91,7 +91,7 @@ pub fn build_parse_request(
     build_provider_request(config, body, true)
 }
 
-pub fn test_connection(config: &AiConfig) -> Result<Value, String> {
+pub async fn test_connection(config: &AiConfig) -> Result<Value, String> {
     let body = json!({
         "model": default_model(config.model_id.as_str()),
         "messages": [
@@ -100,10 +100,10 @@ pub fn test_connection(config: &AiConfig) -> Result<Value, String> {
         "max_tokens": 10,
     });
     let request = build_provider_request(config, body, false)?;
-    send_request(&request)
+    send_request(&request).await
 }
 
-pub fn chat_with_ai(
+pub async fn chat_with_ai(
     config: &AiConfig,
     messages: Vec<AiMessage>,
     custom_prompt: Option<String>,
@@ -112,10 +112,10 @@ pub fn chat_with_ai(
         return Err("请输入问题".to_string());
     }
     let request = build_chat_request(config, messages, custom_prompt)?;
-    send_request(&request)
+    send_request(&request).await
 }
 
-pub fn parse_questions_with_ai(config: &AiConfig, content: &str) -> Result<Value, String> {
+pub async fn parse_questions_with_ai(config: &AiConfig, content: &str) -> Result<Value, String> {
     let chunks = split_markdown_into_chunks(content, DEFAULT_MAX_CHARS_PER_CHUNK);
     if chunks.is_empty() {
         return Err("请输入要解析的题目内容".to_string());
@@ -128,15 +128,21 @@ pub fn parse_questions_with_ai(config: &AiConfig, content: &str) -> Result<Value
 
     for (index, chunk) in chunks.iter().enumerate() {
         let hint = format!("第 {}/{} 块", index + 1, total);
-        match build_parse_request(config, chunk, Some(hint.as_str()))
-            .and_then(|request| send_request(&request))
-        {
-            Ok(result) => {
-                if let Some(items) = result.get("questions").and_then(Value::as_array) {
-                    questions.extend(items.iter().cloned());
+        match build_parse_request(config, chunk, Some(hint.as_str())) {
+            Ok(request) => match send_request(&request).await {
+                Ok(result) => {
+                    if let Some(items) = result.get("questions").and_then(Value::as_array) {
+                        questions.extend(items.iter().cloned());
+                    }
+                    success += 1;
                 }
-                success += 1;
-            }
+                Err(error) => {
+                    chunk_errors.push(json!({
+                        "chunkIndex": index,
+                        "message": error,
+                    }));
+                }
+            },
             Err(error) => {
                 chunk_errors.push(json!({
                     "chunkIndex": index,
@@ -337,8 +343,8 @@ fn build_provider_request(
     })
 }
 
-fn send_request(request: &AiRequest) -> Result<Value, String> {
-    let client = reqwest::blocking::Client::builder()
+async fn send_request(request: &AiRequest) -> Result<Value, String> {
+    let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(60))
         .build()
         .map_err(|error| format!("创建 AI 请求客户端失败: {error}"))?;
@@ -350,10 +356,12 @@ fn send_request(request: &AiRequest) -> Result<Value, String> {
 
     let response = builder
         .send()
+        .await
         .map_err(|error| format!("网络请求失败: {error}"))?;
     let status = response.status();
     let data = response
         .json::<Value>()
+        .await
         .map_err(|error| format!("解析响应失败: {error}"))?;
 
     if !status.is_success() {

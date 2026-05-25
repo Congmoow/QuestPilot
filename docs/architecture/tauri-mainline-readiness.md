@@ -56,7 +56,7 @@ Tauri WebView2 CDP smoke 覆盖结果：
 | 项目 | 结果 |
 | --- | --- |
 | Runtime 识别 | 通过，前端识别为 Tauri。 |
-| Electron API 隔离 | 通过，Tauri 页面没有 `window.electronAPI`。 |
+| 运行时 API 隔离 | 通过，页面层只通过 Tauri API 门面访问桌面命令。 |
 | API 配置公开边界 | 通过，公开配置不返回完整 Key。 |
 | 保存的 API Key | 未配置，`hasSavedApiKey=false`。 |
 | 路由加载 | 通过，8 个核心路由均有根节点内容。 |

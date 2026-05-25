@@ -321,9 +321,9 @@ fn settings_set_api_config(
 }
 
 #[tauri::command(rename_all = "camelCase")]
-fn settings_test_api_connection(app: AppHandle) -> Result<serde_json::Value, String> {
+async fn settings_test_api_connection(app: AppHandle) -> Result<serde_json::Value, String> {
     let config = open_store(&app)?.get_api_config()?;
-    ai::test_connection(&ai_config_from_database(config))
+    ai::test_connection(&ai_config_from_database(config)).await
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -350,13 +350,13 @@ fn migration_backup_and_replace_from_legacy(
 }
 
 #[tauri::command(rename_all = "camelCase")]
-fn ai_parse_questions(app: AppHandle, content: String) -> Result<serde_json::Value, String> {
+async fn ai_parse_questions(app: AppHandle, content: String) -> Result<serde_json::Value, String> {
     let config = open_store(&app)?.get_api_config()?;
-    ai::parse_questions_with_ai(&ai_config_from_database(config), content.as_str())
+    ai::parse_questions_with_ai(&ai_config_from_database(config), content.as_str()).await
 }
 
 #[tauri::command(rename_all = "camelCase")]
-fn ai_chat(
+async fn ai_chat(
     app: AppHandle,
     messages: Vec<ai::AiMessage>,
     prompt_id: Option<i64>,
@@ -366,7 +366,7 @@ fn ai_chat(
     let custom_prompt = prompt_id
         .and_then(|id| store.get_prompt_by_id(id).ok().flatten())
         .map(|prompt| prompt.content);
-    ai::chat_with_ai(&ai_config_from_database(config), messages, custom_prompt)
+    ai::chat_with_ai(&ai_config_from_database(config), messages, custom_prompt).await
 }
 
 fn ai_config_from_database(config: database::ApiConfig) -> ai::AiConfig {
@@ -726,7 +726,7 @@ pub fn run() {
             csv_export
         ])
         .run(tauri::generate_context!())
-        .expect("启动 QuestPilot Tauri PoC 失败");
+        .expect("启动 QuestPilot Tauri 应用失败");
 }
 
 #[cfg(test)]

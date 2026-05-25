@@ -2,12 +2,12 @@
 
 ## 目标
 
-本文件定义前端 `src/api/index.js` 对页面层暴露的稳定契约。页面组件不直接区分 Electron 与 Tauri；运行时差异必须在 `src/api/index.js` 或其适配器中收敛。
+本文件定义前端 `src/api/index.js` 对页面层暴露的稳定契约。Tauri-only 主线下，页面组件只调用本 API 门面，不直接调用 Tauri `invoke`。
 
 ## 当前运行时定位
 
-- Tauri：当前远端默认发布运行时。
-- Electron：仅本地未跟踪保留，用于历史参考和旧数据迁移语义对照。
+- Tauri：当前远端唯一发布运行时。
+- Electron：仅作为旧版数据来源和历史实现参考，不再作为远端运行时、构建或 CI 对象。
 - React/Vite：共用渲染层。页面只调用 `src/api/index.js`，不直接调用 Tauri `invoke`。
 
 ## 通用契约规则
@@ -39,46 +39,46 @@
 
 ## CSV 契约
 
-| 前端 API | Electron 来源 | Tauri 来源 | 页面层返回 |
-| --- | --- | --- | --- |
-| `downloadCsvTemplate()` | `api.csv.downloadTemplate()` | `csv_download_template` | `{ success, canceled, filePath? }` |
-| `selectCsvFile()` | `api.csv.selectFile()` | `csv_select_file` | `{ success, canceled, filePath }` |
-| `parseCsvFile(filePath)` | `api.csv.parseFile(filePath)` | `csv_parse_file` | `{ valid, errors, totalRows }` |
-| `importQuestions(bankId, questions)` | `api.csv.importQuestions(...)` | `csv_import` | `{ success, failed, errors }` |
-| `exportQuestionBank(bankId)` | `api.csv.exportBank(bankId)` | `csv_export` | `{ success, canceled, filePath?, count? }` |
+| 前端 API | Tauri command | 页面层返回 |
+| --- | --- | --- |
+| `downloadCsvTemplate()` | `csv_download_template` | `{ success, canceled, filePath? }` |
+| `selectCsvFile()` | `csv_select_file` | `{ success, canceled, filePath }` |
+| `parseCsvFile(filePath)` | `csv_parse_file` | `{ valid, errors, totalRows }` |
+| `importQuestions(bankId, questions)` | `csv_import` | `{ success, failed, errors }` |
+| `exportQuestionBank(bankId)` | `csv_export` | `{ success, canceled, filePath?, count? }` |
 
 ## 题库与题目契约
 
-| 前端 API | Electron 来源 | Tauri 来源 | 页面层返回 |
-| --- | --- | --- | --- |
-| `createQuestionBank(data)` | `questionBank:create` | `question_bank_create` | `QuestionBank` |
-| `getAllQuestionBanks()` | `questionBank:getAll` | `question_bank_get_all` | `QuestionBank[]`，含 `questionCount` |
-| `getQuestionBankById(id)` | `questionBank:getById` | `question_bank_get_by_id` | `QuestionBank | null` |
-| `updateQuestionBank(id, data)` | `questionBank:update` | `question_bank_update` | `QuestionBank | null` |
-| `deleteQuestionBank(id)` | `questionBank:delete` | `question_bank_delete` | `void` |
-| `createQuestion(data)` | `question:create` | `question_create` | `Question` |
-| `createQuestionsBatch(bankId, questions)` | `question:createBatch` | `question_create_batch` | `{ success, failed, errors }` |
-| `getQuestionsByBankId(bankId, options)` | `question:getByBankId` | `question_get_by_bank_id` | `{ data, total, page, pageSize, totalPages }` |
-| `getRandomQuestions(bankId, options)` | `question:getRandom` | `question_get_random` | `Question[]` |
-| `getQuestionById(id)` | `question:getById` | `question_get_by_id` | `Question | null` |
-| `updateQuestion(id, data)` | `question:update` | `question_update` | `Question | null` |
-| `deleteQuestions(ids)` | `question:delete` | `question_delete` | `void` |
-| `searchQuestions(bankId, keyword, options)` | `question:search` | `question_search` | `{ data, total, page, pageSize, totalPages }` |
+| 前端 API | Tauri command | 页面层返回 |
+| --- | --- | --- |
+| `createQuestionBank(data)` | `question_bank_create` | `QuestionBank` |
+| `getAllQuestionBanks()` | `question_bank_get_all` | `QuestionBank[]`，含 `questionCount` |
+| `getQuestionBankById(id)` | `question_bank_get_by_id` | `QuestionBank | null` |
+| `updateQuestionBank(id, data)` | `question_bank_update` | `QuestionBank | null` |
+| `deleteQuestionBank(id)` | `question_bank_delete` | `void` |
+| `createQuestion(data)` | `question_create` | `Question` |
+| `createQuestionsBatch(bankId, questions)` | `question_create_batch` | `{ success, failed, errors }` |
+| `getQuestionsByBankId(bankId, options)` | `question_get_by_bank_id` | `{ data, total, page, pageSize, totalPages }` |
+| `getRandomQuestions(bankId, options)` | `question_get_random` | `Question[]` |
+| `getQuestionById(id)` | `question_get_by_id` | `Question | null` |
+| `updateQuestion(id, data)` | `question_update` | `Question | null` |
+| `deleteQuestions(ids)` | `question_delete` | `void` |
+| `searchQuestions(bankId, keyword, options)` | `question_search` | `{ data, total, page, pageSize, totalPages }` |
 
 ## 设置、AI、记录契约
 
-| 前端 API | Electron 来源 | Tauri 来源 | 页面层返回 |
-| --- | --- | --- | --- |
-| `getTheme()` / `setTheme(theme)` | `settings:getTheme` / `settings:setTheme` | `settings_get_theme` / `settings_set_theme` | `theme` / `void` |
-| `getApiConfig()` / `setApiConfig(config)` | `settings:getApiConfig` / `settings:setApiConfig` | `settings_get_api_config` / `settings_set_api_config` | `{ apiKey: "", apiKeyPreview, hasApiKey, apiUrl, modelId, provider }` / `{ success }` |
-| `testApiConnection()` | `settings:testApiConnection` | `settings_test_api_connection` | `{ success, message? }` |
-| `parseQuestionsWithAI(content)` | `ai:parseQuestions` | `ai_parse_questions` | `{ questions, chunkErrors?, chunks? }` |
-| `chatWithAI(messages, promptId)` | `ai:chat` | `ai_chat` | `{ success, message, content }` |
-| `saveDraft(data)` / `loadDraft()` / `clearDraft()` | `draft:*` | `draft_*` | `{ success }` / draft / `{ success }` |
-| `getAllPrompts()` 等 Prompt API | `prompt:*` | `prompt_*` | Prompt 对象或列表 |
-| `saveChatHistory()` 等聊天历史 API | `chatHistory:*` | `chat_history_*` | ChatHistory 对象或列表 |
-| `saveRecord()` 等练习 API | `practice:*` | `practice_*` | 练习记录或 `{ success }` |
-| `wrongBook.*` | `wrongBook:*` | `wrong_book_*` | 错题对象、分页结果或 `{ success }` |
+| 前端 API | Tauri command | 页面层返回 |
+| --- | --- | --- |
+| `getTheme()` / `setTheme(theme)` | `settings_get_theme` / `settings_set_theme` | `theme` / `void` |
+| `getApiConfig()` / `setApiConfig(config)` | `settings_get_api_config` / `settings_set_api_config` | `{ apiKey: "", apiKeyPreview, hasApiKey, apiUrl, modelId, provider }` / `{ success }` |
+| `testApiConnection()` | `settings_test_api_connection` | `{ success, message? }` |
+| `parseQuestionsWithAI(content)` | `ai_parse_questions` | `{ questions, chunkErrors?, chunks? }` |
+| `chatWithAI(messages, promptId)` | `ai_chat` | `{ success, message, content }` |
+| `saveDraft(data)` / `loadDraft()` / `clearDraft()` | `draft_*` | `{ success }` / draft / `{ success }` |
+| `getAllPrompts()` 等 Prompt API | `prompt_*` | Prompt 对象或列表 |
+| `saveChatHistory()` 等聊天历史 API | `chat_history_*` | ChatHistory 对象或列表 |
+| `saveRecord()` 等练习 API | `practice_*` | 练习记录或 `{ success }` |
+| `wrongBook.*` | `wrong_book_*` | 错题对象、分页结果或 `{ success }` |
 
 ## 阶段 1 已修正的漂移
 
@@ -86,16 +86,10 @@
 - Tauri 保存对话框原始 `cancelled` 字段在前端出口归一化为 `canceled`。
 - `downloadCsvTemplate()`、`selectCsvFile()`、`exportQuestionBank()` 现在都会经过 `src/api/runtimeAdapters.js`。
 
-## 阶段 2 历史加固记录
+## 历史加固记录
 
-- 新增 Electron 数据库参数守卫：`electron/database/queryGuards.cjs`。
-- 题库 ID、题目 ID、批量删除 ID、分页参数、题型参数已在 Electron 稳定运行时归一化。
-- 题库、题目、搜索、删除、分页相关核心 SQL 曾增加静态安全测试；Electron 源码现仅本地未跟踪保留。
-
-## 阶段 4 历史加固记录
-
-- 新增 Electron 配置脱敏 helper：`electron/security/apiConfig.cjs`。
-- Tauri 的 `getApiConfig()` 不返回完整 API Key；Electron 记录仅作历史参考。
+- Electron 侧参数守卫和配置脱敏仅作为历史参考；Tauri-only 主线以后端命令和 Rust 数据库入口为准。
+- Tauri 的 `getApiConfig()` 不返回完整 API Key。
 - 设置页不会把读取到的完整 Key 写回输入框；已保存 Key 只显示脱敏预览。
 - 空白 Key 保存会保留已有 Key，避免用户只改模型或地址时误清空凭据。
 - Tauri 当前覆盖见 Rust 测试 `public_api_config_does_not_expose_full_api_key`。
