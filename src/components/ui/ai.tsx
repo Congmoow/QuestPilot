@@ -69,20 +69,35 @@ export function ParsedQuestionItem({ question, index, typeLabel, onRemove, remov
   );
 }
 
-export function AIChatWelcome({ features }: { features?: Array<{ title: string; description: string; icon?: ElementType; iconSrc?: string; iconClass?: string }> }) {
+export function AIChatWelcome({
+  features,
+  heroImageSrc = '/ai-bot.webp',
+  heroImageAlt = 'AI 助手',
+  heroImageClassName = 'h-56',
+  heroImageLabel,
+}: {
+  features?: Array<{ title: string; description: string; icon?: ElementType; iconSrc?: string; iconClass?: string }>;
+  heroImageSrc?: string;
+  heroImageAlt?: string;
+  heroImageClassName?: string;
+  heroImageLabel?: string | null;
+}) {
   return (
     <div className="flex flex-col items-center text-center w-full max-w-[880px]">
-      <div className="relative mb-2">
+      <div className="relative mb-2 flex flex-col items-center justify-center gap-2">
         {/* AI 助手主图 */}
         <img
-          src={getPublicAssetPath('/ai-bot.webp')}
-          alt="AI 助手"
-          className="relative h-56 w-auto object-contain"
+          src={getPublicAssetPath(heroImageSrc)}
+          alt={heroImageAlt}
+          className={cn('relative w-auto object-contain', heroImageClassName)}
         />
+        {heroImageLabel && (
+          <div className="text-sm font-semibold text-gray-600 dark:text-gray-300">{heroImageLabel}</div>
+        )}
       </div>
 
       {features && (
-        <div className="mt-2 grid w-full grid-cols-4 gap-4">
+        <div className={cn('grid w-full grid-cols-4 gap-4', heroImageLabel ? 'mt-6' : 'mt-2')}>
           {features.map((feature) => {
             const Icon = feature.icon || Sparkles;
             return (

@@ -1,6 +1,8 @@
 import { Bot } from 'lucide-react';
+import { getPublicAssetPath } from '../../../lib/assets';
 import { cn } from '../../../lib/utils';
-import { type AiConfigView, inferProviderFromModel, providerInfo } from '../utils/providers';
+import { getAiProviderIconPath, resolveAiProviderId } from '../utils/providerAssets';
+import { type AiConfigView, providerInfo } from '../utils/providers';
 
 type AiIconProps = AiConfigView & {
   size?: number;
@@ -8,8 +10,25 @@ type AiIconProps = AiConfigView & {
 };
 
 const AiIcon = ({ provider, modelId, size = 24, className = '' }: AiIconProps) => {
-  const actualProvider = provider !== 'custom' ? provider : inferProviderFromModel(modelId);
+  const actualProvider = resolveAiProviderId(provider, modelId);
   const info = providerInfo(actualProvider);
+  const iconPath = getAiProviderIconPath(provider, modelId);
+
+  if (iconPath) {
+    return (
+      <span
+        className={cn('inline-flex items-center justify-center overflow-hidden rounded-xl bg-white', className)}
+        style={{ width: size, height: size }}
+      >
+        <img
+          src={getPublicAssetPath(iconPath)}
+          alt={info.name}
+          className="h-full w-full object-contain"
+          draggable={false}
+        />
+      </span>
+    );
+  }
 
   return (
     <span

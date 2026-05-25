@@ -12,6 +12,12 @@ import ChatHistoryPanel from '../features/ai-chat/components/ChatHistoryPanel';
 import MessageRenderer from '../features/ai-chat/components/MessageRenderer';
 import PromptSelector from '../features/ai-chat/components/PromptSelector';
 import { useAiChat } from '../features/ai-chat/hooks/useAiChat';
+import {
+  getAiProviderDisplayInfo,
+  getAiProviderHeroImageClassName,
+  getAiProviderHeroImagePath,
+  getAiProviderHeroLabel,
+} from '../features/ai-chat/utils/providerAssets';
 
 const features = [
   { title: '上传题目解析', description: '上传题目图片\n获取详细解析', iconSrc: '/aichat-icon/icon-1.webp', iconClass: 'bg-blue-50 text-blue-600' },
@@ -32,6 +38,10 @@ const AiChat = () => {
     handleSend, handleKeyDown,
     loadChat, deleteChat, newChat, clearChat,
   } = useAiChat();
+  const aiDisplayInfo = getAiProviderDisplayInfo(aiConfig.provider, aiConfig.modelId);
+  const aiHeroImagePath = getAiProviderHeroImagePath(aiConfig.provider, aiConfig.modelId);
+  const aiHeroImageClassName = getAiProviderHeroImageClassName(aiConfig.provider, aiConfig.modelId);
+  const aiHeroImageLabel = getAiProviderHeroLabel(aiConfig.provider, aiConfig.modelId);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-5">
@@ -74,7 +84,13 @@ const AiChat = () => {
         <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-6">
           {messages.length === 0 ? (
             <div className="flex min-h-full items-center justify-center py-10">
-              <AIChatWelcome features={features} />
+              <AIChatWelcome
+                features={features}
+                heroImageSrc={aiHeroImagePath}
+                heroImageAlt={aiDisplayInfo.name}
+                heroImageClassName={aiHeroImageClassName}
+                heroImageLabel={aiHeroImageLabel}
+              />
             </div>
           ) : (
             <div className="mx-auto max-w-4xl space-y-5">
@@ -82,7 +98,7 @@ const AiChat = () => {
                 <ChatMessageBubble
                   key={index}
                   role={msg.role}
-                  avatar={msg.role === 'user' ? <User size={18} /> : null}
+                  avatar={msg.role === 'user' ? <User size={18} /> : <AiIcon provider={aiConfig.provider} modelId={aiConfig.modelId} size={28} />}
                 >
                   {msg.role === 'user' ? (
                     <div className="whitespace-pre-wrap">{msg.content.trim()}</div>

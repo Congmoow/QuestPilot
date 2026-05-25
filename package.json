@@ -22,7 +22,7 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "tauri:info": "tauri info",
-    "test": "vitest run",
+    "test": "vitest run --config vitest.config.js",
     "test:api-contract": "node --test scripts/__tests__/runtime-adapters.test.mjs",
     "clean": "rimraf dist",
     "optimize:assets": "node scripts/optimize-assets.cjs"
