@@ -6,9 +6,9 @@
 
 ## 当前运行时定位
 
-- Electron：当前稳定运行时，仍是默认开发、预览和发布基线。
-- Tauri：迁移验证线，已经覆盖大部分功能，但在替换 Electron 前必须继续做契约、权限、窗口和真实流程验收。
-- React/Vite：共用渲染层。页面只调用 `src/api/index.js`，不直接调用 `window.electronAPI` 或 Tauri `invoke`。
+- Tauri：当前远端默认发布运行时。
+- Electron：仅本地未跟踪保留，用于历史参考和旧数据迁移语义对照。
+- React/Vite：共用渲染层。页面只调用 `src/api/index.js`，不直接调用 Tauri `invoke`。
 
 ## 通用契约规则
 
@@ -17,12 +17,12 @@
 - 取消文件对话框统一使用 `canceled` 字段，不使用 Tauri 原始 `cancelled`。
 - 文件选择统一返回 `{ success, canceled, filePath }`。
 - 保存/导出统一返回 `{ success, canceled, filePath?, count? }`。
-- Electron 与 Tauri 的返回结构不一致时，必须在 `src/api/runtimeAdapters.js` 中归一化。
+- 桌面命令返回结构不一致时，必须在 `src/api/runtimeAdapters.js` 中归一化。
 
 ## IPC 与数据层边界
 
 - Renderer 传入的 ID、分页、题型、批量 ID 列表必须在 IPC 或数据库入口归一化。
-- Electron 题库、题目、搜索、删除、分页相关 SQL 不得直接拼接 renderer 输入。
+- Tauri 命令入口和数据库入口不得直接信任 renderer 输入。
 - 动态值必须使用 prepared statement 参数绑定；确实需要动态 SQL 片段时，只能来自白名单或已归一化值。
 - 分页参数统一限制为正整数，`pageSize` 最大值为 `1000`。
 - 题型参数只能使用 `single`、`multiple`、`boolean`、`fill`、`short`。
@@ -34,7 +34,7 @@
 - 页面层只允许接收 `hasApiKey` 和 `apiKeyPreview` 判断配置状态与展示脱敏预览。
 - 返回对象保留 `apiKey: ""` 作为兼容字段，禁止把完整 Key 写入 React state 或输入框。
 - `setApiConfig(config)` 收到空白 `apiKey` 时保留已保存 Key；收到非空 `apiKey` 时才替换。
-- 真实 AI 请求、连接测试只在 Electron/Tauri 主进程或后端命令层读取完整 Key。
+- 真实 AI 请求、连接测试只在 Tauri 后端命令层读取完整 Key。
 - 日志、错误信息、文档示例和测试输出不得包含真实完整 Key。
 
 ## CSV 契约
@@ -86,19 +86,19 @@
 - Tauri 保存对话框原始 `cancelled` 字段在前端出口归一化为 `canceled`。
 - `downloadCsvTemplate()`、`selectCsvFile()`、`exportQuestionBank()` 现在都会经过 `src/api/runtimeAdapters.js`。
 
-## 阶段 2 已加固的边界
+## 阶段 2 历史加固记录
 
 - 新增 Electron 数据库参数守卫：`electron/database/queryGuards.cjs`。
 - 题库 ID、题目 ID、批量删除 ID、分页参数、题型参数已在 Electron 稳定运行时归一化。
-- 题库、题目、搜索、删除、分页相关核心 SQL 已增加静态安全测试：`npm run test:electron-db-safety`。
+- 题库、题目、搜索、删除、分页相关核心 SQL 曾增加静态安全测试；Electron 源码现仅本地未跟踪保留。
 
-## 阶段 4 已加固的边界
+## 阶段 4 历史加固记录
 
 - 新增 Electron 配置脱敏 helper：`electron/security/apiConfig.cjs`。
-- Electron 与 Tauri 的 `getApiConfig()` 都不再返回完整 API Key。
+- Tauri 的 `getApiConfig()` 不返回完整 API Key；Electron 记录仅作历史参考。
 - 设置页不会把读取到的完整 Key 写回输入框；已保存 Key 只显示脱敏预览。
 - 空白 Key 保存会保留已有 Key，避免用户只改模型或地址时误清空凭据。
-- 新增测试命令：`npm run test:api-config-security`。
+- Tauri 当前覆盖见 Rust 测试 `public_api_config_does_not_expose_full_api_key`。
 
 ## 后续约束
 
@@ -108,4 +108,4 @@
 - `src/api/index.js`。
 - 必要的 `src/api/runtimeAdapters.js` 适配逻辑。
 - `scripts/__tests__/runtime-adapters.test.mjs` 或对应契约测试。
-- 涉及 Electron 数据库参数边界时，同步更新 `scripts/__tests__/electron-sql-safety.test.mjs`。
+- 涉及 Tauri 数据库参数边界时，同步更新 Rust 数据库测试。

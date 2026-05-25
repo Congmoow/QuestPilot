@@ -5,9 +5,8 @@
 
 ## 结论
 
-- Electron 继续作为当前稳定运行时。
-- 阶段 5.5 的 Tauri 主线化准入结论是 `Tauri-continue-validation`：Tauri 继续作为迁移验证线，暂不替换 Electron，也不进入发布默认运行时。
-- 2026-05-25 起，剩余阶段以 Tauri 作为开发主线推进，Electron 暂停修改并仅保留为回退参考；该决策不代表 Tauri 已满足发布默认运行时准入。
+- 本文前半部分保留阶段 5 的双运行时历史验收记录。
+- 2026-05-25 起，远端发布线切换为 Tauri-only；Electron 代码仅在本地未跟踪文件中保留，不再作为远端发布或 CI 对象。
 - 阶段 7 已新增发布前架构闸门：`docs/architecture/release-gate.md`。阶段 7.1 已补齐 Tauri 数据冲突显式处置和打包产物构建启动证据；阶段 7.2 用户已完成人工 API 接入和 CSV 保存验收，发布 P0 已清零。
 - 阶段 5 的目标是把真实状态、差异类别和发布前阻塞项固化到文档中；未完成的人工验收不会写成已验证。
 - 阶段 5.5 的详细记录见 `docs/architecture/tauri-mainline-readiness.md`。
@@ -85,7 +84,7 @@
 短期取舍：
 
 - Tauri 作为后续架构治理和模块拆分的开发主线，继续通过 `cargo test`、`npm run tauri:info`、`npm run tauri:dev` 和必要的 CDP smoke 保活。
-- Electron 暂停主动修改，仅作为回退参考；恢复发布前是否补 Electron smoke 由发布闸门单独判断。
+- Electron 代码仅本地保留，不再作为远端发布或 CI 对象。
 
 Tauri 替换 Electron 前的剩余收口项：
 
@@ -99,12 +98,8 @@ Tauri 替换 Electron 前的剩余收口项：
 完整闸门见 `docs/architecture/release-gate.md`。本节仅保留运行时验收入口。
 
 - `npm run test:api-contract`
-- `npm run test:api-config-security`
-- `npm run test:electron-db-safety`
-- `npm run test:db-migrations`
 - `npm run build`
 - `cargo test`
-- Electron shell 真实窗口验收
 - Tauri dev 或预览真实窗口验收
 - 真实 API 接入验收（Tauri 已由用户人工通过）
 - CSV 保存对话框验收（Tauri 已由用户人工通过）

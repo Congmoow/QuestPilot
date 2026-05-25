@@ -9,7 +9,7 @@
 
 Tauri 可以继续作为主线化候选方向推进，但当前不能升级为产品默认主线，也不能冻结 Electron。Electron 仍是当前稳定运行时和回退线；Tauri 继续承担迁移验证、补齐和准入复查。
 
-2026-05-25 更新：根据用户决策，后续架构治理和剩余阶段以 Tauri 作为开发主线继续推进，Electron 暂停修改并仅保留为回退参考。
+2026-05-25 更新：根据用户决策，后续架构治理和剩余阶段以 Tauri 作为开发主线继续推进。远端发布线已切换为 Tauri-only；Electron 代码仅保留在本地未跟踪文件中。
 
 阶段 7.1 更新：发布前架构闸门已固化到 `docs/architecture/release-gate.md`。Tauri 打包产物已完成构建和 release exe 启动 smoke；目标 Tauri 库已有用户数据时已补充设置页显式备份替换流程。
 
@@ -21,7 +21,7 @@ Tauri 可以继续作为主线化候选方向推进，但当前不能升级为�
 | --- | --- | --- |
 | Tauri 环境 | 通过 | `npm run tauri:info` 通过，Windows WebView2、Rust、Node、Tauri CLI 均可用。 |
 | 前端契约 | 通过 | `npm run test:api-contract` 通过，CSV 返回值归一化契约仍稳定。 |
-| API Key 展示边界 | 通过 | `npm run test:api-config-security` 通过；Tauri smoke 中 `getApiConfig` 仍不返回完整 Key。 |
+| API Key 展示边界 | 通过 | `cargo test` 覆盖 Tauri 公开配置脱敏；Tauri smoke 中 `getApiConfig` 仍不返回完整 Key。 |
 | Tauri 路由加载 | 通过 | WebView2 CDP 覆盖 8 个核心 hash 路由，均能加载根节点内容。 |
 | Tauri 本地 API | 通过 | CDP smoke 覆盖题库 CRUD、题目 CRUD、CSV 导入、练习记录、错题本、设置保存。 |
 | Tauri 窗口控制 | 部分通过 | CDP smoke 验证最大化切换；最小化、拖拽和真实窗口点击仍需人工验收。 |
@@ -99,13 +99,12 @@ Tauri 使用独立的应用数据目录，不能假设会自动读取 Electron �
 
 - 进入 Tauri 默认发布运行时的收口验证。
 - 后续阶段优先拆分、验证和固化 Tauri 链路。
-- 新增跨运行时契约时先以 Tauri 能力为准，但必须保持 Electron 回退线不破坏。
-- Electron 暂停主动修改；如后续必须修 Electron，只接受用户明确要求的 P0/P1 修复、安全修复、数据兼容修复和回退线保活。
+- 新增桌面契约时以 Tauri 能力为准。
+- 如后续必须参考 Electron，只使用本地未跟踪文件或历史提交，不再把 Electron 代码重新纳入远端发布线。
 
 不允许做的事：
 
-- 不在本阶段主动修改 Electron IPC 或数据库路径。
-- 不删除 Electron IPC 或数据库路径。
+- 不把本地 Electron 文件重新纳入远端发布线，除非用户明确要求。
 - 不把未人工验收的安装包核心流程、窗口拖拽或迁移点击写成已验证。
 
 ## 下次复查条件
@@ -115,6 +114,6 @@ Tauri 使用独立的应用数据目录，不能假设会自动读取 Electron �
 1. 在设置页人工点击数据迁移备份替换流程，确认备份文件、替换结果和重启后数据状态。
 2. 对安装包或 release exe 完成核心本地流程人工验收。
 3. 覆盖窗口拖拽、最小化、最大化和关闭。
-4. 如要正式切默认发布线，保留一次 Electron smoke，确认稳定回退线未被破坏。
+4. 如要恢复 Electron 回退线，先从历史提交或本地未跟踪文件单独建分支验证。
 
 详细发布阻塞项、自动化命令和人工验收清单见 `docs/architecture/release-gate.md`。

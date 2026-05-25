@@ -1,6 +1,6 @@
 # QuestPilot
 
-QuestPilot 是一款基于 Tauri + React + Vite 构建的桌面端题库管理与刷题工具，支持 CSV / JSON / AI 导入、随机练题、错题本、统计面板与 AI 问答。Electron 运行时当前保留为回退参考线。
+QuestPilot 是一款基于 Tauri + React + Vite 构建的桌面端题库管理与刷题工具，支持 CSV / JSON / AI 导入、随机练题、错题本、统计面板与 AI 问答。
 
 ![Tauri](https://img.shields.io/badge/Tauri-2.x-24C8DB?logo=tauri&logoColor=white)
 ![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react&logoColor=white)
@@ -264,12 +264,7 @@ questpilot/
 │   ├── pages/                # 页面（仪表盘/导入/练习/错题本/设置/AI问答等）
 │   ├── components/           # 通用组件
 │   ├── contexts/             # React Context
-│   └── api/                  # 桌面 API 适配层（Tauri 主线，Electron 回退）
-├── electron/                 # Electron 回退线主进程
-│   ├── main.cjs              # Electron 窗口创建、IPC 与业务编排
-│   ├── preload.cjs           # Electron 预加载脚本
-│   ├── database/             # Electron 本地数据库回退实现
-│   └── validation/           # Electron 数据校验
+│   └── api/                  # 桌面 API 适配层
 ├── docs/                     # 架构、迁移、验收与发布闸门文档
 ├── scripts/                  # Node 测试与辅助脚本
 ├── build/                    # 构建资源（图标等）
@@ -303,9 +298,7 @@ questpilot/
 - **`npm run tauri:dev`**：开发模式（Vite + Tauri）
 - **`npm run tauri:build`**：构建 Tauri release exe 与 Windows NSIS 安装包
 - **`npm run tauri:info`**：查看 Tauri 环境信息
-- **`npm run electron:dev`**：Electron 回退线开发模式
-- **`npm run electron:build:win`**：Electron 回退线 Windows 安装包
-- **`npm run clean`**：清理 `dist/` 与 Electron 回退线 `release/`
+- **`npm run clean`**：清理 `dist/`
 
 ---
 
@@ -328,11 +321,6 @@ questpilot/
 - 确认 `5173` 端口未被占用（Vite 配置固定端口：`vite.config.js`）
 - 确认本机已安装 Rust stable、Windows WebView2 Runtime 和 Tauri 依赖环境
 - 若你修改了端口，需要同步修改 `src-tauri/tauri.conf.json` 中的 `devUrl`
-
-### Electron 回退线启动失败
-
-- Electron 当前仅作为回退参考线保留
-- 若你修改了端口，需要同步修改 `electron/main.cjs` 中开发环境加载的 URL
 
 ### AI 调用失败
 

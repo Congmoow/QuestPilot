@@ -59,6 +59,10 @@ Thumbs.db
 
 # Electron
 *.asar
+electron/
+electron-builder.json
+scripts/__tests__/api-config-secrets.test.mjs
+scripts/__tests__/electron-*.test.mjs
 
 # Cache
 .cache/

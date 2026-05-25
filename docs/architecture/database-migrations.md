@@ -2,7 +2,7 @@
 
 ## 目标
 
-数据库结构变更必须可追踪、可重复执行、可跨运行时对齐。Electron 与 Tauri 都必须维护同一套迁移版本语义，避免一个运行时升级结构后另一个运行时无法读取。
+数据库结构变更必须可追踪、可重复执行。当前远端发布线为 Tauri-only，迁移版本语义以 Tauri/rusqlite 为准；Electron 迁移记录仅保留在历史文档和本地未跟踪文件中。
 
 ## 当前版本
 
@@ -12,7 +12,7 @@
 
 ## 元数据表
 
-两套运行时都必须创建并维护 `schema_migrations`：
+Tauri 数据库必须创建并维护 `schema_migrations`：
 
 ```sql
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -31,7 +31,7 @@ VALUES (1, '001_initial_schema');
 
 ## 执行模型
 
-Electron 与 Tauri 都使用显式迁移列表：
+Tauri 使用显式迁移列表：
 
 - 迁移项必须包含 `version`、`name` 和实际结构变更逻辑。
 - 初始化数据库时先创建 `schema_migrations`，再只执行未记录的迁移。
@@ -42,18 +42,15 @@ Electron 与 Tauri 都使用显式迁移列表：
 
 - 每次数据库结构变更都必须分配单调递增的 `version`。
 - 迁移必须允许重复执行，不能重复插入版本记录。
-- Electron 与 Tauri 必须使用同一版本号和迁移名称。
-- 修改业务表结构时必须同步补充 Electron/sql.js 测试和 Tauri/rusqlite 测试。
+- 修改业务表结构时必须同步补充 Tauri/rusqlite 测试。
 - 迁移完成前不得把新结构假定为已存在。
 
 ## 新增迁移步骤
 
-1. 在 Electron 迁移列表中新增下一版本迁移项。
-2. 在 Tauri 迁移列表中新增同版本、同名称的迁移项。
-3. 迁移 SQL 必须只依赖已存在的旧结构，并能在重复启动时保持幂等。
-4. 新增 Electron/sql.js 测试，覆盖未迁移库执行后写入版本记录。
-5. 新增 Tauri/rusqlite 测试，覆盖旧文件库升级和重复打开。
-6. 更新本文档的当前版本表。
+1. 在 Tauri 迁移列表中新增下一版本迁移项。
+2. 迁移 SQL 必须只依赖已存在的旧结构，并能在重复启动时保持幂等。
+3. 新增 Tauri/rusqlite 测试，覆盖旧文件库升级和重复打开。
+4. 更新本文档的当前版本表。
 
 ## 回滚策略
 
@@ -65,6 +62,5 @@ Electron 与 Tauri 都使用显式迁移列表：
 
 ## 当前测试覆盖
 
-- Electron：`npm run test:db-migrations`
 - Tauri：`cargo test --test database_store database_store_records_current_schema_migration_once`
 - Tauri 旧库升级：`cargo test --test database_store database_store_upgrades_file_without_schema_migration_metadata`

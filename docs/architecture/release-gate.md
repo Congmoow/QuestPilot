@@ -24,9 +24,9 @@ Tauri 已作为后续开发主线推进，并已完成阶段 2-6 的架构治理
 
 | 阶段 | 结果 | 证据 |
 | --- | --- | --- |
-| 阶段 2：Electron 数据库安全边界 | 已验证 | `npm run test:electron-db-safety` 曾覆盖 Electron 查询参数守卫和 SQL 安全测试。 |
-| 阶段 3：数据库迁移基线 | 已验证 | `npm run test:db-migrations`、`cargo test` 覆盖 Electron/Tauri 迁移版本语义和 Tauri 旧库升级。 |
-| 阶段 4：API Key 展示边界 | 已验证 | `npm run test:api-config-security` 覆盖 Electron/Tauri API Key 脱敏契约。 |
+| 阶段 2：Electron 数据库安全边界 | 历史已验证 | Electron 代码现已从远端移除，仅本地未跟踪保留。 |
+| 阶段 3：数据库迁移基线 | 已验证 | `cargo test` 覆盖 Tauri 迁移版本语义和 Tauri 旧库升级。 |
+| 阶段 4：API Key 展示边界 | 已验证 | `cargo test` 覆盖 Tauri API Key 脱敏契约。 |
 | 阶段 5：双运行时验收记录 | 已验证到开发准入 | `docs/architecture/runtime-acceptance.md` 固化双运行时差异、已测流程和未测流程。 |
 | 阶段 5.5：Tauri 主线化准入 | 已验证到继续推进 | `docs/architecture/tauri-mainline-readiness.md` 曾记录 `Tauri-continue-validation`；阶段 7.2 已补记用户人工验收并清零发布 P0。 |
 | 阶段 6：模块拆分与维护边界 | 已验证 | `src-tauri/src/database/*.rs` 已按类型、校验、迁移、schema、旧库迁移和查询辅助拆分；`cargo test` 与 `npm run build` 通过。 |
@@ -50,7 +50,7 @@ Tauri 已作为后续开发主线推进，并已完成阶段 2-6 的架构治理
 | 文件选择真实点击缺少人工验收 | 待验收 | 覆盖文件选择成功、取消和非法文件路径。 |
 | 目标 Tauri 库已有用户数据时的重置流程缺少人工点击验收 | 待验收 | 在设置页触发“备份并使用旧库替换”，确认备份文件、替换结果和重启后数据状态。 |
 | 打包产物核心流程未人工验收 | 待验收 | 安装包或 release exe 启动后，人工覆盖题库、题目、设置、CSV 导入和错题本核心流程。 |
-| Electron 回退线未做最终 smoke | 暂缓 | 恢复发布前补一次 Electron smoke；平时 Electron 暂停主动修改。 |
+| Electron 回退线已从远端移除 | 已处理 | Electron 源码仅保留在本地未跟踪文件中；远端发布线只保留 Tauri。 |
 | 发布命令缺少一次完整人工记录 | 待验收 | 发布前在本文档或发布记录中写入执行日期、命令、结果和人工验收人。 |
 
 ## 发布前命令清单
@@ -60,11 +60,8 @@ Tauri 已作为后续开发主线推进，并已完成阶段 2-6 的架构治理
 | 命令 | 目的 | 当前阶段 7 状态 |
 | --- | --- | --- |
 | `npm run test:api-contract` | 验证前端桌面 API 归一化契约。 | 已作为阶段 6/7 自动化验证项。 |
-| `npm run test:api-config-security` | 验证 API Key 不被完整暴露到页面契约。 | 阶段 4 已覆盖，发布前仍必须重跑。 |
-| `npm run test:electron-db-safety` | 验证 Electron 回退线数据库参数守卫。 | 阶段 2 已覆盖，发布前恢复 Electron smoke 时重跑。 |
-| `npm run test:db-migrations` | 验证迁移版本语义。 | 已作为阶段 6/7 自动化验证项。 |
+| `cargo test` | 验证 Tauri Rust 单元、集成测试、迁移版本语义和 API Key 脱敏。 | 已作为阶段 6/7 自动化验证项。 |
 | `cargo fmt -- --check` | 验证 Tauri Rust 格式。 | 已作为阶段 6/7 自动化验证项。 |
-| `cargo test` | 验证 Tauri Rust 单元和集成测试。 | 已作为阶段 6/7 自动化验证项。 |
 | `npm run build` | 验证前端生产构建。 | 已作为阶段 6/7 自动化验证项。 |
 | `npm run tauri:info` | 记录 Tauri 环境。 | 发布前建议重跑；若命令不退出，记录为环境输出而非完整通过。 |
 | `npm run tauri:dev` 或预览级 smoke | 验证 Tauri 真实窗口核心流程。 | 待人工/运行时验收。 |
@@ -112,7 +109,7 @@ Tauri 已作为后续开发主线推进，并已完成阶段 2-6 的架构治理
 | 判断项 | 结论 |
 | --- | --- |
 | 是否允许继续 Tauri 主线开发 | 是。 |
-| 是否允许删除 Electron 回退线 | 否。 |
+| 是否允许删除远端 Electron 回退线 | 是，Electron 仅本地保留。 |
 | 是否允许把 Tauri 设为默认发布运行时 | 可以进入发布收口；真实 AI 与 CSV 保存 P0 已由用户人工验收通过。 |
 | 是否允许更新发布版本或打正式包 | 可以进入正式发布收口；发布前仍建议补记安装包或 release exe 核心流程人工验收。 |
 
@@ -121,4 +118,4 @@ Tauri 已作为后续开发主线推进，并已完成阶段 2-6 的架构治理
 - 新增发布阻塞项时，必须写明解除条件。
 - 完成一项人工验收时，必须记录日期、运行时、命令或操作路径、结果和遗留风险。
 - 任何文档不得把未执行的安装包核心流程、窗口点击或数据迁移点击写成已验证。
-- Electron 继续作为回退参考；除用户明确要求或 P0/P1 问题外，不主动修改 Electron 代码。
+- Electron 代码仅保留在本地未跟踪文件中；远端发布线只维护 Tauri。
