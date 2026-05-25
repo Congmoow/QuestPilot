@@ -1,18 +1,20 @@
-# 前端源码说明
+**English** | [中文](./README.zh-CN.md)
 
-React 18 + TypeScript + Vite 前端，运行于 Tauri WebView 中。
+# Frontend Source Guide
+
+React 18 + TypeScript + Vite frontend running inside Tauri WebView.
 
 ---
 
-## 目录结构
+## Directory Structure
 
 ```
 src/
-├── main.tsx              # 应用入口，挂载 React 根节点
-├── App.tsx               # 路由配置，使用 HashRouter + lazy 页面
-├── index.css             # 全局样式（Tailwind 基础样式 + 自定义 token）
+├── main.tsx              # App entry point — mounts the React root
+├── App.tsx               # Route configuration (HashRouter + lazy pages)
+├── index.css             # Global styles (Tailwind base + custom design tokens)
 │
-├── pages/                # 路由级页面（薄装配层，不含业务逻辑）
+├── pages/                # Route-level pages (thin assemblers, no business logic)
 │   ├── Dashboard.tsx
 │   ├── ManualEntry.tsx
 │   ├── CsvImport.tsx
@@ -23,95 +25,95 @@ src/
 │   ├── Settings.tsx
 │   └── AiChat.tsx
 │
-├── features/             # 按功能域拆分的业务逻辑
-│   ├── ai-chat/          # AI 问答
-│   ├── ai-import/        # AI / JSON 批量导入
-│   ├── csv-import/       # CSV 批量导入
-│   ├── dashboard/        # 数据看板
-│   ├── practice/         # 随机练题
-│   ├── question-preview/ # 题库 & 题目浏览
-│   ├── questions/        # 手动录入
-│   ├── settings/         # 系统设置
-│   └── wrong-book/       # 错题本
+├── features/             # Business logic split by domain
+│   ├── ai-chat/          # AI Q&A chat
+│   ├── ai-import/        # AI / JSON batch import
+│   ├── csv-import/       # CSV batch import
+│   ├── dashboard/        # Stats dashboard
+│   ├── practice/         # Random practice
+│   ├── question-preview/ # Question bank & question browser
+│   ├── questions/        # Manual entry
+│   ├── settings/         # System settings
+│   └── wrong-book/       # Wrong answer book
 │
-├── components/           # 通用 UI 组件
-│   ├── ui/               # 设计系统基础组件（base、forms、question、dashboard、ai）
-│   ├── Layout.tsx        # 侧边栏 + 主区域布局，持有主题 Context
-│   ├── TitleBar.tsx      # 自定义标题栏（Tauri 窗口控件）
-│   ├── Dialog.tsx        # 通用模态对话框
-│   ├── ConfirmDialog.tsx # 确认对话框
-│   ├── CodeAwareText.tsx # 自动识别代码并切换 <pre> / <span> 渲染
-│   ├── QuestionBankDialog.tsx  # 题库创建/编辑弹窗
-│   ├── QuestionEditDialog.tsx  # 题目编辑弹窗
-│   └── SidebarIcons.tsx  # 侧边栏自定义 SVG 图标
+├── components/           # Shared UI components
+│   ├── ui/               # Design system primitives (base, forms, question, dashboard, ai)
+│   ├── Layout.tsx        # Sidebar + main area layout; owns ThemeContext
+│   ├── TitleBar.tsx      # Custom title bar (Tauri window controls)
+│   ├── Dialog.tsx        # Generic modal dialog
+│   ├── ConfirmDialog.tsx # Confirmation dialog
+│   ├── CodeAwareText.tsx # Auto-detects code and switches between <pre> / <span>
+│   ├── QuestionBankDialog.tsx  # Create / edit question bank
+│   ├── QuestionEditDialog.tsx  # Edit individual question
+│   └── SidebarIcons.tsx  # Custom SVG icons for the sidebar
 │
-├── contexts/             # React Context
-│   ├── QuestionBankContext.tsx  # 题库列表与操作
-│   └── QuestionContext.tsx      # 当前题库的题目列表、搜索、分页
+├── contexts/             # React Contexts
+│   ├── QuestionBankContext.tsx  # Bank list and CRUD operations
+│   └── QuestionContext.tsx      # Questions in the active bank (search, pagination)
 │
-├── api/                  # Tauri 后端调用封装
-│   ├── index.ts          # 所有 invoke 调用的统一出口
-│   ├── types.ts          # 共享数据类型（Question、QuestionBank 等）
-│   ├── runtimeAdapters.ts  # 规范化 Tauri 对话框返回值
-│   └── index.test.ts     # API 层单元测试
+├── api/                  # Tauri backend call wrappers
+│   ├── index.ts          # Unified entry point for all invoke calls
+│   ├── types.ts          # Shared data types (Question, QuestionBank, etc.)
+│   ├── runtimeAdapters.ts  # Normalizes Tauri dialog return values
+│   └── index.test.ts     # API layer unit tests
 │
-├── lib/                  # 纯工具函数（无副作用）
-│   ├── utils.ts          # cn()：Tailwind class 合并
-│   ├── fillBlank.ts      # 填空题空栏识别与计数
-│   ├── assets.ts         # 静态资源路径适配（dev / prod）
-│   ├── practiceHelpers.ts  # 练题共享逻辑（shuffle、normalize）
-│   ├── questionLabels.ts   # TYPE_LABELS 共享常量
-│   └── desktopRuntime.ts   # 窗口控制抽象（Tauri invoke）
+├── lib/                  # Pure utility functions (no side effects)
+│   ├── utils.ts          # cn(): Tailwind class merging
+│   ├── fillBlank.ts      # Fill-in-the-blank slot detection and counting
+│   ├── assets.ts         # Static asset path adapter (dev / prod)
+│   ├── practiceHelpers.ts  # Shared practice logic (shuffle, normalize answers)
+│   ├── questionLabels.ts   # TYPE_LABELS shared constant
+│   └── desktopRuntime.ts   # Window control abstraction (Tauri invoke)
 │
 └── types/
-    └── viewModels.ts     # 前端视图层类型（PracticeQuestion、AnswerMap 等）
+    └── viewModels.ts     # Frontend view-layer types (PracticeQuestion, AnswerMap, etc.)
 ```
 
 ---
 
-## Feature 内部结构
+## Feature Directory Convention
 
-每个 `features/<domain>/` 目录遵循统一三层结构：
+Every `features/<domain>/` directory follows a consistent three-layer structure:
 
 ```
 features/<domain>/
-├── components/   # 该功能的展示组件（接收 props，不直接调用 API）
-├── hooks/        # 自定义 Hook（封装全部状态、副作用、API 调用）
-└── utils/        # 纯函数、常量（无 React 依赖）
+├── components/   # Presentation components (receive props, do not call API directly)
+├── hooks/        # Custom hooks (own all state, effects, and API calls)
+└── utils/        # Pure functions and constants (no React dependencies)
 ```
 
-**页面文件只负责组装**：从对应 feature 导入 hook 和组件，不包含业务逻辑。
+**Page files are assemblers only** — they import hooks and components from the corresponding feature and contain no business logic.
 
 ---
 
-## 关键技术
+## Key Technologies
 
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| React | 18 | UI 框架，使用 functional + hooks |
-| TypeScript | 5 | 全量类型覆盖 |
-| Vite | 5 | 构建与开发服务器 |
-| Tailwind CSS | 3 | 原子化样式 |
-| React Router | 6 | HashRouter 路由（兼容 Tauri WebView） |
-| Framer Motion | — | 过渡动画 |
-| Recharts | — | 统计图表 |
-| react-markdown | — | AI 对话 Markdown 渲染 |
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| React | 18 | UI framework, functional components + hooks |
+| TypeScript | 5 | Full type coverage across all source files |
+| Vite | 5 | Build tool and dev server |
+| Tailwind CSS | 3 | Utility-first styling |
+| React Router | 6 | HashRouter routing (compatible with Tauri WebView) |
+| Framer Motion | — | Transition animations |
+| Recharts | — | Statistical charts |
+| react-markdown | — | Markdown rendering in AI chat |
 
 ---
 
-## 设计系统（`components/ui/`）
+## Design System (`components/ui/`)
 
-基础组件分为 5 个子模块，全部为命名导出，统一通过 `index.ts` 汇总：
+All primitives are named exports assembled through `index.ts`:
 
-| 文件 | 包含组件 |
-|------|---------|
-| `base.tsx` | `PageHeader`、`SurfaceCard`、`ToolbarCard`、`ActionButton`、`IconButton`、`StatusBadge`、`AlertBanner`、`EmptyState`、`SegmentedTabs` |
-| `forms.tsx` | `Field`、`TextInput`、`TextareaInput`、`SelectInput`、`PasswordInput`、`SearchInput` |
-| `question.tsx` | `QuestionBankCard`、`PracticeCard`、`QuizShell`、`AnswerOptionCard`、`ResultSummary`、`Pagination`、`TypeBadge` |
-| `dashboard.tsx` | `StatCard`、`ChartCard`、`TimelineLog` |
-| `ai.tsx` | `JsonEditorPanel`、`ParsedQuestionItem`、`AIChatWelcome`、`ChatMessageBubble`、`ChatComposer`、`ParseEmptyState` |
+| File | Components |
+|------|-----------|
+| `base.tsx` | `PageHeader`, `SurfaceCard`, `ToolbarCard`, `ActionButton`, `IconButton`, `StatusBadge`, `AlertBanner`, `EmptyState`, `SegmentedTabs` |
+| `forms.tsx` | `Field`, `TextInput`, `TextareaInput`, `SelectInput`, `PasswordInput`, `SearchInput` |
+| `question.tsx` | `QuestionBankCard`, `PracticeCard`, `QuizShell`, `AnswerOptionCard`, `ResultSummary`, `Pagination`, `TypeBadge` |
+| `dashboard.tsx` | `StatCard`, `ChartCard`, `TimelineLog` |
+| `ai.tsx` | `JsonEditorPanel`, `ParsedQuestionItem`, `AIChatWelcome`, `ChatMessageBubble`, `ChatComposer`, `ParseEmptyState` |
 
-用法：
+Usage:
 
 ```tsx
 import { ActionButton, SurfaceCard, AlertBanner } from '../components/ui';
@@ -119,29 +121,29 @@ import { ActionButton, SurfaceCard, AlertBanner } from '../components/ui';
 
 ---
 
-## 与 Tauri 后端通信
+## Communicating with the Tauri Backend
 
-所有后端调用通过 `src/api/index.ts` 封装，禁止在组件或 hook 中直接调用 `invoke`。
+All backend calls go through `src/api/index.ts`. Direct `invoke` calls inside components or hooks are not allowed.
 
 ```tsx
 import api from '../api';
 
-// 示例
+// Examples
 const banks = await api.questionBank.getAll();
 const result = await api.ai.parseQuestions(text);
 ```
 
-后端命令按域分组：`questionBank`、`question`、`settings`、`ai`、`migration`、`practice`、`wrongBook`、`draft`、`prompt`、`chatHistory`、`csv`。
+Command groups: `questionBank`, `question`, `settings`, `ai`, `migration`, `practice`, `wrongBook`, `draft`, `prompt`, `chatHistory`, `csv`.
 
 ---
 
-## 开发命令
+## Dev Commands
 
 ```bash
-npm run dev          # 启动 Vite 开发服务器（仅前端预览）
-npm run build        # 构建前端产物到 dist/
-npm test             # 运行单元测试（Vitest）
-npx tsc --noEmit     # TypeScript 全量类型检查
+npm run dev          # Start Vite dev server (frontend preview only)
+npm run build        # Build frontend output to dist/
+npm test             # Run unit tests (Vitest)
+npx tsc --noEmit     # Full TypeScript type check
 ```
 
-完整桌面应用开发请在项目根目录运行 `npm run tauri dev`。
+For the full desktop application, run `npm run tauri dev` from the project root.
