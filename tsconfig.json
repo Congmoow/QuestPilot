@@ -16,12 +16,10 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "vite.config.js", "scripts/**/*.mjs"],
+  "include": ["src", "tests/**/*.ts", "vite.config.js", "vitest.config.js", "scripts/**/*.mjs"],
   "references": []
 }
