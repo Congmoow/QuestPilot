@@ -37,6 +37,14 @@
 - 真实 AI 请求、连接测试只在 Tauri 后端命令层读取完整 Key。
 - 日志、错误信息、文档示例和测试输出不得包含真实完整 Key。
 
+### API Key 存储方案（v1.8+）
+
+- **优先存储**：系统 Keychain（Windows Credential Manager / macOS Keychain / Linux Secret Service）
+- **可靠存储**：SQLite settings 表 `ai_api_key` 字段（兜底，当 Keychain 不可用时使用）
+- **双写策略**：`setApiConfig` 先写 SQLite，同时尝试写 Keychain；Keychain 失败时仅记 warning，不影响功能
+- **优先读取**：`getApiConfig` 先查 Keychain，再查 SQLite 旧明文（自动迁移：迁移成功后清除 SQLite）
+- **迁移安全**：Keychain 写入失败时保留 SQLite 旧 Key，不中断流程
+
 ## CSV 契约
 
 | 前端 API | Tauri command | 页面层返回 |

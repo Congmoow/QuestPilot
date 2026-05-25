@@ -7,6 +7,39 @@ use super::{
     DatabaseStore,
 };
 
+const KEYCHAIN_SERVICE: &str = "questpilot";
+const KEYCHAIN_ACCOUNT: &str = "ai_api_key";
+
+/// 从系统密钥库读取 API Key。失败时返回 `None`，不抛异常。
+fn read_keychain_key() -> Option<String> {
+    keyring::Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT)
+        .ok()
+        .and_then(|e| e.get_password().ok())
+        .filter(|k| !k.trim().is_empty())
+}
+
+/// 将 API Key 写入系统密钥库，并用新 Entry 实例回读验证持久化成功。
+fn write_keychain_key(key: &str) -> Result<(), String> {
+    let entry = keyring::Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT)
+        .map_err(|e| format!("初始化密钥库条目失败: {e}"))?;
+    entry
+        .set_password(key)
+        .map_err(|e| format!("写入系统密钥库失败: {e}"))?;
+    // 用独立 Entry 实例从 OS 回读（不依赖同一实例的缓存），验证真正持久化
+    if read_keychain_key().as_deref() != Some(key) {
+        return Err("系统密钥库写入验证失败（OS 未能持久化，将回退到 SQLite）".into());
+    }
+    Ok(())
+}
+
+/// 删除系统密钥库中的 API Key。失败时只记志警告，不中断流程。
+#[allow(dead_code)]
+fn delete_keychain_key() {
+    if let Ok(entry) = keyring::Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT) {
+        let _ = entry.delete_credential();
+    }
+}
+
 impl DatabaseStore {
     pub fn get_theme(&self) -> Result<String, String> {
         let connection = self.connection.borrow();
@@ -66,8 +99,36 @@ impl DatabaseStore {
 
     pub fn get_api_config(&self) -> Result<ApiConfig, String> {
         let connection = self.connection.borrow();
+
+        // 优先从系统密钥库读取 API Key
+        let api_key = match read_keychain_key() {
+            Some(key) => key,
+            None => {
+                // 密钥库中不存在，检查 SQLite 中是否有旧版明文 Key
+                let legacy = get_setting(&connection, "ai_api_key")?
+                    .unwrap_or_default()
+                    .trim()
+                    .to_string();
+                if !legacy.is_empty() {
+                    // 尝试迁移到密钥库
+                    match write_keychain_key(&legacy) {
+                        Ok(()) => {
+                            tracing::info!("已将 API Key 迁移至系统密钥库");
+                            // 迁移成功：清除 SQLite 明文
+                            let _ = set_setting(&connection, "ai_api_key", "");
+                        }
+                        Err(e) => {
+                            // 迁移失败：保留 SQLite 中的旧 Key 作为备用
+                            tracing::warn!("API Key 迁移失败（将保留原有存储）: {}", e);
+                        }
+                    }
+                }
+                legacy
+            }
+        };
+
         Ok(ApiConfig {
-            api_key: get_setting(&connection, "ai_api_key")?.unwrap_or_default(),
+            api_key,
             api_url: get_setting(&connection, "ai_api_url")?
                 .unwrap_or_else(|| "https://api.openai.com".to_string()),
             model_id: get_setting(&connection, "ai_model_id")?
@@ -79,12 +140,19 @@ impl DatabaseStore {
 
     pub fn set_api_config(&self, config: ApiConfig) -> Result<(), String> {
         let connection = self.connection.borrow();
-        let next_api_key = if config.api_key.trim().is_empty() {
-            get_setting(&connection, "ai_api_key")?.unwrap_or_default()
-        } else {
-            config.api_key.trim().to_string()
-        };
-        set_setting(&connection, "ai_api_key", next_api_key.as_str())?;
+
+        // 非空 Key：SQLite 作为可靠存储（必须成功），Keychain 作为安全增强（尽力而为）
+        if !config.api_key.trim().is_empty() {
+            let key = config.api_key.trim().to_string();
+            // 先写 SQLite 确保可靠性
+            set_setting(&connection, "ai_api_key", &key)?;
+            // 同时尝试写入系统密钥库（失败只记录警告，不影响流程）
+            if let Err(e) = write_keychain_key(&key) {
+                tracing::warn!("写入系统密钥库失败（非致命，仍保存于 SQLite）: {}", e);
+            }
+        }
+        // api_key 为空时保留已存密钥，不覆盖
+
         set_setting(
             &connection,
             "ai_api_url",
