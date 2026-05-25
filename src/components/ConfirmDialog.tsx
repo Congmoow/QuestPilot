@@ -38,15 +38,15 @@ export function ConfirmDialog({
   const typeStyles = {
     danger: {
       icon: 'bg-danger/10 text-danger',
-      button: 'danger',
+      button: 'danger' as const,
     },
     warning: {
       icon: 'bg-orange-100 text-orange-600',
-      button: 'primary',
+      button: 'primary' as const,
     },
     primary: {
       icon: 'bg-primary/10 text-primary',
-      button: 'primary',
+      button: 'primary' as const,
     },
   };
 

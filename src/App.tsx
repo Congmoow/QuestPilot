@@ -20,7 +20,7 @@ const PageFallback = () => (
   </div>
 );
 
-const lazyRoute = (Component) => (
+const lazyRoute = (Component: React.ComponentType) => (
   <Suspense fallback={<PageFallback />}>
     <Component />
   </Suspense>

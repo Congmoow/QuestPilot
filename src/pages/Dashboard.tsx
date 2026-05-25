@@ -80,7 +80,7 @@ const Dashboard = () => {
 
   const chartData = TYPE_ORDER.map((type) => {
     const found = typeDistribution.find(item => item.type === type);
-    return { name: TYPE_LABELS[type], value: found ? found.count : 0, type };
+    return { name: TYPE_LABELS[type as keyof typeof TYPE_LABELS], value: found ? found.count : 0, type };
   }).filter(item => item.value > 0);
 
   const displayChartData = chartData.length > 0 ? chartData : [{ name: '暂无数据', value: 1, type: 'empty' }];
@@ -90,7 +90,7 @@ const Dashboard = () => {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).replaceAll('/', '-');
+  }).replace(/\//g, '-');
 
   if (loading) {
     return (
@@ -277,7 +277,7 @@ const Dashboard = () => {
                     <div key={type} className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50/70 p-3 dark:border-gray-700 dark:bg-gray-800/80">
                       <span className="size-3 rounded-full" style={{ backgroundColor: TYPE_COLORS[index] }} />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">{TYPE_LABELS[type]}</p>
+                        <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">{TYPE_LABELS[type as keyof typeof TYPE_LABELS]}</p>
                         <div className="mt-1 flex items-baseline gap-2">
                           <span className="text-lg font-extrabold text-gray-900 dark:text-white">{count}</span>
                           <span className="text-xs text-gray-400">({percentage}%)</span>
@@ -300,7 +300,7 @@ const Dashboard = () => {
             <span className="text-sm font-semibold text-primary">查看全部</span>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-            <TimelineLog logs={operationLogs} formatTime={formatOperationTime} />
+            <TimelineLog logs={operationLogs as Parameters<typeof TimelineLog>[0]['logs']} formatTime={formatOperationTime} />
           </div>
           <div className="mt-4 rounded-2xl border border-gray-100 bg-blue-50/70 px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
             <div className="flex items-center gap-2 font-semibold text-primary">
