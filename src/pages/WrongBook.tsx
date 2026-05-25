@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ImgHTMLAttributes } from 'react';
 import {
   BookOpen,
   CheckCircle,
@@ -12,6 +12,7 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import { useQuestionBanks } from '../contexts/QuestionBankContext';
 import api from '../api';
+import type { Question, WrongBookItem, WrongBookPracticeResult } from '../api';
 import ConfirmDialog from '../components/ConfirmDialog';
 import CodeAwareText from '../components/CodeAwareText';
 import { getPublicAssetPath } from '../lib/assets';
@@ -34,12 +35,17 @@ import {
   ToolbarCard,
   TypeBadge,
 } from '../components/ui';
+import type { AnswerCardState, PracticeAnswerMap, PracticeAnswerValue, PracticeQuestion, PracticeResultView, TypeLabelMap } from '../types/viewModels';
 
-const CuotiIcon = ({ size = 44, ...props }) => (
+type CuotiIconProps = ImgHTMLAttributes<HTMLImageElement> & {
+  size?: number;
+};
+
+const CuotiIcon = ({ size = 44, ...props }: CuotiIconProps) => (
   <img src={getPublicAssetPath('/cuoti-icon.webp')} alt="错题本" width={size} height={size} {...props} />
 );
 
-const TYPE_LABELS = {
+const TYPE_LABELS: TypeLabelMap = {
   single: '单选题',
   multiple: '多选题',
   boolean: '判断题',
@@ -50,34 +56,34 @@ const TYPE_LABELS = {
 const WrongBook = () => {
   const { banks, fetchBanks: refreshBanks } = useQuestionBanks();
 
-  const [selectedBankId, setSelectedBankId] = useState(null);
+  const [selectedBankId, setSelectedBankId] = useState<number | null>(null);
   const [practiceCount, setPracticeCount] = useState(20);
 
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState<WrongBookItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [totalPages, setTotalPages] = useState(0);
 
   const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [practicing, setPracticing] = useState(false);
-  const [questions, setQuestions] = useState([]);
+  const [questions, setQuestions] = useState<PracticeQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [userAnswers, setUserAnswers] = useState({});
+  const [userAnswers, setUserAnswers] = useState<PracticeAnswerMap>({});
   const [showResult, setShowResult] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [practiceResult, setPracticeResult] = useState(null);
+  const [practiceResult, setPracticeResult] = useState<PracticeResultView | null>(null);
 
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
-  const [removingId, setRemovingId] = useState(null);
+  const [removingId, setRemovingId] = useState<number | null>(null);
 
   useEffect(() => {
     refreshBanks();
   }, []);
 
-  const shuffleArray = (array) => {
+  const shuffleArray = <T,>(array: T[]): T[] => {
     const arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -86,11 +92,11 @@ const WrongBook = () => {
     return arr;
   };
 
-  const shuffleQuestionOptions = (question) => {
+  const shuffleQuestionOptions = (question: PracticeQuestion): PracticeQuestion => {
     const originalOptions = Array.isArray(question.options) ? question.options : [];
     const shuffledOptions = shuffleArray(originalOptions);
 
-    const idMap = new Map();
+    const idMap = new Map<string, string>();
     const remappedOptions = shuffledOptions.map((opt, index) => {
       const newId = String.fromCharCode(65 + index);
       if (opt && opt.id != null) idMap.set(String(opt.id), newId);
@@ -113,7 +119,7 @@ const WrongBook = () => {
     return { ...question, options: remappedOptions, answer: remappedAnswer };
   };
 
-  const normalizeFillAnswer = (value, blankCount) => {
+  const normalizeFillAnswer = (value: PracticeAnswerValue | undefined, blankCount: number): string[] => {
     const n = Math.max(0, Number(blankCount) || 0);
     const arr = Array.isArray(value)
       ? value
@@ -125,7 +131,7 @@ const WrongBook = () => {
     return normalized;
   };
 
-  const isFillAnswerCorrect = (question, userValue) => {
+  const isFillAnswerCorrect = (question: Pick<Question, 'content' | 'answer'>, userValue: PracticeAnswerValue | undefined): boolean => {
     const blankCount = countFillBlanks(question?.content);
     const correctArr = normalizeFillAnswer(question?.answer, blankCount).map((a) => a.trim());
     const userArr = normalizeFillAnswer(userValue, blankCount).map((a) => a.trim());
@@ -136,7 +142,11 @@ const WrongBook = () => {
     return true;
   };
 
-  const loadItems = async (bankId, targetPage = 1) => {
+  const errorMessage = (error: unknown, fallback: string) => {
+    return error instanceof Error ? error.message : fallback;
+  };
+
+  const loadItems = async (bankId: number | null, targetPage = 1) => {
     setLoading(true);
     setLoadError(null);
     try {
@@ -150,7 +160,7 @@ const WrongBook = () => {
       setItems([]);
       setTotal(0);
       setTotalPages(0);
-      setLoadError(error.message || '加载错题本失败');
+      setLoadError(errorMessage(error, '加载错题本失败'));
     } finally {
       setLoading(false);
     }
@@ -197,12 +207,12 @@ const WrongBook = () => {
     }
   };
 
-  const handleAnswer = (questionId, answer) => {
+  const handleAnswer = (questionId: number, answer: string) => {
     if (submitted) return;
     setUserAnswers(prev => ({ ...prev, [questionId]: answer }));
   };
 
-  const handleFillAnswer = (questionId, blankCount, index, value) => {
+  const handleFillAnswer = (questionId: number, blankCount: number, index: number, value: string) => {
     if (submitted) return;
     setUserAnswers((prev) => {
       const current = normalizeFillAnswer(prev[questionId], blankCount);
@@ -211,9 +221,9 @@ const WrongBook = () => {
     });
   };
 
-  const toggleMultipleAnswer = (questionId, option) => {
+  const toggleMultipleAnswer = (questionId: number, option: string) => {
     if (submitted) return;
-    const current = userAnswers[questionId] || [];
+    const current = Array.isArray(userAnswers[questionId]) ? userAnswers[questionId] : [];
     const newAnswer = current.includes(option)
       ? current.filter(o => o !== option)
       : [...current, option].sort();
@@ -237,13 +247,13 @@ const WrongBook = () => {
 
   const finishPractice = async () => {
     let correct = 0;
-    const perQuestionResults = [];
+    const perQuestionResults: WrongBookPracticeResult[] = [];
 
     questions.forEach(q => {
       const userAnswer = userAnswers[q.id];
       if (q.type === 'multiple') {
         const correctArr = q.answer.split('|').sort();
-        const userArr = (userAnswer || []).sort();
+        const userArr = Array.isArray(userAnswer) ? [...userAnswer].sort() : [];
         const isCorrectAnswer = JSON.stringify(correctArr) === JSON.stringify(userArr);
         if (isCorrectAnswer) correct++;
         perQuestionResults.push({ questionId: q.id, bankId: q.bankId, isCorrect: isCorrectAnswer });
@@ -272,7 +282,13 @@ const WrongBook = () => {
 
     if (selectedBankId) {
       try {
-        await api.practice.saveRecord(result);
+        await api.practice.saveRecord({
+          bankId: selectedBankId,
+          total: result.total,
+          correct: result.correct,
+          wrong: result.wrong,
+          accuracy: result.accuracy,
+        });
       } catch (error) {
         console.error('保存练习记录失败:', error);
       }
@@ -297,11 +313,11 @@ const WrongBook = () => {
 
   const currentQuestion = questions[currentIndex];
 
-  const isCorrect = (question) => {
+  const isCorrect = (question: PracticeQuestion): boolean => {
     const userAnswer = userAnswers[question.id];
     if (question.type === 'multiple') {
       const correctArr = question.answer.split('|').sort();
-      const userArr = (userAnswer || []).sort();
+      const userArr = Array.isArray(userAnswer) ? [...userAnswer].sort() : [];
       return JSON.stringify(correctArr) === JSON.stringify(userArr);
     }
     if (question.type === 'fill') {
@@ -310,7 +326,7 @@ const WrongBook = () => {
     return userAnswer === question.answer;
   };
 
-  const handleRemoveItem = async (questionId) => {
+  const handleRemoveItem = async (questionId: number) => {
     setRemovingId(questionId);
     try {
       await api.wrongBook.removeItem(questionId);
@@ -415,7 +431,7 @@ const WrongBook = () => {
                     ? currentQuestion.answer.split('|').includes(option.id)
                     : currentQuestion.answer === option.id;
 
-                  let state = isSelected ? 'selected' : 'default';
+                  let state: AnswerCardState = isSelected ? 'selected' : 'default';
                   if (showResult) {
                     if (isCorrectOption) state = 'correct';
                     else if (isSelected && !isCorrectOption) state = 'wrong';
@@ -451,7 +467,7 @@ const WrongBook = () => {
                   const isSelected = userAnswers[currentQuestion.id] === option;
                   const isCorrectOption = currentQuestion.answer === option;
 
-                  let state = isSelected ? 'selected' : 'default';
+                  let state: AnswerCardState = isSelected ? 'selected' : 'default';
                   if (showResult) {
                     if (isCorrectOption) state = 'correct';
                     else if (isSelected && !isCorrectOption) state = 'wrong';
@@ -560,7 +576,7 @@ const WrongBook = () => {
               min={1}
               max={200}
               value={practiceCount}
-              onChange={(e) => setPracticeCount(e.target.value)}
+              onChange={(e) => setPracticeCount(Number(e.target.value))}
             />
           </Field>
 
