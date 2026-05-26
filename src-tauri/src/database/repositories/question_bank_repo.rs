@@ -1,17 +1,13 @@
-use crate::database::DatabaseStore;
+use crate::database::{CreateQuestionBankInput, DatabaseStore, QuestionBank};
 
-/// 题库数据访问对象骨架（Phase 1：尚无 service 直接依赖，仅建立结构）。
+/// 题库数据访问对象（Phase 1：包装 DatabaseStore）。
 ///
-/// Phase 1 无任何 service 直接依赖此 Repository，故只建骨架。
-/// 当 `commands/question_bank.rs` 的直接 store 调用被迁移进 service 层后，
-/// 在此处补齐具体方法。
+/// 封装所有与 `question_banks` 表相关的 SQL 操作，向 `QuestionBankService` 提供纯数据访问接口。
 ///
 /// ## 演进路径
-/// Phase 1：空骨架，`store` 字段标注 `#[allow(dead_code)]`。
-/// Phase next：补齐 `list`、`find_by_id`、`create`、`update`、`delete` 方法，
-///   并将对应 service 的依赖从 `DatabaseStore` 切换到此 Repository。
+/// Phase 1：持有 `DatabaseStore`，委托现有方法。
+/// Phase 2+：直接持有 `Connection`，消除对 `DatabaseStore` 的依赖。
 pub struct QuestionBankRepository {
-    #[allow(dead_code)]
     store: DatabaseStore,
 }
 
@@ -20,10 +16,28 @@ impl QuestionBankRepository {
         Self { store }
     }
 
-    // TODO (Phase next): 迁移 commands/question_bank.rs 中的直接 store 调用：
-    // - list()          → store.get_all_banks()
-    // - find_by_id()    → store.get_bank_by_id()
-    // - create()        → store.create_bank()
-    // - update()        → store.update_bank()
-    // - delete()        → store.delete_bank()
+    /// 创建题库（含名称校验 + operation_log）。
+    pub fn create(&self, data: CreateQuestionBankInput) -> Result<QuestionBank, String> {
+        self.store.create_bank(data)
+    }
+
+    /// 查询所有题库，按最近更新时间倒序，含题目数量统计。
+    pub fn list_all(&self) -> Result<Vec<QuestionBank>, String> {
+        self.store.get_all_banks()
+    }
+
+    /// 按 ID 查询题库。
+    pub fn find_by_id(&self, id: i64) -> Result<Option<QuestionBank>, String> {
+        self.store.get_bank_by_id(id)
+    }
+
+    /// 更新题库名称/描述。
+    pub fn update(&self, id: i64, data: CreateQuestionBankInput) -> Result<Option<QuestionBank>, String> {
+        self.store.update_bank(id, data)
+    }
+
+    /// 删除题库（事务内级联删除题目）。
+    pub fn delete(&self, id: i64) -> Result<(), String> {
+        self.store.delete_bank(id)
+    }
 }

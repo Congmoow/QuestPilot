@@ -5,6 +5,8 @@ use tauri::AppHandle;
 use crate::database;
 use crate::error::AppError;
 
+use crate::services::settings_service::SettingsService;
+
 use super::{ai_config_from_database, database_path, legacy_candidates, open_store};
 
 #[derive(Debug, serde::Serialize)]
@@ -54,34 +56,33 @@ pub fn mask_api_key(api_key: &str) -> String {
 #[tauri::command(rename_all = "camelCase")]
 #[tracing::instrument(skip(app), err)]
 pub fn settings_get_theme(app: AppHandle) -> Result<String, AppError> {
-    Ok(open_store(&app)?.get_theme()?)
+    SettingsService::new(open_store(&app)?).get_theme()
 }
 
 #[tauri::command(rename_all = "camelCase")]
 #[tracing::instrument(skip(app), err)]
 pub fn settings_set_theme(app: AppHandle, theme: String) -> Result<(), AppError> {
-    Ok(open_store(&app)?.set_theme(theme)?)
+    SettingsService::new(open_store(&app)?).set_theme(theme)
 }
 
 #[tauri::command(rename_all = "camelCase")]
 #[tracing::instrument(skip(app), err)]
 pub fn settings_get_wrong_book_threshold(app: AppHandle) -> Result<i64, AppError> {
-    Ok(open_store(&app)?.get_wrong_book_threshold()?)
+    SettingsService::new(open_store(&app)?).get_wrong_book_threshold()
 }
 
 #[tauri::command(rename_all = "camelCase")]
 #[tracing::instrument(skip(app), err)]
 pub fn settings_set_wrong_book_threshold(app: AppHandle, threshold: i64) -> Result<(), AppError> {
-    Ok(open_store(&app)?.set_wrong_book_threshold(threshold)?)
+    SettingsService::new(open_store(&app)?).set_wrong_book_threshold(threshold)
 }
 
 #[tauri::command(rename_all = "camelCase")]
 #[tracing::instrument(skip(app), err)]
 pub fn settings_get_api_config(app: AppHandle) -> Result<PublicApiConfig, AppError> {
-    open_store(&app)?
+    SettingsService::new(open_store(&app)?)
         .get_api_config()
         .map(public_api_config_from_database)
-        .map_err(AppError::from)
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -90,14 +91,15 @@ pub fn settings_set_api_config(
     app: AppHandle,
     config: database::ApiConfig,
 ) -> Result<serde_json::Value, AppError> {
-    open_store(&app)?.set_api_config(config)?;
+    SettingsService::new(open_store(&app)?).set_api_config(config)?;
     Ok(serde_json::json!({ "success": true }))
 }
 
 #[tauri::command(rename_all = "camelCase")]
 #[tracing::instrument(skip(app), err)]
 pub async fn settings_test_api_connection(app: AppHandle) -> Result<serde_json::Value, AppError> {
-    let config = open_store(&app)?.get_api_config()?;
+    // SettingsService 临时值在语句末析构，确保 !Send 类型不跨越 .await
+    let config = SettingsService::new(open_store(&app)?).get_api_config()?;
     crate::ai::test_connection(&ai_config_from_database(config))
         .await
         .map_err(AppError::Ai)

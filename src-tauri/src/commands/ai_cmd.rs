@@ -3,6 +3,7 @@ use tauri::AppHandle;
 use crate::ai;
 use crate::error::AppError;
 use crate::services::import_service::{AiImportResult, ImportService};
+use crate::services::settings_service::SettingsService;
 
 use super::{ai_config_from_database, open_store};
 
@@ -12,7 +13,8 @@ pub async fn ai_parse_questions(
     app: AppHandle,
     content: String,
 ) -> Result<serde_json::Value, AppError> {
-    let config = open_store(&app)?.get_api_config()?;
+    // SettingsService 临时值在语句末析构，确保 !Send 类型不跨越 .await
+    let config = SettingsService::new(open_store(&app)?).get_api_config()?;
     ai::parse_questions_with_ai(&ai_config_from_database(config), content.as_str())
         .await
         .map_err(AppError::Ai)
@@ -55,12 +57,8 @@ pub async fn ai_import_questions_direct(
     content: String,
     bank_id: i64,
 ) -> Result<AiImportResult, AppError> {
-    // Phase 1：获取 AI 配置后立即 drop store（block 结束 store 析构）
-    let ai_config = {
-        let store = open_store(&app)?;
-        ai_config_from_database(store.get_api_config()?)
-        // store 在此析构，await 前无 !Send 类型存活
-    };
+    // Phase 1：SettingsService 临时值在语句末析构，await 前无 !Send 类型存活
+    let ai_config = ai_config_from_database(SettingsService::new(open_store(&app)?).get_api_config()?);
 
     // AI 解析（异步，不持有 DatabaseStore）
     let ai_result = ai::parse_questions_with_ai(&ai_config, &content)
