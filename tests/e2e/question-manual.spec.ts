@@ -28,9 +28,10 @@ test.describe('手动录入题目', () => {
   test('切换题型时界面正常响应', async ({ page }) => {
     await page.goto('/#/manual-entry');
     await page.waitForTimeout(500);
-    const select = page.getByRole('combobox').first();
-    if (await select.count() > 0) {
-      await select.selectOption({ label: '判断题' });
+    // 题型通过 SegmentedTabs（button）切换，不是 <select>
+    const booleanTab = page.getByRole('button', { name: '判断题' });
+    if (await booleanTab.count() > 0) {
+      await booleanTab.click();
       // 界面不崩溃
       await expect(page.locator('body')).not.toContainText('Error');
     }
