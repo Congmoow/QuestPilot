@@ -2,19 +2,21 @@ use tauri::AppHandle;
 
 use crate::database;
 use crate::error::AppError;
+use crate::services::chat_history_service::ChatHistoryService;
+use crate::services::prompt_service::PromptService;
 
 use super::open_store;
 
 #[tauri::command(rename_all = "camelCase")]
 #[tracing::instrument(skip(app), err)]
 pub fn prompt_get_all(app: AppHandle) -> Result<Vec<database::Prompt>, AppError> {
-    Ok(open_store(&app)?.get_all_prompts()?)
+    PromptService::new(open_store(&app)?).list_all()
 }
 
 #[tauri::command(rename_all = "camelCase")]
 #[tracing::instrument(skip(app), err)]
 pub fn prompt_get_by_id(app: AppHandle, id: i64) -> Result<Option<database::Prompt>, AppError> {
-    Ok(open_store(&app)?.get_prompt_by_id(id)?)
+    PromptService::new(open_store(&app)?).get_by_id(id)
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -23,7 +25,7 @@ pub fn prompt_create(
     app: AppHandle,
     data: database::CreatePromptInput,
 ) -> Result<database::Prompt, AppError> {
-    Ok(open_store(&app)?.create_prompt(data)?)
+    PromptService::new(open_store(&app)?).create(data)
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -33,13 +35,13 @@ pub fn prompt_update(
     id: i64,
     data: database::CreatePromptInput,
 ) -> Result<Option<database::Prompt>, AppError> {
-    Ok(open_store(&app)?.update_prompt(id, data)?)
+    PromptService::new(open_store(&app)?).update(id, data)
 }
 
 #[tauri::command(rename_all = "camelCase")]
 #[tracing::instrument(skip(app), err)]
 pub fn prompt_delete(app: AppHandle, id: i64) -> Result<serde_json::Value, AppError> {
-    open_store(&app)?.delete_prompt(id)?;
+    PromptService::new(open_store(&app)?).delete(id)?;
     Ok(serde_json::json!({ "success": true }))
 }
 
@@ -49,7 +51,7 @@ pub fn chat_history_save(
     app: AppHandle,
     data: database::ChatHistoryInput,
 ) -> Result<database::ChatHistory, AppError> {
-    Ok(open_store(&app)?.save_chat_history(data)?)
+    ChatHistoryService::new(open_store(&app)?).save(data)
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -59,7 +61,7 @@ pub fn chat_history_update(
     id: i64,
     messages: serde_json::Value,
 ) -> Result<Option<database::ChatHistory>, AppError> {
-    Ok(open_store(&app)?.update_chat_history(id, messages)?)
+    ChatHistoryService::new(open_store(&app)?).update(id, messages)
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -68,7 +70,7 @@ pub fn chat_history_get_all(
     app: AppHandle,
     limit: Option<u32>,
 ) -> Result<Vec<database::ChatHistory>, AppError> {
-    Ok(open_store(&app)?.get_all_chat_history(limit)?)
+    ChatHistoryService::new(open_store(&app)?).list_all(limit)
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -77,12 +79,12 @@ pub fn chat_history_get_by_id(
     app: AppHandle,
     id: i64,
 ) -> Result<Option<database::ChatHistory>, AppError> {
-    Ok(open_store(&app)?.get_chat_history_by_id(id)?)
+    ChatHistoryService::new(open_store(&app)?).get_by_id(id)
 }
 
 #[tauri::command(rename_all = "camelCase")]
 #[tracing::instrument(skip(app), err)]
 pub fn chat_history_delete(app: AppHandle, id: i64) -> Result<serde_json::Value, AppError> {
-    open_store(&app)?.delete_chat_history(id)?;
+    ChatHistoryService::new(open_store(&app)?).delete(id)?;
     Ok(serde_json::json!({ "success": true }))
 }
