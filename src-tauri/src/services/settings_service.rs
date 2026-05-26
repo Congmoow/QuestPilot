@@ -8,7 +8,7 @@ use crate::error::AppError;
 /// ## async !Send 使用模式
 /// 在 async command 中（如 `settings_test_api_connection`、`ai_parse_questions`），
 /// 必须确保 `SettingsService`（含 `!Send` 的 `SettingsRepository`）在 `.await` 前析构：
-/// ```rust
+/// ```rust,ignore
 /// let config = SettingsService::new(open_store(&app)?).get_api_config()?;
 /// // ← SettingsService 临时值在语句末析构
 /// some_async_call().await  // ← 此时无 !Send 类型存活

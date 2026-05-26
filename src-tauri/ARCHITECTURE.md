@@ -59,39 +59,76 @@ Frontend (React/TypeScript)
 - **职责**：持有 `RefCell<Connection>`，提供原子 SQL 操作和事务接口
 - **兼容入口**：旧 `DatabaseStore` 方法全部保留，供 Repository 委托调用
 
-## 3. 为什么 Repository 当前仍包装 DatabaseStore
+## 3. Repository 迁移进度
 
-`DatabaseStore` 内的 SQL 逻辑经过多轮验证，稳定可靠。Phase 1 采用**零侵入的委托模式**：
+### Phase 1（其余 Repository 当前状态）
+
+采用**零侵入委托模式**：
 
 ```
 Repository.method() → store.method()
 ```
 
-这样做的优点：
-- 零风险迁移——`DatabaseStore` 原有逻辑不动，只新增委托层
-- 可逐步演进——后续可在 Repository 中直接操作 `Connection`，逐步消除中间层
-- 随时可回滚——`DatabaseStore` 方法保留为兼容入口
+### Phase 2 试点：WrongBookRepository（已完成）
 
-## 4. 后续可选优化：Repository 直接持有 Connection
+`WrongBookRepository` 已迁移为**通过 `DatabaseStore::with_connection` /
+`with_transaction` 直接访问 `rusqlite::Connection` / `Transaction`**，不再委托
+`DatabaseStore` 的领域方法：
 
-当 Repository 稳定后，可将 `DatabaseStore` 包装改为直接持有 `Connection`：
+```
+WrongBookRepository.method()
+  → DatabaseStore::with_connection(|conn| { /* 直接 SQL */ })
+  → rusqlite::Connection
+```
+
+```
+WrongBookRepository::update_from_practice_tx()
+  → DatabaseStore::with_transaction(|tx| { /* 直接 SQL，单事务 */ })
+  → rusqlite::Transaction
+```
+
+#### with_connection / with_transaction 设计说明
 
 ```rust
-// 当前 Phase 1
-pub struct WrongBookRepository {
-    store: DatabaseStore,  // 委托
-}
+// DatabaseStore 新增的受控访问入口（pub(crate)）
+impl DatabaseStore {
+    pub(crate) fn with_connection<T, F>(&self, f: F) -> Result<T, String>
+    where F: FnOnce(&Connection) -> Result<T, String>
 
-// 未来 Phase 2
-pub struct WrongBookRepository {
-    connection: RefCell<Connection>,  // 直接持有
+    pub(crate) fn with_transaction<T, F>(&self, f: F) -> Result<T, String>
+    where F: FnOnce(&rusqlite::Transaction<'_>) -> Result<T, String>
 }
 ```
 
-迁移路径：
-1. Repository 暴露与 `DatabaseStore` 相同签名的方法
-2. 将 SQL 从 `DatabaseStore` 逐步内联到 Repository
-3. `DatabaseStore` 旧方法在确认无调用后删除
+- `with_connection`：borrow 不可变引用，适合读操作和单条写操作。
+- `with_transaction`：borrow 可变引用，开启 rusqlite 事务，闭包成功则 commit，失败或 panic 则自动 rollback。
+- 闭包内**不得**再调用任何会重新 borrow `self.connection` 的 `DatabaseStore` 方法（RefCell 重复借用 panic）。
+- `Transaction` 实现 `Deref<Target=Connection>`，私有 SQL helper 统一接收 `&Connection`，对事务闭包透明适用。
+
+#### DatabaseStore 旧方法处理
+
+`database/wrong_book.rs` 中的所有旧 `DatabaseStore` wrong_book 方法**全部保留**，
+注释标明"兼容入口保留；新主路径由 WrongBookRepository 直接访问 Connection"。
+确认无调用后，后续可在独立 PR 中删除。
+
+### 后续迁移建议
+
+其余 Repository 可按 `WrongBookRepository` 模式逐步迁移：
+1. 在 Repository 方法中改调 `self.store.with_connection(...)` / `with_transaction(...)`
+2. 将 SQL 逻辑内联到 Repository 文件私有函数
+3. `DatabaseStore` 旧领域方法注释为兼容入口，暂不删除
+
+## 4. 迁移优先级建议（参考）
+
+| Repository | 迁移难度 | 建议顺序 |
+|---|---|---|
+| `WrongBookRepository` | ✅ 已完成 | — |
+| `PracticeRepository` | 低（无复杂事务） | 次优先 |
+| `QuestionRepository` | 中（有分页/批量） | 第三 |
+| `QuestionBankRepository` | 低 | 第四 |
+| `SettingsRepository` | 低 | 第五 |
+| `StatsRepository` | 低（只读多） | 第六 |
+| 其余 | 低 | 按需 |
 
 ## 5. async Command 的 !Send 两阶段处理原则
 

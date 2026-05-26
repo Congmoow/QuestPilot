@@ -10,6 +10,7 @@ use super::{
 };
 
 impl DatabaseStore {
+    /// 兼容入口保留；新主路径由 [`WrongBookRepository::get_counts_by_bank`] 直接访问 Connection。
     pub fn get_wrong_book_counts_by_bank(&self) -> Result<Vec<WrongBookCount>, String> {
         let connection = self.connection.borrow();
         cleanup_wrong_book_orphans(&connection)?;
@@ -35,12 +36,14 @@ impl DatabaseStore {
             .map_err(|error| format!("读取错题统计失败: {error}"))
     }
 
+    /// 兼容入口保留；新主路径由 [`WrongBookRepository::count_items`] 直接访问 Connection。
     pub fn count_wrong_book_items(&self, bank_id: Option<i64>) -> Result<i64, String> {
         let connection = self.connection.borrow();
         cleanup_wrong_book_orphans(&connection)?;
         count_wrong_book_items(&connection, bank_id)
     }
 
+    /// 兼容入口保留；新主路径由 [`WrongBookRepository::get_items`] 直接访问 Connection。
     pub fn get_wrong_book_items(
         &self,
         bank_id: Option<i64>,
@@ -52,6 +55,7 @@ impl DatabaseStore {
         query_wrong_book_items(&connection, bank_id, offset, limit)
     }
 
+    /// 兼容入口保留；新主路径由 [`WrongBookRepository::get_random_questions`] 直接访问 Connection。
     pub fn get_random_wrong_questions(
         &self,
         bank_id: Option<i64>,
@@ -129,6 +133,7 @@ impl DatabaseStore {
     ///
     /// ## 回滚
     /// 若循环中任一 SQL 失败，`tx` drop 时自动 rollback，不会留下半成品数据。
+    /// 兼容入口保留；新主路径由 [`WrongBookRepository::update_from_practice_tx`] 直接使用 Transaction。
     pub fn update_wrong_book_from_practice_tx(
         &self,
         results: &[WrongBookPracticeResult],
@@ -261,6 +266,7 @@ impl DatabaseStore {
         Ok(())
     }
 
+    /// 兼容入口保留；新主路径由 [`WrongBookRepository::remove_item`] 直接访问 Connection。
     pub fn remove_wrong_book_item(&self, question_id: i64) -> Result<(), String> {
         let connection = self.connection.borrow();
         connection
@@ -272,6 +278,7 @@ impl DatabaseStore {
         Ok(())
     }
 
+    /// 兼容入口保留；新主路径由 [`WrongBookRepository::clear`] 直接访问 Connection。
     pub fn clear_wrong_book(&self, bank_id: Option<i64>) -> Result<(), String> {
         let connection = self.connection.borrow();
         if let Some(bank_id) = bank_id.filter(|value| *value > 0) {

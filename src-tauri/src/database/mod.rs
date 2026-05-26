@@ -79,6 +79,35 @@ impl DatabaseStore {
 
         Ok(count)
     }
+
+    /// 以只读（或单条非事务写）方式访问底层 Connection。
+    ///
+    /// Repository 层用此方法直接执行 SQL，无需再委托 DatabaseStore 的领域方法。
+    /// 闭包内不得再调用任何会重新 borrow `self.connection` 的方法，以免 RefCell 重复借用 panic。
+    pub(crate) fn with_connection<T, F>(&self, f: F) -> Result<T, String>
+    where
+        F: FnOnce(&Connection) -> Result<T, String>,
+    {
+        let conn = self.connection.borrow();
+        f(&conn)
+    }
+
+    /// 在单个 rusqlite 事务内执行闭包，成功则 commit，任一失败则 rollback。
+    ///
+    /// Repository 层用此方法执行批量原子写入（如 wrong_book 批量练习结果更新）。
+    /// 闭包内只能通过 `tx` 直接执行 SQL，不得再调用会重新 borrow `self.connection` 的方法。
+    pub(crate) fn with_transaction<T, F>(&self, f: F) -> Result<T, String>
+    where
+        F: FnOnce(&rusqlite::Transaction<'_>) -> Result<T, String>,
+    {
+        let mut conn = self.connection.borrow_mut();
+        let tx = conn
+            .transaction()
+            .map_err(|e| format!("开启事务失败: {e}"))?;
+        let result = f(&tx)?;
+        tx.commit().map_err(|e| format!("提交事务失败: {e}"))?;
+        Ok(result)
+    }
 }
 
 fn open_database_at(path: &Path) -> Result<DatabaseStore, String> {
