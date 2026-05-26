@@ -3,6 +3,7 @@ pub mod commands;
 pub mod csv_tools;
 pub mod database;
 pub mod error;
+pub mod services;
 
 use commands::{
     ai_cmd::{ai_chat, ai_parse_questions},
