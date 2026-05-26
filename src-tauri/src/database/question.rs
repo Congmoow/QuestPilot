@@ -11,6 +11,7 @@ use super::{
 };
 
 impl DatabaseStore {
+    /// 兼容入口保留；新主路径由 [`QuestionRepository::create`] 直接访问 Connection。
     pub fn create_question(
         &self,
         bank_id: i64,
@@ -56,6 +57,7 @@ impl DatabaseStore {
         find_question_by_id(&connection, id)?.ok_or_else(|| "创建题目后读取失败".to_string())
     }
 
+    /// 兼容入口保留；新主路径由 [`QuestionRepository::create_batch`] 直接使用 Transaction。
     pub fn create_questions_batch(
         &self,
         bank_id: i64,
@@ -140,6 +142,7 @@ impl DatabaseStore {
         })
     }
 
+    /// 兼容入口保留；新主路径由 [`QuestionRepository::get_random`] 直接访问 Connection。
     pub fn get_random_questions(
         &self,
         bank_id: i64,
@@ -199,6 +202,7 @@ impl DatabaseStore {
         Ok(questions)
     }
 
+    /// 兼容入口保留；新主路径由 [`QuestionRepository::list_by_bank`] 直接访问 Connection。
     pub fn get_questions_by_bank_id(
         &self,
         bank_id: i64,
@@ -217,11 +221,13 @@ impl DatabaseStore {
         )
     }
 
+    /// 兼容入口保留；新主路径由 [`QuestionRepository::find_by_id`] 直接访问 Connection。
     pub fn get_question_by_id(&self, id: i64) -> Result<Option<Question>, String> {
         let connection = self.connection.borrow();
         find_question_by_id(&connection, id)
     }
 
+    /// 兼容入口保留；新主路径由 [`QuestionRepository::update`] 直接访问 Connection。
     pub fn update_question(
         &self,
         id: i64,
@@ -266,6 +272,7 @@ impl DatabaseStore {
         find_question_by_id(&connection, id)
     }
 
+    /// 兼容入口保留；新主路径由 [`QuestionRepository::delete_batch`] 直接使用 Transaction。
     pub fn delete_questions(&self, ids: &[i64]) -> Result<(), String> {
         if ids.is_empty() {
             return Ok(());
@@ -300,6 +307,7 @@ impl DatabaseStore {
         Ok(())
     }
 
+    /// 兼容入口保留；新主路径由 [`QuestionRepository::search`] 直接访问 Connection。
     pub fn search_questions(
         &self,
         bank_id: i64,
@@ -319,6 +327,7 @@ impl DatabaseStore {
         )
     }
 
+    /// 兼容入口保留；新主路径由 [`QuestionRepository::count`] 直接访问 Connection。
     pub fn count_questions(
         &self,
         bank_id: i64,

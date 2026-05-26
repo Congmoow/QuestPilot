@@ -8,6 +8,7 @@ use super::{
 };
 
 impl DatabaseStore {
+    /// 兼容入口保留；新主路径由 [`QuestionBankRepository::create`] 直接访问 Connection。
     pub fn create_bank(&self, data: CreateQuestionBankInput) -> Result<QuestionBank, String> {
         let connection = self.connection.borrow();
         let name = validate_bank_name(&data.name)?;
@@ -29,6 +30,7 @@ impl DatabaseStore {
         get_bank_by_id(&connection, id)?.ok_or_else(|| "创建题库后读取失败".to_string())
     }
 
+    /// 兼容入口保留；新主路径由 [`QuestionBankRepository::list_all`] 直接访问 Connection。
     pub fn get_all_banks(&self) -> Result<Vec<QuestionBank>, String> {
         use super::queries::map_question_bank;
         let connection = self.connection.borrow();
@@ -52,11 +54,13 @@ impl DatabaseStore {
             .map_err(|error| format!("读取题库结果失败: {error}"))
     }
 
+    /// 兼容入口保留；新主路径由 [`QuestionBankRepository::find_by_id`] 直接访问 Connection。
     pub fn get_bank_by_id(&self, id: i64) -> Result<Option<QuestionBank>, String> {
         let connection = self.connection.borrow();
         get_bank_by_id(&connection, id)
     }
 
+    /// 兼容入口保留；新主路径由 [`QuestionBankRepository::update`] 直接访问 Connection。
     pub fn update_bank(
         &self,
         id: i64,
@@ -81,6 +85,7 @@ impl DatabaseStore {
         get_bank_by_id(&connection, id)
     }
 
+    /// 兼容入口保留；新主路径由 [`QuestionBankRepository::delete`] 直接使用 Transaction。
     pub fn delete_bank(&self, id: i64) -> Result<(), String> {
         let mut connection = self.connection.borrow_mut();
         let tx = connection

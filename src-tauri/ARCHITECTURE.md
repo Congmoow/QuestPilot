@@ -69,20 +69,29 @@ Frontend (React/TypeScript)
 Repository.method() → store.method()
 ```
 
-### Phase 2 试点：WrongBookRepository（已完成）
+### Phase 2 已完成的 Repository
 
-`WrongBookRepository` 已迁移为**通过 `DatabaseStore::with_connection` /
-`with_transaction` 直接访问 `rusqlite::Connection` / `Transaction`**，不再委托
-`DatabaseStore` 的领域方法：
+- **`WrongBookRepository`**（首个试点）：含事务，使用 `with_connection` + `with_transaction`
+- **`PracticeRepository`**（第二个）：纯 `with_connection`，无事务需求
+- **`QuestionBankRepository`**（第三个）：`create/list_all/find_by_id/update` 用 `with_connection`；`delete` 先 `with_transaction`（原子删除题目+题库）再 `with_connection`（写日志，与原行为一致）
+- **`SettingsRepository`**：全用 `with_connection`；内联 keychain helper，保留密钥库读写/迁移逐步逻辑
+- **`DraftRepository`**：全用 `with_connection`，简单单行持久化读写
+- **`StatsRepository`**：全用 `with_connection`，内联聊合查询 helper
+- **`PromptRepository`**：全用 `with_connection`；通过 `super::super::queries/schema/validation` 访问共享 helper
+- **`ChatHistoryRepository`**：全用 `with_connection`；同上访问共享 helper
+- **`QuestionRepository`**：`create/list_by_bank/get_random/find_by_id/update/search/count` 用 `with_connection`；`create_batch/delete_batch` 先 `with_transaction` 再 `with_connection`（日志）与原行为一致
+
+所有 Repository 均已迁移为**通过 `DatabaseStore::with_connection` / `with_transaction` 直接访问
+`rusqlite::Connection` / `Transaction`**，不再委托 `DatabaseStore` 的领域方法：
 
 ```
-WrongBookRepository.method()
+Repository.read_method()
   → DatabaseStore::with_connection(|conn| { /* 直接 SQL */ })
   → rusqlite::Connection
 ```
 
 ```
-WrongBookRepository::update_from_practice_tx()
+Repository.atomic_batch_method()                  // 仅事务场景使用
   → DatabaseStore::with_transaction(|tx| { /* 直接 SQL，单事务 */ })
   → rusqlite::Transaction
 ```
@@ -107,9 +116,9 @@ impl DatabaseStore {
 
 #### DatabaseStore 旧方法处理
 
-`database/wrong_book.rs` 中的所有旧 `DatabaseStore` wrong_book 方法**全部保留**，
-注释标明"兼容入口保留；新主路径由 WrongBookRepository 直接访问 Connection"。
-确认无调用后，后续可在独立 PR 中删除。
+`database/wrong_book.rs` 与 `database/practice.rs` 中所有旧 `DatabaseStore` 方法**全部保留**，
+注释统一标明"兼容入口保留；新主路径由 XxxRepository 直接访问 Connection"。
+确认无调用后，后续可在独立 PR 中按模块逐个删除。
 
 ### 后续迁移建议
 
@@ -123,12 +132,14 @@ impl DatabaseStore {
 | Repository | 迁移难度 | 建议顺序 |
 |---|---|---|
 | `WrongBookRepository` | ✅ 已完成 | — |
-| `PracticeRepository` | 低（无复杂事务） | 次优先 |
-| `QuestionRepository` | 中（有分页/批量） | 第三 |
-| `QuestionBankRepository` | 低 | 第四 |
-| `SettingsRepository` | 低 | 第五 |
-| `StatsRepository` | 低（只读多） | 第六 |
-| 其余 | 低 | 按需 |
+| `PracticeRepository` | ✅ 已完成 | — |
+| `QuestionBankRepository` | ✅ 已完成 | — |
+| `SettingsRepository` | ✅ 已完成 | — |
+| `DraftRepository` | ✅ 已完成 | — |
+| `StatsRepository` | ✅ 已完成 | — |
+| `PromptRepository` | ✅ 已完成 | — |
+| `ChatHistoryRepository` | ✅ 已完成 | — |
+| `QuestionRepository` | ✅ 已完成 | — |
 
 ## 5. async Command 的 !Send 两阶段处理原则
 

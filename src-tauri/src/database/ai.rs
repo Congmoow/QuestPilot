@@ -11,6 +11,7 @@ use super::{
 };
 
 impl DatabaseStore {
+    /// 兼容入口保留；新主路径由 [`PromptRepository::list_all`] 直接访问 Connection。
     pub fn get_all_prompts(&self) -> Result<Vec<Prompt>, String> {
         let connection = self.connection.borrow();
         ensure_default_prompt(&connection)?;
@@ -30,6 +31,7 @@ impl DatabaseStore {
             .map_err(|error| format!("读取 Prompt 列表失败: {error}"))
     }
 
+    /// 兼容入口保留；新主路径由 [`PromptRepository::find_by_id`] 直接访问 Connection。
     pub fn get_prompt_by_id(&self, id: i64) -> Result<Option<Prompt>, String> {
         let connection = self.connection.borrow();
         ensure_default_prompt(&connection)?;
@@ -47,6 +49,7 @@ impl DatabaseStore {
             .map_err(|error| format!("读取 Prompt 失败: {error}"))
     }
 
+    /// 兼容入口保留；新主路径由 [`PromptRepository::create`] 直接访问 Connection。
     pub fn create_prompt(&self, data: CreatePromptInput) -> Result<Prompt, String> {
         let name = validate_non_blank(data.name.as_str(), "名称不能为空")?;
         let content = validate_non_blank(data.content.as_str(), "内容不能为空")?;
@@ -66,6 +69,7 @@ impl DatabaseStore {
         find_prompt_by_id(&connection, id)?.ok_or_else(|| "Prompt 创建后不存在".to_string())
     }
 
+    /// 兼容入口保留；新主路径由 [`PromptRepository::update`] 直接访问 Connection。
     pub fn update_prompt(
         &self,
         id: i64,
@@ -89,6 +93,7 @@ impl DatabaseStore {
         find_prompt_by_id(&connection, id)
     }
 
+    /// 兼容入口保留；新主路径由 [`PromptRepository::delete`] 直接访问 Connection。
     pub fn delete_prompt(&self, id: i64) -> Result<(), String> {
         let connection = self.connection.borrow();
         ensure_default_prompt(&connection)?;
@@ -105,6 +110,7 @@ impl DatabaseStore {
         add_operation_log(&connection, "删除 Prompt", format!("删除 Prompt ID: {id}"))
     }
 
+    /// 兼容入口保留；新主路径由 [`ChatHistoryRepository::save`] 直接访问 Connection。
     pub fn save_chat_history(&self, data: ChatHistoryInput) -> Result<ChatHistory, String> {
         validate_messages(&data.messages)?;
         let title = data
@@ -129,6 +135,7 @@ impl DatabaseStore {
             .ok_or_else(|| "聊天记录保存后不存在".to_string())
     }
 
+    /// 兼容入口保留；新主路径由 [`ChatHistoryRepository::update`] 直接访问 Connection。
     pub fn update_chat_history(
         &self,
         id: i64,
@@ -149,6 +156,7 @@ impl DatabaseStore {
         find_chat_history_by_id(&connection, id, true)
     }
 
+    /// 兼容入口保留；新主路径由 [`ChatHistoryRepository::list_all`] 直接访问 Connection。
     pub fn get_all_chat_history(&self, limit: Option<u32>) -> Result<Vec<ChatHistory>, String> {
         let safe_limit = i64::from(limit.unwrap_or(50).clamp(1, 1000));
         let connection = self.connection.borrow();
@@ -169,11 +177,13 @@ impl DatabaseStore {
             .map_err(|error| format!("读取聊天记录列表失败: {error}"))
     }
 
+    /// 兼容入口保留；新主路径由 [`ChatHistoryRepository::find_by_id`] 直接访问 Connection。
     pub fn get_chat_history_by_id(&self, id: i64) -> Result<Option<ChatHistory>, String> {
         let connection = self.connection.borrow();
         find_chat_history_by_id(&connection, id, true)
     }
 
+    /// 兼容入口保留；新主路径由 [`ChatHistoryRepository::delete`] 直接访问 Connection。
     pub fn delete_chat_history(&self, id: i64) -> Result<(), String> {
         let connection = self.connection.borrow();
         connection

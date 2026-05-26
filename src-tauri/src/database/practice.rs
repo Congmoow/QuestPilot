@@ -10,6 +10,7 @@ use super::{
 };
 
 impl DatabaseStore {
+    /// 兼容入口保留；新主路径由 [`PracticeRepository::save_record`] 直接访问 Connection。
     pub fn save_practice_record(&self, record: PracticeRecordInput) -> Result<(), String> {
         validate_practice_record(&record)?;
         let connection = self.connection.borrow();
@@ -39,6 +40,7 @@ impl DatabaseStore {
         )
     }
 
+    /// 兼容入口保留；新主路径由 [`PracticeRepository::get_records`] 直接访问 Connection。
     pub fn get_practice_records(
         &self,
         bank_id: i64,
@@ -65,6 +67,7 @@ impl DatabaseStore {
             .map_err(|error| format!("读取练习记录失败: {error}"))
     }
 
+    /// 兼容入口保留；新主路径由 [`PracticeRepository::get_all_stats`] 直接访问 Connection。
     pub fn get_all_practice_stats(&self) -> Result<Vec<PracticeStats>, String> {
         let connection = self.connection.borrow();
         let mut statement = connection
