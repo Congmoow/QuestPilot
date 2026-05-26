@@ -73,8 +73,9 @@ Repository.method() → store.method()
 
 - **`WrongBookRepository`**（首个试点）：含事务，使用 `with_connection` + `with_transaction`
 - **`PracticeRepository`**（第二个）：纯 `with_connection`，无事务需求
+- **`QuestionBankRepository`**（第三个）：`create/list_all/find_by_id/update` 用 `with_connection`；`delete` 先 `with_transaction`（原子删除题目+题库）再 `with_connection`（写日志，与原行为一致）
 
-两者均已迁移为**通过 `DatabaseStore::with_connection` / `with_transaction` 直接访问
+三者均已迁移为**通过 `DatabaseStore::with_connection` / `with_transaction` 直接访问
 `rusqlite::Connection` / `Transaction`**，不再委托 `DatabaseStore` 的领域方法：
 
 ```
@@ -126,10 +127,10 @@ impl DatabaseStore {
 |---|---|---|
 | `WrongBookRepository` | ✅ 已完成 | — |
 | `PracticeRepository` | ✅ 已完成 | — |
-| `QuestionBankRepository` | 低 | 次优先 |
-| `SettingsRepository` | 低 | 第三 |
-| `StatsRepository` | 低（只读多） | 第四 |
-| `QuestionRepository` | 中（有分页/批量） | 第五 |
+| `QuestionBankRepository` | ✅ 已完成 | — |
+| `SettingsRepository` | 低 | 次优先 |
+| `StatsRepository` | 低（只读多） | 第三 |
+| `QuestionRepository` | 中（有分页/批量） | 第四 |
 | 其余 | 低 | 按需 |
 
 ## 5. async Command 的 !Send 两阶段处理原则
