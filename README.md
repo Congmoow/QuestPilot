@@ -104,6 +104,24 @@ npm run tauri:build
 npm run clean
 ```
 
+### 测试
+
+```bash
+# 前端单元测试与桌面 API 契约测试
+npm test
+
+# 仅运行桌面 API 归一化契约测试
+npm run test:api-contract
+
+# Playwright 端到端测试
+npm run test:e2e
+
+# Tauri / Rust 测试
+npm run test:rust
+```
+
+测试目录分为 `tests/unit`、`tests/e2e` 与 `src-tauri/tests`。Electron 已不再作为维护运行时，Electron legacy 测试不进入正式测试体系。
+
 ---
 
 ## 配置说明
@@ -221,12 +239,12 @@ npm run clean
 ## 1. JavaScript 基础
 
 1. 以下哪个是基本数据类型？
-A. String
-B. Array
-C. Object
-D. Function
-答案：A
-解析：String 是基本数据类型。
+   A. String
+   B. Array
+   C. Object
+   D. Function
+   答案：A
+   解析：String 是基本数据类型。
 
 > 答案：正确
 > 解析：也支持 Markdown 引用块中的答案和解析。
@@ -265,8 +283,11 @@ questpilot/
 │   ├── components/           # 通用组件
 │   ├── contexts/             # React Context
 │   └── api/                  # 桌面 API 适配层
+├── tests/                    # 前端单元测试与 Playwright 端到端测试
+│   ├── unit/                 # Vitest 单元测试与契约测试
+│   └── e2e/                  # Playwright 端到端测试
 ├── docs/                     # 架构、迁移、验收与发布闸门文档
-├── scripts/                  # Node 测试与辅助脚本
+├── scripts/                  # 辅助脚本
 ├── build/                    # 构建资源（图标等）
 └── dist/                     # Vite 构建产物
 ```
@@ -275,18 +296,18 @@ questpilot/
 
 ## 技术栈
 
-| 类别          | 技术                     |
-| ------------- | ------------------------ |
+| 类别          | 技术                    |
+| ------------- | ----------------------- |
 | 桌面框架      | Tauri 2                 |
-| 前端框架      | React 18 + React Router  |
-| 构建工具      | Vite                     |
-| 样式方案      | Tailwind CSS + PostCSS   |
-| 本地存储      | SQLite（Tauri 主线）     |
-| CSV           | PapaParse                |
-| 图表          | Recharts                 |
-| 动画          | Framer Motion            |
-| Markdown/公式 | react-markdown + KaTeX   |
-| 图标          | lucide-react             |
+| 前端框架      | React 18 + React Router |
+| 构建工具      | Vite                    |
+| 样式方案      | Tailwind CSS + PostCSS  |
+| 本地存储      | SQLite（Tauri 主线）    |
+| CSV           | PapaParse               |
+| 图表          | Recharts                |
+| 动画          | Framer Motion           |
+| Markdown/公式 | react-markdown + KaTeX  |
+| 图标          | lucide-react            |
 
 ---
 
@@ -298,6 +319,10 @@ questpilot/
 - **`npm run tauri:dev`**：开发模式（Vite + Tauri）
 - **`npm run tauri:build`**：构建 Tauri release exe 与 Windows NSIS 安装包
 - **`npm run tauri:info`**：查看 Tauri 环境信息
+- **`npm test`**：运行 `tests/unit` 下的 Vitest 单元测试
+- **`npm run test:api-contract`**：运行桌面 API 归一化契约测试
+- **`npm run test:e2e`**：运行 Playwright 端到端测试
+- **`npm run test:rust`**：运行 Tauri / Rust 测试
 - **`npm run clean`**：清理 `dist/`
 
 ---

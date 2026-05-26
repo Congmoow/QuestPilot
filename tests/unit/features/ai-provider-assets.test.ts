@@ -5,7 +5,7 @@ import {
   getAiProviderHeroImagePath,
   getAiProviderHeroLabel,
   getAiProviderIconPath,
-} from '../src/features/ai-chat/utils/providerAssets';
+} from '../../../src/features/ai-chat/utils/providerAssets';
 
 describe('AI provider icon assets', () => {
   it('为已有素材的服务商返回 webp 图标', () => {

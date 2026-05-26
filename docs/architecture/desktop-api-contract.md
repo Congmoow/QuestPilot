@@ -17,7 +17,7 @@
 - 取消文件对话框统一使用 `canceled` 字段，不使用 Tauri 原始 `cancelled`。
 - 文件选择统一返回 `{ success, canceled, filePath }`。
 - 保存/导出统一返回 `{ success, canceled, filePath?, count? }`。
-- 桌面命令返回结构不一致时，必须在 `src/api/runtimeAdapters.js` 中归一化。
+- 桌面命令返回结构不一致时，必须在 `src/api/runtimeAdapters.ts` 中归一化。
 
 ## IPC 与数据层边界
 
@@ -47,52 +47,52 @@
 
 ## CSV 契约
 
-| 前端 API | Tauri command | 页面层返回 |
-| --- | --- | --- |
-| `downloadCsvTemplate()` | `csv_download_template` | `{ success, canceled, filePath? }` |
-| `selectCsvFile()` | `csv_select_file` | `{ success, canceled, filePath }` |
-| `parseCsvFile(filePath)` | `csv_parse_file` | `{ valid, errors, totalRows }` |
-| `importQuestions(bankId, questions)` | `csv_import` | `{ success, failed, errors }` |
-| `exportQuestionBank(bankId)` | `csv_export` | `{ success, canceled, filePath?, count? }` |
+| 前端 API                             | Tauri command           | 页面层返回                                 |
+| ------------------------------------ | ----------------------- | ------------------------------------------ |
+| `downloadCsvTemplate()`              | `csv_download_template` | `{ success, canceled, filePath? }`         |
+| `selectCsvFile()`                    | `csv_select_file`       | `{ success, canceled, filePath }`          |
+| `parseCsvFile(filePath)`             | `csv_parse_file`        | `{ valid, errors, totalRows }`             |
+| `importQuestions(bankId, questions)` | `csv_import`            | `{ success, failed, errors }`              |
+| `exportQuestionBank(bankId)`         | `csv_export`            | `{ success, canceled, filePath?, count? }` |
 
 ## 题库与题目契约
 
-| 前端 API | Tauri command | 页面层返回 |
-| --- | --- | --- |
-| `createQuestionBank(data)` | `question_bank_create` | `QuestionBank` |
-| `getAllQuestionBanks()` | `question_bank_get_all` | `QuestionBank[]`，含 `questionCount` |
-| `getQuestionBankById(id)` | `question_bank_get_by_id` | `QuestionBank | null` |
-| `updateQuestionBank(id, data)` | `question_bank_update` | `QuestionBank | null` |
-| `deleteQuestionBank(id)` | `question_bank_delete` | `void` |
-| `createQuestion(data)` | `question_create` | `Question` |
-| `createQuestionsBatch(bankId, questions)` | `question_create_batch` | `{ success, failed, errors }` |
-| `getQuestionsByBankId(bankId, options)` | `question_get_by_bank_id` | `{ data, total, page, pageSize, totalPages }` |
-| `getRandomQuestions(bankId, options)` | `question_get_random` | `Question[]` |
-| `getQuestionById(id)` | `question_get_by_id` | `Question | null` |
-| `updateQuestion(id, data)` | `question_update` | `Question | null` |
-| `deleteQuestions(ids)` | `question_delete` | `void` |
-| `searchQuestions(bankId, keyword, options)` | `question_search` | `{ data, total, page, pageSize, totalPages }` |
+| 前端 API                                    | Tauri command             | 页面层返回                                    |
+| ------------------------------------------- | ------------------------- | --------------------------------------------- | ----- |
+| `createQuestionBank(data)`                  | `question_bank_create`    | `QuestionBank`                                |
+| `getAllQuestionBanks()`                     | `question_bank_get_all`   | `QuestionBank[]`，含 `questionCount`          |
+| `getQuestionBankById(id)`                   | `question_bank_get_by_id` | `QuestionBank                                 | null` |
+| `updateQuestionBank(id, data)`              | `question_bank_update`    | `QuestionBank                                 | null` |
+| `deleteQuestionBank(id)`                    | `question_bank_delete`    | `void`                                        |
+| `createQuestion(data)`                      | `question_create`         | `Question`                                    |
+| `createQuestionsBatch(bankId, questions)`   | `question_create_batch`   | `{ success, failed, errors }`                 |
+| `getQuestionsByBankId(bankId, options)`     | `question_get_by_bank_id` | `{ data, total, page, pageSize, totalPages }` |
+| `getRandomQuestions(bankId, options)`       | `question_get_random`     | `Question[]`                                  |
+| `getQuestionById(id)`                       | `question_get_by_id`      | `Question                                     | null` |
+| `updateQuestion(id, data)`                  | `question_update`         | `Question                                     | null` |
+| `deleteQuestions(ids)`                      | `question_delete`         | `void`                                        |
+| `searchQuestions(bankId, keyword, options)` | `question_search`         | `{ data, total, page, pageSize, totalPages }` |
 
 ## 设置、AI、记录契约
 
-| 前端 API | Tauri command | 页面层返回 |
-| --- | --- | --- |
-| `getTheme()` / `setTheme(theme)` | `settings_get_theme` / `settings_set_theme` | `theme` / `void` |
-| `getApiConfig()` / `setApiConfig(config)` | `settings_get_api_config` / `settings_set_api_config` | `{ apiKey: "", apiKeyPreview, hasApiKey, apiUrl, modelId, provider }` / `{ success }` |
-| `testApiConnection()` | `settings_test_api_connection` | `{ success, message? }` |
-| `parseQuestionsWithAI(content)` | `ai_parse_questions` | `{ questions, chunkErrors?, chunks? }` |
-| `chatWithAI(messages, promptId)` | `ai_chat` | `{ success, message, content }` |
-| `saveDraft(data)` / `loadDraft()` / `clearDraft()` | `draft_*` | `{ success }` / draft / `{ success }` |
-| `getAllPrompts()` 等 Prompt API | `prompt_*` | Prompt 对象或列表 |
-| `saveChatHistory()` 等聊天历史 API | `chat_history_*` | ChatHistory 对象或列表 |
-| `saveRecord()` 等练习 API | `practice_*` | 练习记录或 `{ success }` |
-| `wrongBook.*` | `wrong_book_*` | 错题对象、分页结果或 `{ success }` |
+| 前端 API                                           | Tauri command                                         | 页面层返回                                                                            |
+| -------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `getTheme()` / `setTheme(theme)`                   | `settings_get_theme` / `settings_set_theme`           | `theme` / `void`                                                                      |
+| `getApiConfig()` / `setApiConfig(config)`          | `settings_get_api_config` / `settings_set_api_config` | `{ apiKey: "", apiKeyPreview, hasApiKey, apiUrl, modelId, provider }` / `{ success }` |
+| `testApiConnection()`                              | `settings_test_api_connection`                        | `{ success, message? }`                                                               |
+| `parseQuestionsWithAI(content)`                    | `ai_parse_questions`                                  | `{ questions, chunkErrors?, chunks? }`                                                |
+| `chatWithAI(messages, promptId)`                   | `ai_chat`                                             | `{ success, message, content }`                                                       |
+| `saveDraft(data)` / `loadDraft()` / `clearDraft()` | `draft_*`                                             | `{ success }` / draft / `{ success }`                                                 |
+| `getAllPrompts()` 等 Prompt API                    | `prompt_*`                                            | Prompt 对象或列表                                                                     |
+| `saveChatHistory()` 等聊天历史 API                 | `chat_history_*`                                      | ChatHistory 对象或列表                                                                |
+| `saveRecord()` 等练习 API                          | `practice_*`                                          | 练习记录或 `{ success }`                                                              |
+| `wrongBook.*`                                      | `wrong_book_*`                                        | 错题对象、分页结果或 `{ success }`                                                    |
 
 ## 阶段 1 已修正的漂移
 
 - `csv_select_file` 的 Tauri 返回值从原始 `string | null` 在前端出口归一化为 `{ success, canceled, filePath }`。
 - Tauri 保存对话框原始 `cancelled` 字段在前端出口归一化为 `canceled`。
-- `downloadCsvTemplate()`、`selectCsvFile()`、`exportQuestionBank()` 现在都会经过 `src/api/runtimeAdapters.js`。
+- `downloadCsvTemplate()`、`selectCsvFile()`、`exportQuestionBank()` 现在都会经过 `src/api/runtimeAdapters.ts`。
 
 ## 历史加固记录
 
@@ -108,6 +108,6 @@
 
 - 本契约文档。
 - `src/api/index.ts`。
-- 必要的 `src/api/runtimeAdapters.js` 适配逻辑。
-- `scripts/__tests__/runtime-adapters.test.mjs` 或对应契约测试。
+- 必要的 `src/api/runtimeAdapters.ts` 适配逻辑。
+- `tests/unit/api/runtime-adapters.test.ts` 或对应契约测试。
 - 涉及 Tauri 数据库参数边界时，同步更新 Rust 数据库测试。

@@ -13,12 +13,10 @@ src-tauri/target/
 # Kiro IDE
 .kiro/
 
-# Local tests
-tests/*
-!src-tauri/tests/
-!src-tauri/tests/**
-!tests/e2e/
-!tests/e2e/**
+# Test outputs
+coverage/
+test-results/
+playwright-report/
 
 # Logs
 *.log

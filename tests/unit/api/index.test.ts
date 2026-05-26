@@ -12,7 +12,7 @@ describe('Tauri-only API 门面', () => {
   });
 
   it('创建题库时直接调用 Tauri command', async () => {
-    const { createQuestionBank } = await import('./index');
+    const { createQuestionBank } = await import('../../../src/api');
     const mockBank = {
       id: 1,
       name: '题库',
@@ -31,7 +31,7 @@ describe('Tauri-only API 门面', () => {
   });
 
   it('创建题目时从 payload 中拆出 bankId', async () => {
-    const { createQuestion } = await import('./index');
+    const { createQuestion } = await import('../../../src/api');
     invokeMock.mockResolvedValueOnce({ id: 10, bankId: 2 });
 
     await createQuestion({
@@ -54,7 +54,7 @@ describe('Tauri-only API 门面', () => {
   });
 
   it('CSV 文件选择结果保持前端契约', async () => {
-    const { selectCsvFile } = await import('./index');
+    const { selectCsvFile } = await import('../../../src/api');
     invokeMock.mockResolvedValueOnce('D:\\data\\questions.csv');
 
     await expect(selectCsvFile()).resolves.toEqual({
@@ -65,7 +65,7 @@ describe('Tauri-only API 门面', () => {
   });
 
   it('CSV 解析直接返回类型化解析结果', async () => {
-    const { parseCsvFile } = await import('./index');
+    const { parseCsvFile } = await import('../../../src/api');
     const parseResult = {
       valid: [{ type: 'boolean', content: '题干', answer: '正确' }],
       errors: [],
@@ -81,7 +81,7 @@ describe('Tauri-only API 门面', () => {
   });
 
   it('保存 API 配置时只传递配置字段', async () => {
-    const { setApiConfig } = await import('./index');
+    const { setApiConfig } = await import('../../../src/api');
     invokeMock.mockResolvedValueOnce({ success: true });
 
     await setApiConfig({
@@ -102,7 +102,7 @@ describe('Tauri-only API 门面', () => {
   });
 
   it('读取 API 配置时保留脱敏预览字段', async () => {
-    const { getApiConfig } = await import('./index');
+    const { getApiConfig } = await import('../../../src/api');
     const config = {
       apiKey: '',
       apiKeyPreview: 'sk-...abcd',
@@ -119,7 +119,7 @@ describe('Tauri-only API 门面', () => {
   });
 
   it('AI 问答传递消息与 promptId', async () => {
-    const { chatWithAI } = await import('./index');
+    const { chatWithAI } = await import('../../../src/api');
     invokeMock.mockResolvedValueOnce({ success: true, content: '回答' });
 
     await chatWithAI([{ role: 'user', content: '问题' }], 7);
@@ -131,7 +131,7 @@ describe('Tauri-only API 门面', () => {
   });
 
   it('迁移状态查询映射到 Tauri command', async () => {
-    const { getLegacyDatabaseStatus } = await import('./index');
+    const { getLegacyDatabaseStatus } = await import('../../../src/api');
     const status = {
       shouldPrompt: true,
       targetHasData: true,
@@ -146,7 +146,7 @@ describe('Tauri-only API 门面', () => {
   });
 
   it('AI 解析返回 questions 数组时 schema 校验通过', async () => {
-    const { parseQuestionsWithAI } = await import('./index');
+    const { parseQuestionsWithAI } = await import('../../../src/api');
     const validResult = {
       questions: [
         { type: 'single', content: '题干', answer: 'A', options: [{ id: 'A', text: '选项' }] },
@@ -159,14 +159,14 @@ describe('Tauri-only API 门面', () => {
   });
 
   it('AI 解析返回无效数据时 strictValidate 抛出中文错误', async () => {
-    const { parseQuestionsWithAI } = await import('./index');
+    const { parseQuestionsWithAI } = await import('../../../src/api');
     invokeMock.mockResolvedValueOnce({ questions: 'not-an-array' });
 
     await expect(parseQuestionsWithAI('题目文本')).rejects.toThrow('AI 解析题目');
   });
 
   it('备份替换旧库时传递固定确认短语', async () => {
-    const { backupAndReplaceFromLegacy } = await import('./index');
+    const { backupAndReplaceFromLegacy } = await import('../../../src/api');
     const result = { success: true, backupPath: 'D:\\backup\\questpilot.db' };
     invokeMock.mockResolvedValueOnce(result);
 
