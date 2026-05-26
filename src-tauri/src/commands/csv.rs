@@ -5,6 +5,7 @@ use tauri::{AppHandle, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
 
 use crate::error::AppError;
+use crate::services::export_service::ExportService;
 use crate::services::import_service::ImportService;
 use crate::{csv_tools, database};
 
@@ -72,20 +73,16 @@ pub fn csv_export(
     window: WebviewWindow,
     bank_id: i64,
 ) -> Result<serde_json::Value, AppError> {
-    let store = open_store(&app)?;
-    let bank = store
-        .get_bank_by_id(bank_id)?
-        .ok_or_else(|| AppError::Database("题库不存在".into()))?;
-    let total = store.count_questions(bank_id, String::new(), None)?;
-    if total <= 0 {
-        return Err(AppError::Database("题库中没有题目可导出".into()));
-    }
-    let questions = store.get_questions_by_bank_id(bank_id, 0, total.min(100_000) as u32, None)?;
+    // Service 层：业务校验 + 数据查询（题库存在性、题目非空、10万上限）
+    let (bank_name, questions) =
+        ExportService::new(open_store(&app)?).prepare_export(bank_id)?;
+
+    // Command 层：文件对话框（需要 WebviewWindow，不适合放在 Service 中）
     let Some(file_path) = window
         .dialog()
         .file()
         .add_filter("CSV 文件", &["csv"])
-        .set_file_name(format!("{}.csv", bank.name))
+        .set_file_name(format!("{bank_name}.csv"))
         .blocking_save_file()
     else {
         return Ok(serde_json::json!({ "success": false, "cancelled": true }));

@@ -1,0 +1,162 @@
+# QuestPilot 后端架构说明
+
+## 1. 分层结构
+
+```
+Frontend (React/TypeScript)
+        │  invoke(command_name, params)
+        ▼
+┌─────────────────────────────────┐
+│        Command 层                │  src-tauri/src/commands/
+│  接收前端参数，调用 Service       │
+└────────────┬────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────┐
+│        Service 层                │  src-tauri/src/services/
+│  业务逻辑编排，调用 Repository   │
+└────────────┬────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────┐
+│       Repository 层              │  src-tauri/src/database/repositories/
+│  数据访问封装，委托 DatabaseStore │
+└────────────┬────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────┐
+│       DatabaseStore              │  src-tauri/src/database/
+│  rusqlite Connection 持有者      │
+└────────────┬────────────────────┘
+             │
+             ▼
+           SQLite
+```
+
+## 2. 各层职责
+
+### Command 层
+- **文件**：`src/commands/`
+- **职责**：接收 Tauri invoke 参数 → 创建 Service → 调用 service 方法 → 返回结果
+- **不负责**：SQL 操作、业务规则、数据校验
+- **约束**：保持 command 名称/参数/返回结构稳定，前端 invoke 接口不得随意变更
+- **调用入口**：`open_store(&app)? → ServiceXxx::new(store) → service.method()`
+
+### Service 层
+- **文件**：`src/services/`
+- **职责**：业务规则（如删除校验、阈值计算、分页协调）、多 Repository 协调
+- **不负责**：直接执行 SQL、持有 Connection
+- **构造约定**：`pub fn new(store: DatabaseStore) -> Self`（内部创建 Repository）
+
+### Repository 层
+- **文件**：`src/database/repositories/`
+- **职责**：数据库读写接口封装，每个 Repository 对应一个领域（题库、题目、错题本等）
+- **当前实现**：Phase 1 持有 `DatabaseStore`，委托其方法
+- **不负责**：业务规则判断
+
+### DatabaseStore
+- **文件**：`src/database/`（`mod.rs` + 各 `impl` 文件）
+- **职责**：持有 `RefCell<Connection>`，提供原子 SQL 操作和事务接口
+- **兼容入口**：旧 `DatabaseStore` 方法全部保留，供 Repository 委托调用
+
+## 3. 为什么 Repository 当前仍包装 DatabaseStore
+
+`DatabaseStore` 内的 SQL 逻辑经过多轮验证，稳定可靠。Phase 1 采用**零侵入的委托模式**：
+
+```
+Repository.method() → store.method()
+```
+
+这样做的优点：
+- 零风险迁移——`DatabaseStore` 原有逻辑不动，只新增委托层
+- 可逐步演进——后续可在 Repository 中直接操作 `Connection`，逐步消除中间层
+- 随时可回滚——`DatabaseStore` 方法保留为兼容入口
+
+## 4. 后续可选优化：Repository 直接持有 Connection
+
+当 Repository 稳定后，可将 `DatabaseStore` 包装改为直接持有 `Connection`：
+
+```rust
+// 当前 Phase 1
+pub struct WrongBookRepository {
+    store: DatabaseStore,  // 委托
+}
+
+// 未来 Phase 2
+pub struct WrongBookRepository {
+    connection: RefCell<Connection>,  // 直接持有
+}
+```
+
+迁移路径：
+1. Repository 暴露与 `DatabaseStore` 相同签名的方法
+2. 将 SQL 从 `DatabaseStore` 逐步内联到 Repository
+3. `DatabaseStore` 旧方法在确认无调用后删除
+
+## 5. async Command 的 !Send 两阶段处理原则
+
+`DatabaseStore` 含 `RefCell<Connection>`，不实现 `Send`。Tauri async command 要求 future 为 `Send`。
+**解决原则：所有 `!Send` 类型（DatabaseStore / Repository / Service）必须在 `.await` 前析构。**
+
+### 标准两阶段模式
+
+```rust
+// ✅ 正确：Service 临时值在 await 前析构
+pub async fn some_command(app: AppHandle, ...) -> Result<_, AppError> {
+    // Phase 1：同步读取所需数据，Service 在语句末析构
+    let config = SettingsService::new(open_store(&app)?).get_api_config()?;
+    let custom_prompt = match prompt_id {
+        Some(pid) => PromptService::new(open_store(&app)?).get_by_id(pid).ok().flatten()...,
+        None => None,
+    };
+    // Phase 2：await，此时无 !Send 类型存活
+    some_async_call(...).await...
+}
+
+// ✅ 正确：await 后重新 open store
+let result = some_async_call().await?;
+let output = SomeService::new(open_store(&app)?).write(result)?;
+```
+
+```rust
+// ❌ 错误：Service/store 跨越 await
+let service = SomeService::new(open_store(&app)?);
+let data = service.get_something()?;
+some_async_call().await?;  // service 仍存活 → !Send → 编译失败
+```
+
+## 6. wrong_book 事务化更新
+
+`WrongBookService::update_from_practice` 是唯一涉及批量写入的方法，通过 `DatabaseStore::update_wrong_book_from_practice_tx` 保证原子性：
+
+- 孤儿记录清理
+- 答错：`INSERT OR UPDATE wrong_count`  
+- 答对：`UPDATE correct_count + 1`，达阈值则 `DELETE`
+
+所有操作在单个 `rusqlite::Transaction` 内完成，任一步骤失败则自动回滚。
+
+## 7. 前端 invoke 接口稳定原则
+
+- **命令名称不得重命名**：前端所有 `invoke('command_name', ...)` 调用均基于 Tauri command 名称
+- **参数和返回结构不得变更**：serde 的 `rename_all = "camelCase"` 设置已固定序列化格式
+- **新增 command 不影响旧命令**：如 `ai_import_questions_direct` 是新增，不替换 `ai_parse_questions`
+- **错误格式保持一致**：`AppError` 序列化为 `{ "kind": "Database" | "Ai" | "Config", "message": "..." }`
+
+## 8. Service 覆盖状态（当前）
+
+| 模块 | Repository | Service | Command 状态 |
+|------|-----------|---------|-------------|
+| question | `QuestionRepository` | `QuestionService` | ✅ 全覆盖 |
+| question_bank | `QuestionBankRepository` | `QuestionBankService` | ✅ 全覆盖 |
+| practice | `PracticeRepository` | `PracticeService` | ✅ 全覆盖 |
+| wrong_book | `WrongBookRepository` | `WrongBookService` | ✅ 全覆盖 |
+| import | `QuestionRepository` | `ImportService` | ✅ 全覆盖 |
+| settings | `SettingsRepository` | `SettingsService` | ✅ 全覆盖 |
+| prompt | `PromptRepository` | `PromptService` | ✅ 全覆盖 |
+| chat_history | `ChatHistoryRepository` | `ChatHistoryService` | ✅ 全覆盖 |
+| stats | `StatsRepository` | `StatsService` | ✅ 全覆盖 |
+| draft | `DraftRepository` | `DraftService` | ✅ 全覆盖 |
+| export (csv) | _(直接持有 store)_ | `ExportService` | ✅ 全覆盖 |
+| ai import | `QuestionRepository` | `ImportService` | ✅ 全覆盖 |
+| window | — | — | 无 DB 操作 |
+| migration | — | — | 使用 legacy 自由函数 |
