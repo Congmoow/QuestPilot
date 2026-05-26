@@ -48,17 +48,10 @@ src-tauri/src/
     ├── types.rs        # All public data types (Question, QuestionBank, ApiConfig, …)
     ├── schema.rs       # DDL migrations bootstrap + ensure_default_prompt
     ├── migrations.rs   # Versioned migration runner
-    ├── queries.rs      # Low-level SQL helpers (shared across repository modules)
     ├── validation.rs   # Input validation helpers
     ├── legacy.rs       # Electron→Tauri database migration logic
-    ├── question_bank.rs  # impl DatabaseStore { create_bank … delete_bank }
-    ├── question.rs     # impl DatabaseStore { create_question … count_questions }
-    ├── settings.rs     # impl DatabaseStore { get_theme … clear_draft }
-    ├── ai.rs           # impl DatabaseStore { get_all_prompts … delete_chat_history }
-    ├── practice.rs     # impl DatabaseStore { save_practice_record … get_all_practice_stats }
-    ├── wrong_book.rs   # impl DatabaseStore { get_wrong_book_counts … clear_wrong_book }
-    ├── stats.rs        # impl DatabaseStore { get_question_count_by_type … get_operation_logs }
-    └── repositories/   # Repository layer — domain-scoped data-access objects (Phase 1: delegate to DatabaseStore)
+    └── repositories/   # Repository layer — domain-scoped data-access objects (direct SQL via with_connection/with_transaction)
+        ├── helpers.rs      # Shared SQL helpers and row mappers (add_operation_log, find_question_by_id, query_questions, …)
         ├── mod.rs
         ├── question_repo.rs
         ├── question_bank_repo.rs
@@ -85,20 +78,17 @@ commands/<domain>.rs      ← Tauri #[command] thin wrapper; calls open_store() 
 services/<domain>_service.rs  ← Business logic, validation, multi-step coordination
         │
         ▼
-database/repositories/<domain>_repo.rs  ← Data-access object; delegates to DatabaseStore methods
+database/repositories/<domain>_repo.rs  ← Data-access object; executes SQL via with_connection/with_transaction
         │
         ▼
 database::DatabaseStore   ← Single connection wrapper (RefCell<Connection>)
-        │
-        ├── database/<domain>.rs  ← impl DatabaseStore { domain SQL methods }
-        │
-        └── database/queries.rs   ← Shared SQL helpers (map_*, find_*, count_*)
+                                         holds RefCell<Connection>, provides with_connection/with_transaction
 ```
 
 **Rules**:
 - No SQL in command or service files.
 - Business rules (validation, thresholds, limits) live in the Service layer.
-- Repositories are the only layer that calls `DatabaseStore` methods.
+- Repositories call `DatabaseStore::with_connection` / `with_transaction` — no direct domain method calls.
 - All `DatabaseStore` / Repository / Service instances must be dropped before any `.await` point to satisfy Rust's `!Send` constraint (see _Async Commands_ below).
 
 ---
@@ -383,15 +373,14 @@ Conventions:
 
 ## Adding a New Command
 
-1. **Database method** — add `pub fn your_method(...)` to the relevant `database/<domain>.rs` as `impl DatabaseStore { ... }`.
-2. **Repository** — expose the method through the relevant `database/repositories/<domain>_repo.rs`.
-3. **Service** — add business logic to `services/<domain>_service.rs`; call the repository.
-4. **Command function** — add `#[tauri::command(rename_all = "camelCase")] pub fn your_command(app: AppHandle, ...) -> Result<T, AppError>` to `commands/<domain>.rs`:
+1. **Repository method** — add the SQL logic directly to the relevant `database/repositories/<domain>_repo.rs`, using `self.store.with_connection(|conn| { … })` or `with_transaction`.
+2. **Service** — add business logic to `services/<domain>_service.rs`; call the repository.
+3. **Command function** — add `#[tauri::command(rename_all = "camelCase")] pub fn your_command(app: AppHandle, ...) -> Result<T, AppError>` to `commands/<domain>.rs`:
    ```rust
    ServiceXxx::new(open_store(&app)?).your_method(params)
    ```
-5. **Register** — add `your_command` to `tauri::generate_handler![...]` in `lib.rs`.
-6. **Frontend binding** — add the corresponding `invoke` call to `src/api/index.ts`.
+4. **Register** — add `your_command` to `tauri::generate_handler![...]` in `lib.rs`.
+5. **Frontend binding** — add the corresponding `invoke` call to `src/api/index.ts`.
 
 ### Async Commands (AI calls, file dialogs)
 

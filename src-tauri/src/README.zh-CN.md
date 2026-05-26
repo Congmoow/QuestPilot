@@ -48,17 +48,10 @@ src-tauri/src/
     ├── types.rs        # 所有公开数据类型（Question、QuestionBank、ApiConfig 等）
     ├── schema.rs       # DDL 建表 & 迁移引导 + ensure_default_prompt
     ├── migrations.rs   # 版本化迁移执行器
-    ├── queries.rs      # 底层 SQL helper（跨 repository 模块共享）
     ├── validation.rs   # 输入校验 helper
     ├── legacy.rs       # Electron → Tauri 数据库迁移逻辑
-    ├── question_bank.rs  # impl DatabaseStore { create_bank … delete_bank }
-    ├── question.rs     # impl DatabaseStore { create_question … count_questions }
-    ├── settings.rs     # impl DatabaseStore { get_theme … clear_draft }
-    ├── ai.rs           # impl DatabaseStore { get_all_prompts … delete_chat_history }
-    ├── practice.rs     # impl DatabaseStore { save_practice_record … get_all_practice_stats }
-    ├── wrong_book.rs   # impl DatabaseStore { get_wrong_book_counts … clear_wrong_book }
-    ├── stats.rs        # impl DatabaseStore { get_question_count_by_type … get_operation_logs }
-    └── repositories/   # Repository 层 — 域级数据访问对象（Phase 1：委托 DatabaseStore）
+    └── repositories/   # Repository 层 — 域级数据访问对象（直接通过 with_connection/with_transaction 执行 SQL）
+        ├── helpers.rs      # 共享 SQL helper 和 row mapper（add_operation_log、find_question_by_id、query_questions 等）
         ├── mod.rs
         ├── question_repo.rs
         ├── question_bank_repo.rs
@@ -85,20 +78,17 @@ commands/<domain>.rs          ← Tauri #[command] 薄层，调用 open_store() 
 services/<domain>_service.rs  ← 业务逻辑、校验、多步编排
         │
         ▼
-database/repositories/<domain>_repo.rs  ← 数据访问对象，委托 DatabaseStore 方法
+database/repositories/<domain>_repo.rs  ← 数据访问对象，通过 with_connection/with_transaction 直接执行 SQL
         │
         ▼
 database::DatabaseStore       ← 单连接包装器（RefCell<Connection>）
-        │
-        ├── database/<domain>.rs  ← impl DatabaseStore { 域 SQL 方法 }
-        │
-        └── database/queries.rs   ← 共享 SQL helper（map_*、find_*、count_*）
+                                  提供 with_connection / with_transaction，管理连接生命周期
 ```
 
 **约定**：
 - 命令层和 Service 层不允许出现 SQL。
 - 业务规则（校验、阈值、限制）居于 Service 层。
-- Repository 是唯一可以调用 `DatabaseStore` 方法的层。
+- Repository 通过 `with_connection` / `with_transaction` 访问数据库，不调用 DatabaseStore 领域方法。
 - 所有 `DatabaseStore` / Repository / Service 实例必须在任意 `.await` 点前析构，以满足 Rust `!Send` 约束（见下方《Async 命令》）。
 
 ---
@@ -383,15 +373,14 @@ pub struct AiConfig {
 
 ## 新增命令流程
 
-1. **数据库方法**——在对应 `database/<domain>.rs` 中以 `impl DatabaseStore { ... }` 添加 `pub fn your_method(...)`。
-2. **Repository**——在 `database/repositories/<domain>_repo.rs` 中暴露该方法。
-3. **Service**——在 `services/<domain>_service.rs` 中添加业务逻辑，调用 Repository。
-4. **命令函数**——在 `commands/<domain>.rs` 中添加命令，调用如下：
+1. **Repository 方法**——在 `database/repositories/<domain>_repo.rs` 中直接写 SQL，使用 `self.store.with_connection(|conn| { … })` 或 `with_transaction`。
+2. **Service**——在 `services/<domain>_service.rs` 中添加业务逻辑，调用 Repository。
+3. **命令函数**——在 `commands/<domain>.rs` 中添加命令，调用如下：
    ```rust
    ServiceXxx::new(open_store(&app)?).your_method(params)
    ```
-5. **注册**——在 `lib.rs` 的 `tauri::generate_handler![...]` 中添加 `your_command`。
-6. **前端绑定**——在 `src/api/index.ts` 中添加对应的 `invoke` 调用。
+4. **注册**——在 `lib.rs` 的 `tauri::generate_handler![...]` 中添加 `your_command`。
+5. **前端绑定**——在 `src/api/index.ts` 中添加对应的 `invoke` 调用。
 
 ### Async 命令（AI 调用、文件对话框）
 

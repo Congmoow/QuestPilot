@@ -117,18 +117,11 @@ impl DatabaseStore {
 - 闭包内**不得**再调用任何会重新 borrow `self.connection` 的 `DatabaseStore` 方法（RefCell 重复借用 panic）。
 - `Transaction` 实现 `Deref<Target=Connection>`，私有 SQL helper 统一接收 `&Connection`，对事务闭包透明适用。
 
-#### DatabaseStore 旧方法处理
+#### DatabaseStore 旧方法处理（已完成）
 
-`database/wrong_book.rs` 与 `database/practice.rs` 中所有旧 `DatabaseStore` 方法**全部保留**，
-注释统一标明"兼容入口保留；新主路径由 XxxRepository 直接访问 Connection"。
-确认无调用后，后续可在独立 PR 中按模块逐个删除。
-
-### 后续迁移建议
-
-其余 Repository 可按 `WrongBookRepository` 模式逐步迁移：
-1. 在 Repository 方法中改调 `self.store.with_connection(...)` / `with_transaction(...)`
-2. 将 SQL 逻辑内联到 Repository 文件私有函数
-3. `DatabaseStore` 旧领域方法注释为兼容入口，暂不删除
+`database/{settings,question,question_bank,practice,wrong_book,ai,stats}.rs` 及 `queries.rs`
+中所有旧领域方法和辅助函数已在 Phase 3 清理分支（`feature/remove-legacy-databasestore-methods`）
+中**全部删除**，对应 `.rs` 文件一并移除。
 
 ## 4. 迁移优先级建议（参考）
 
@@ -178,7 +171,7 @@ some_async_call().await?;  // service 仍存活 → !Send → 编译失败
 
 ## 6. wrong_book 事务化更新
 
-`WrongBookService::update_from_practice` 是唯一涉及批量写入的方法，通过 `DatabaseStore::update_wrong_book_from_practice_tx` 保证原子性：
+`WrongBookService::update_from_practice` 是唯一涉及批量写入的方法，通过 `WrongBookRepository::update_from_practice_tx` 保证原子性：
 
 - 孤儿记录清理
 - 答错：`INSERT OR UPDATE wrong_count`  
