@@ -10,18 +10,18 @@ test.describe('手动录入题目', () => {
     await page.goto('/#/manual-entry');
     await expect(page.locator('body')).not.toContainText('页面加载失败');
     // 应有题型选择
-    await expect(
-      page.getByRole('combobox').or(page.getByLabel(/题型/)).first(),
-    ).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('combobox').or(page.getByLabel(/题型/)).first()).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test('页面包含题干输入区域', async ({ page }) => {
     await page.goto('/#/manual-entry');
     await page.waitForTimeout(500);
     // 题干 textarea 或 input 应存在
-    const contentInput = page.getByPlaceholder(/题干|请输入题目/).or(
-      page.locator('textarea').first(),
-    );
+    const contentInput = page
+      .getByPlaceholder(/题干|请输入题目/)
+      .or(page.locator('textarea').first());
     await expect(contentInput).toBeVisible({ timeout: 5000 });
   });
 
@@ -30,7 +30,7 @@ test.describe('手动录入题目', () => {
     await page.waitForTimeout(500);
     // 题型通过 SegmentedTabs（button）切换，不是 <select>
     const booleanTab = page.getByRole('button', { name: '判断题' });
-    if (await booleanTab.count() > 0) {
+    if ((await booleanTab.count()) > 0) {
       await booleanTab.click();
       // 界面不崩溃
       await expect(page.locator('body')).not.toContainText('Error');

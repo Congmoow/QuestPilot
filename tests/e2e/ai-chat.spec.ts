@@ -29,11 +29,12 @@ test.describe('AI 聊天 — 空状态与服务商图标', () => {
 
     // 欢迎界面或空状态应包含 AI 相关文字
     const body = page.locator('body');
-    const hasWelcome = await body.evaluate((el) =>
-      el.textContent?.includes('AI') ||
-      el.textContent?.includes('助手') ||
-      el.textContent?.includes('聊天') ||
-      el.textContent?.includes('问题'),
+    const hasWelcome = await body.evaluate(
+      (el) =>
+        el.textContent?.includes('AI') ||
+        el.textContent?.includes('助手') ||
+        el.textContent?.includes('聊天') ||
+        el.textContent?.includes('问题'),
     );
     expect(hasWelcome).toBeTruthy();
   });
@@ -42,9 +43,7 @@ test.describe('AI 聊天 — 空状态与服务商图标', () => {
     await page.goto('/#/ai-chat');
     await page.waitForTimeout(800);
 
-    const input = page
-      .getByPlaceholder(/输入|问题|消息/)
-      .or(page.locator('textarea').first());
+    const input = page.getByPlaceholder(/输入|问题|消息/).or(page.locator('textarea').first());
     await expect(input).toBeVisible({ timeout: 5000 });
   });
 

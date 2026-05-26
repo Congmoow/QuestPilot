@@ -31,8 +31,8 @@ test.describe('CSV 导入', () => {
     await page.waitForTimeout(500);
     // 页面应有 CSV 格式相关文字
     const body = page.locator('body');
-    const hasCsvHint = await body.evaluate((el) =>
-      el.textContent?.includes('CSV') || el.textContent?.includes('格式'),
+    const hasCsvHint = await body.evaluate(
+      (el) => el.textContent?.includes('CSV') || el.textContent?.includes('格式'),
     );
     expect(hasCsvHint).toBeTruthy();
   });

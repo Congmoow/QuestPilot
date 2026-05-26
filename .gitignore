@@ -57,7 +57,8 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 
-# Electron
+# Electron (legacy, not maintained)
+# 防止本地敏感配置测试和 Electron legacy 测试意外入库
 *.asar
 electron/
 electron-builder.json

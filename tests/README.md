@@ -1,21 +1,24 @@
-# 测试目录说明
+# Test Directory Guide
 
-本目录只收纳前端、契约和端到端测试。Tauri / Rust 测试继续使用 Cargo 约定，放在 `src-tauri/tests`。
+This directory contains frontend, contract, and end-to-end tests only. Tauri / Rust
+tests continue to follow Cargo conventions and live in `src-tauri/tests`.
 
-## 目录结构
+## Directory Structure
 
-- `unit/api/`：桌面 API 门面、运行时适配器和前端契约测试。
-- `unit/features/`：前端功能模块的单元测试。
-- `e2e/`：Playwright 端到端测试。
-- `e2e/helpers/`：端到端测试夹具和 Tauri mock。
+- `unit/api/`: desktop API facade, runtime adapters, and frontend contract tests.
+- `unit/features/`: unit tests for frontend feature modules.
+- `e2e/`: Playwright end-to-end tests.
+- `e2e/helpers/`: end-to-end fixtures and Tauri mocks.
 
-## 命令
+## Commands
 
-- `npm test`：运行 `tests/unit` 下的 Vitest 测试。
-- `npm run test:api-contract`：仅运行桌面 API 归一化契约测试。
-- `npm run test:e2e`：运行 Playwright 端到端测试。
-- `npm run test:rust`：运行 `src-tauri/tests` 与 Rust 单元测试。
+- `npm test`: run Vitest tests under `tests/unit`.
+- `npm run test:api-contract`: run only desktop API normalization contract tests.
+- `npm run test:e2e`: run Playwright end-to-end tests.
+- `npm run test:rust`: run `src-tauri/tests` and Rust unit tests.
 
-## 维护边界
+## Maintenance Boundary
 
-Electron 已不再作为维护运行时，Electron legacy 测试不进入正式测试体系。新增测试应优先覆盖 Tauri 主线、React 渲染层和稳定桌面 API 契约。
+Electron is no longer a maintained runtime, so Electron legacy tests do not belong
+in the official test suite. New tests should prioritize the Tauri mainline, the
+React renderer, and stable desktop API contracts.
