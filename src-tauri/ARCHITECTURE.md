@@ -51,23 +51,26 @@ Frontend (React/TypeScript)
 ### Repository 层
 - **文件**：`src/database/repositories/`
 - **职责**：数据库读写接口封装，每个 Repository 对应一个领域（题库、题目、错题本等）
-- **当前实现**：Phase 1 持有 `DatabaseStore`，委托其方法
+- **当前实现**：持有 `DatabaseStore`，通过 `with_connection` / `with_transaction` 直接执行 SQL
+- **共享 helper**：`repositories/helpers.rs` 提供跨 Repository 复用的 SQL helper 和 row mapper
 - **不负责**：业务规则判断
 
 ### DatabaseStore
-- **文件**：`src/database/`（`mod.rs` + 各 `impl` 文件）
-- **职责**：持有 `RefCell<Connection>`，提供原子 SQL 操作和事务接口
-- **兼容入口**：旧 `DatabaseStore` 方法全部保留，供 Repository 委托调用
+- **文件**：`src/database/mod.rs`
+- **职责**：持有 `RefCell<Connection>`，管理连接生命周期，提供 `with_connection` / `with_transaction`，初始化 schema/migration
+- **已删除**：所有旧领域方法（`create_bank`、`save_practice_record` 等）在 Phase 3 清理分支中已删除
 
-## 3. Repository 迁移进度
+### Phase 3 清理（`feature/remove-legacy-databasestore-methods`）
 
-### Phase 1（其余 Repository 当前状态）
+完成内容：
+1. 删除 `database/{settings,question,question_bank,practice,wrong_book,ai,stats}.rs` 中的全部 `impl DatabaseStore` 领域方法
+2. 创建 `repositories/helpers.rs`，集中 `PromptRepository`、`ChatHistoryRepository`、`QuestionRepository` 共用的 SQL helper 和 row mapper（原位于 `queries.rs`）
+3. `SettingsRepository`、`QuestionBankRepository` 改用 `validation.rs` 中的公共函数，消除内联副本
+4. `ExportService` 同步迁移为 `with_connection` 直接 SQL
+5. `tests/database_store.rs` 全量改写为通过 Repository 层调用（`open_store_at` 模式）
+6. 删除 `database/queries.rs`（内容已迁移）及 7 个空的旧领域实现文件的 `mod` 声明
 
-采用**零侵入委托模式**：
-
-```
-Repository.method() → store.method()
-```
+## 3. Repository 迁移状态（全量完成）
 
 ### Phase 2 已完成的 Repository
 
@@ -77,9 +80,9 @@ Repository.method() → store.method()
 - **`SettingsRepository`**：全用 `with_connection`；内联 keychain helper，保留密钥库读写/迁移逐步逻辑
 - **`DraftRepository`**：全用 `with_connection`，简单单行持久化读写
 - **`StatsRepository`**：全用 `with_connection`，内联聊合查询 helper
-- **`PromptRepository`**：全用 `with_connection`；通过 `super::super::queries/schema/validation` 访问共享 helper
-- **`ChatHistoryRepository`**：全用 `with_connection`；同上访问共享 helper
-- **`QuestionRepository`**：`create/list_by_bank/get_random/find_by_id/update/search/count` 用 `with_connection`；`create_batch/delete_batch` 先 `with_transaction` 再 `with_connection`（日志）与原行为一致
+- **`PromptRepository`**：全用 `with_connection`；通过 `super::helpers` 访问共享 helper
+- **`ChatHistoryRepository`**：全用 `with_connection`；同上
+- **`QuestionRepository`**：`create/list_by_bank/get_random/find_by_id/update/search/count` 用 `with_connection`；`create_batch/delete_batch` 先 `with_transaction` 再 `with_connection`（日志），与原行为一致
 
 所有 Repository 均已迁移为**通过 `DatabaseStore::with_connection` / `with_transaction` 直接访问
 `rusqlite::Connection` / `Transaction`**，不再委托 `DatabaseStore` 的领域方法：

@@ -2,9 +2,7 @@ use rusqlite::{params, OptionalExtension};
 
 use crate::database::{CreatePromptInput, DatabaseStore, Prompt};
 
-// pub(super) 函数在 database 子树内可通过 super::super::* 访问
-use super::super::queries::{add_operation_log, find_prompt_by_id, map_prompt};
-use super::super::schema::ensure_default_prompt;
+use super::helpers::{add_operation_log, ensure_default_prompt, find_prompt_by_id, map_prompt};
 use super::super::validation::validate_non_blank;
 
 /// Prompt 数据访问对象（Phase 2：通过 `DatabaseStore::with_connection` 直接执行 SQL）。

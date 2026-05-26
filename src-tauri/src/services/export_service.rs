@@ -1,3 +1,6 @@
+use rusqlite::{params, OptionalExtension};
+
+use crate::database::repositories::helpers::{count_questions, query_questions};
 use crate::database::{DatabaseStore, Question};
 use crate::error::AppError;
 
@@ -6,13 +9,8 @@ use crate::error::AppError;
 /// 负责题库导出的业务编排：查询题库信息 + 获取题目列表 + 业务规则校验。
 /// 文件系统操作（对话框、写文件）保留在 Command 层，Service 只负责 DB 查询和业务规则。
 ///
-/// ## 设计说明
-/// Export 是跨题库（`question_banks`）和题目（`questions`）的聚合读操作。
-/// Phase 1 直接持有 `DatabaseStore` 进行跨域查询，避免为只读聚合引入多 Store 实例。
-/// 后续可拆分为持有 `QuestionBankRepository` + `QuestionRepository` 的双 Repo 模式。
-///
 /// ## 层次结构
-/// `CsvExportCommand` → `ExportService` → `DatabaseStore` → SQLite
+/// `CsvExportCommand` → `ExportService` → `DatabaseStore::with_connection` → SQLite
 pub struct ExportService {
     store: DatabaseStore,
 }
@@ -32,22 +30,29 @@ impl ExportService {
     ///
     /// 文件对话框、CSV 序列化、文件写入保留在 Command 层。
     pub fn prepare_export(&self, bank_id: i64) -> Result<(String, Vec<Question>), AppError> {
-        let bank = self
-            .store
-            .get_bank_by_id(bank_id)?
-            .ok_or_else(|| AppError::Database("题库不存在".into()))?;
+        let (bank_name, total) = self.store.with_connection(|conn| {
+            // 查询题库名称
+            let name = conn
+                .query_row(
+                    "SELECT qb.name FROM question_banks qb WHERE qb.id = ?1",
+                    params![bank_id],
+                    |row| row.get::<_, String>(0),
+                )
+                .optional()
+                .map_err(|e| format!("读取题库失败: {e}"))?;
+            let bank_name = name.ok_or_else(|| "题库不存在".to_string())?;
+            let total = count_questions(conn, bank_id, "", None)?;
+            Ok((bank_name, total))
+        })?;
 
-        let total = self
-            .store
-            .count_questions(bank_id, String::new(), None)?;
         if total <= 0 {
             return Err(AppError::Database("题库中没有题目可导出".into()));
         }
 
-        let questions = self
-            .store
-            .get_questions_by_bank_id(bank_id, 0, total.min(100_000) as u32, None)?;
+        let questions = self.store.with_connection(|conn| {
+            query_questions(conn, bank_id, "", None, 0, total.min(100_000) as u32)
+        })?;
 
-        Ok((bank.name, questions))
+        Ok((bank_name, questions))
     }
 }

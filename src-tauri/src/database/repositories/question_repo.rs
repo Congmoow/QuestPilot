@@ -2,7 +2,7 @@ use rusqlite::params;
 
 use crate::database::{CreateQuestionInput, DatabaseStore, ImportError, ImportResult, Question};
 
-use super::super::queries::{
+use super::helpers::{
     add_operation_log, bank_exists, count_questions, find_question_by_id, map_question,
     query_questions, select_question_bank_ids,
 };

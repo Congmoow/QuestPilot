@@ -6,18 +6,9 @@ use rusqlite::{params, Connection};
 
 mod legacy;
 mod migrations;
-mod queries;
 mod schema;
 mod types;
 mod validation;
-
-mod ai;
-mod practice;
-mod question;
-mod question_bank;
-mod settings;
-mod stats;
-mod wrong_book;
 
 pub mod repositories;
 

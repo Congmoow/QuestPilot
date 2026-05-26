@@ -1,3 +1,5 @@
+pub mod helpers;
+
 pub mod chat_history_repo;
 pub mod draft_repo;
 pub mod practice_repo;
