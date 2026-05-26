@@ -3,6 +3,7 @@ use tauri::AppHandle;
 use crate::ai;
 use crate::error::AppError;
 use crate::services::import_service::{AiImportResult, ImportService};
+use crate::services::prompt_service::PromptService;
 use crate::services::settings_service::SettingsService;
 
 use super::{ai_config_from_database, open_store};
@@ -27,11 +28,18 @@ pub async fn ai_chat(
     messages: Vec<ai::AiMessage>,
     prompt_id: Option<i64>,
 ) -> Result<serde_json::Value, AppError> {
-    let store = open_store(&app)?;
-    let config = store.get_api_config()?;
-    let custom_prompt = prompt_id
-        .and_then(|id| store.get_prompt_by_id(id).ok().flatten())
-        .map(|prompt| prompt.content);
+    // Phase 1：读取 config 和 custom_prompt，两个 Service 均为临时值，在各自语句末析构。
+    // 确保 !Send 的 DatabaseStore 不跨越 .await。
+    let config = SettingsService::new(open_store(&app)?).get_api_config()?;
+    let custom_prompt = match prompt_id {
+        Some(pid) => PromptService::new(open_store(&app)?)
+            .get_by_id(pid)
+            .ok()        // prompt 读取失败时静默降级为 None，保持原有业务行为
+            .flatten()
+            .map(|p| p.content),
+        None => None,
+    };
+    // Phase 2：await AI 调用，此时所有 Service / Repository / DatabaseStore 已析构
     ai::chat_with_ai(&ai_config_from_database(config), messages, custom_prompt)
         .await
         .map_err(AppError::Ai)

@@ -32,8 +32,8 @@ pub use types::{
     WrongBookCount, WrongBookItem, WrongBookPracticeResult,
 };
 pub use repositories::{
-    PracticeRepository, QuestionBankRepository, QuestionRepository, SettingsRepository,
-    WrongBookRepository,
+    ChatHistoryRepository, PracticeRepository, PromptRepository, QuestionBankRepository,
+    QuestionRepository, SettingsRepository, WrongBookRepository,
 };
 
 use legacy::migrate_legacy_database;
