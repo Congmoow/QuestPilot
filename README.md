@@ -2,41 +2,30 @@
 
 English | [简体中文](README.zh-CN.md)
 
-QuestPilot is a desktop question-bank management and practice tool built with Tauri + React + Vite. It supports CSV / JSON / AI import, random practice, a wrong-question notebook, statistics, and AI Q&A.
+**QuestPilot** is a local-first, AI-powered desktop application for building, practising, and analysing question banks. All data stays on your machine — no cloud account required. Built with **Tauri 2 + React 18 + Rust + SQLite**.
 
 ![Tauri](https://img.shields.io/badge/Tauri-2.x-24C8DB?logo=tauri&logoColor=white)
 ![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-5.x-646CFF?logo=vite&logoColor=white)
+![Rust](https://img.shields.io/badge/Rust-1.7x-orange?logo=rust&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-bundled-003B57?logo=sqlite&logoColor=white)
 ![License](https://img.shields.io/badge/License-Study%20Only-lightgrey)
 
 ---
 
 ## Features
 
-### Question Banks and Questions
-
-- **Multiple question banks**: create, edit, and delete question banks; manage questions by bank.
-- **Question management**: create, edit, delete, paginate, keyword search, and filter by question type.
-- **Question types**: single choice, multiple choice, true/false, fill-in-the-blank with `__` blanks, and short answer.
-
-### Import and Export
-
-- **CSV batch import**: download the standard template, validate rows, and import.
-- **CSV export**: export a question bank to CSV with UTF-8 BOM for Excel compatibility.
-- **AI parsing import**: paste question text and parse it into structured data through the configured model.
-- **JSON batch import**: supports Chinese and English field names for migration from other systems.
-
-### Practice and Wrong-Question Notebook
-
-- **Random practice**: draw random questions, submit answers, and see scores and explanations immediately.
-- **Practice statistics**: record practice history and accuracy trends.
-- **Wrong-question notebook**: automatically records wrong answers, removes questions after the correct-answer threshold is reached, supports random wrong-question practice, filtering by bank, and manual remove/clear actions.
-
-### Statistics and Experience
-
-- **Dashboard**: total questions, today's additions, last 7 days, type distribution, operation logs, and practice trends.
-- **Theme**: light, dark, and system theme.
-- **Desktop experience**: custom title bar and single-instance startup.
+| Category | Highlights |
+|---|---|
+| **Question banks** | Create / edit / delete banks; per-bank question management with pagination, keyword search, and type filter |
+| **Question types** | Single-choice, multiple-choice, true/false, fill-in-the-blank (`__` markers), and short answer |
+| **Import** | CSV template import, JSON batch import (Chinese & English field names), AI parsing import |
+| **Export** | CSV export with UTF-8 BOM for Excel compatibility |
+| **Practice** | Random question draws, immediate scoring with explanations, practice history & accuracy trends |
+| **Wrong-question notebook** | Auto-records wrong answers; configurable correct-answer threshold for auto-removal; random wrong-question practice |
+| **AI Q&A** | Multi-turn chat with custom system prompts; session history persisted locally |
+| **Dashboard** | Total questions, daily / weekly additions, type distribution chart, operation log timeline |
+| **Settings** | Light / dark / system theme; AI provider config (OpenAI, Claude, Gemini, DeepSeek, Qwen, custom) |
+| **Offline first** | All data in local SQLite — no account, no cloud sync required |
 
 ---
 
@@ -46,334 +35,236 @@ QuestPilot is a desktop question-bank management and practice tool built with Ta
 
 ---
 
-## Download and Install
+## Technical Highlights
 
-### Download from GitHub Releases
+### Command → Service → Repository Architecture
 
-Download the Tauri installer from the repository Releases page:
+The Rust backend follows a strict three-layer separation enforced across every domain:
 
-- Windows: `QuestPilot_<version>_x64-setup.exe`
-
-### Local Build Artifact
-
-After running `npm run tauri:build`, the Windows installer is generated under `src-tauri/target/release/bundle/nsis/`.
-
-## Quick Start
-
-### Requirements
-
-- Node.js >= 18
-- npm >= 9
-
-### Install Dependencies
-
-```bash
-npm install
+```
+Tauri Command  →  Service  →  Repository  →  DatabaseStore (with_connection / with_transaction)  →  SQLite
 ```
 
-### Development (Desktop App)
+- **Commands** (`src/commands/`) are thin wrappers: parse invoke params, call `ServiceXxx::new(store).method()`, return the result. No SQL, no business logic.
+- **Services** (`src/services/`) own business rules — threshold calculation, cascade-delete guards, multi-repo coordination, pagination math.
+- **Repositories** (`src/database/repositories/`) execute SQL directly via `DatabaseStore::with_connection` and `with_transaction`. No domain method delegation.
+- **`repositories/helpers.rs`** centralises shared row mappers and SQL helpers (`add_operation_log`, `find_question_by_id`, `query_questions`, etc.) reused across repositories.
 
-```bash
-npm run tauri:dev
+### Transaction-Safe Batch Operations
+
+Batch imports and wrong-book updates execute inside a single `rusqlite::Transaction`, guaranteeing atomicity:
+
+```rust
+// Wrong-book update: orphan cleanup + wrong-count upsert + correct-count increment + threshold DELETE
+self.store.with_transaction(|tx| {
+    cleanup_orphans_sql(tx)?;
+    for result in results { /* ... */ }
+    Ok(())
+})?;
+// Operation log written after commit in a separate with_connection call
 ```
 
-This command starts both the Vite dev server on port `5173` and the Tauri desktop window.
+Any SQL failure auto-rolls back the entire batch — no partial state is left behind.
 
-### Development (Frontend Preview Only)
+### Async-Safe AI Commands (`!Send` Two-Phase Pattern)
 
-```bash
-npm run dev
-```
+`DatabaseStore` holds a `RefCell<Connection>`, making it `!Send`. Tauri async commands must hold no `!Send` types across `.await`. The solution is a strict two-phase pattern enforced in every async command:
 
-Then visit:
-
-```text
-http://localhost:5173
-```
-
-### Build and Package
-
-```bash
-# Tauri Windows installer
-npm run tauri:build
-```
-
-After the build completes, the installer is available under `src-tauri/target/release/bundle/nsis/`.
-
-### Clean Build Output
-
-```bash
-npm run clean
-```
-
-### Tests
-
-```bash
-# Frontend unit tests and desktop API contract tests
-npm test
-
-# Run only desktop API normalization contract tests
-npm run test:api-contract
-
-# Playwright end-to-end tests
-npm run test:e2e
-
-# Tauri / Rust tests
-npm run test:rust
-```
-
-Tests are split across `tests/unit`, `tests/e2e`, and `src-tauri/tests`. Electron is no longer a maintained runtime, so Electron legacy tests do not belong in the official test suite.
-
----
-
-## Configuration
-
-### AI API Configuration
-
-In the app, open `System Settings` -> `AI API Configuration` and configure:
-
-- **AI service provider**: choose a preset provider such as OpenAI, Claude, Gemini, DeepSeek, or Qwen, or use a custom provider.
-- **API URL**:
-  - Preset providers fill this automatically, and some providers use OpenAI-compatible APIs.
-  - Custom mode accepts any OpenAI-compatible API Base URL.
-- **API Key**: your key, stored securely in the system keychain (Windows Credential Manager). It is never written in plaintext to the database.
-- **Model**: for example `gpt-4o-mini`, `claude-3-5-sonnet-20241022`, or `gemini-1.5-pro`.
-
-Click `Test Connection` to verify whether the configuration works.
-
-##### Screenshot:
-
-![AI API Configuration](image/README/API-configuration.png)
-
-Compatibility notes:
-
-- Claude and Gemini use their dedicated request formats.
-- Most other providers can use the OpenAI-compatible format. The app appends `/v1/chat/completions` when needed.
-
-### Wrong-Question Threshold
-
-In the app, open `System Settings` -> `Wrong-Question Settings` to configure how many correct answers are required before a question is automatically removed from the wrong-question notebook.
-
-##### Screenshot:
-
-![Wrong-question threshold setting](image/README/threshold-setting.png)
-
----
-
-## Data Storage and Privacy
-
-All data is stored locally by default and is not uploaded automatically.
-
-- **Database file**: `questpilot.db`
-- **Tauri database path**: `%APPDATA%\com.questpilot.desktop\questpilot.db`
-- **Legacy data compatibility**: on first launch, the app tries to migrate `questpilot.db` or `question-bank.db` from the legacy Electron data directory.
-- **Migration conflict handling**: if the Tauri target database already has user data, it is not overwritten silently. You can use the data migration card on the Settings page to back up and replace it.
-
-The database contains question banks, questions, settings including AI configuration, drafts, practice records, the wrong-question notebook, AI prompts, chat history, and related data.
-
----
-
-## Import and Export Formats
-
-### CSV Import Template
-
-Download the template in the app through `Batch Import` -> `Download Template`.
-
-Header columns:
-
-```text
-题型, 题干, 选项A, 选项B, 选项C, 选项D, 选项E, 选项F, 答案, 解析
-```
-
-Core field rules:
-
-- **Question type**: `单选题` / `多选题` / `判断题` / `填空题` / `简答题`
-- **Choice options**: at least 2 options for choice questions.
-- **Answer**:
-  - Single choice: `A`
-  - Multiple choice: `A|B|D`, separated by `|`
-  - True/false: `正确` or `错误`
-  - Fill-in-the-blank: use `__` in the stem to mark blanks; separate answers with `|`, and the answer count must match the blank count.
-  - Short answer: reference answer is optional.
-
-### JSON Batch Import
-
-The `AI Smart Entry` page supports `JSON Batch Import`, accepts a single object or an array, and supports Chinese and English field-name mappings.
-
-##### Screenshot:
-
-![JSON batch import](image/README/batch-import-JSON.png)
-
-Single-choice example:
-
-```json
-{
-  "题型": "单选题",
-  "题目": "以下哪个是 JavaScript 的基本数据类型？",
-  "选项": ["A. String", "B. Array", "C. Object", "D. Function"],
-  "答案": "A",
-  "解析": "字符串是基本数据类型"
+```rust
+pub async fn ai_parse_questions(app: AppHandle, content: String) -> Result<Value, AppError> {
+    // Phase 1: synchronous — all DB access completes, store/service dropped at statement end
+    let config = SettingsService::new(open_store(&app)?).get_api_config()?;
+    // Phase 2: async — no !Send types alive
+    parse_questions_with_ai(&config, &content).await
 }
 ```
 
-Multiple-choice example. The answer also supports arrays, comma-separated values, and continuous letters, which are normalized to `A|B|C`:
+### Credential Handling
 
-```json
-[
-  {
-    "题型": "多选题",
-    "题目": "以下哪些是前端框架？",
-    "选项": ["A. React", "B. Vue", "C. Node.js", "D. Angular"],
-    "答案": ["A", "B", "D"]
-  }
-]
+AI API keys are stored in the **system keychain** (Windows Credential Manager via the `keyring` crate) when available. If the keychain write fails — or if a plaintext key was saved by an earlier app version — the app transparently falls back to SQLite and attempts keychain migration on next read:
+
+```rust
+// get_api_config: try keychain first, migrate legacy SQLite key if found
+let api_key = match read_keychain_key() {
+    Some(key) => key,
+    None => { /* attempt migration from SQLite */ legacy_key }
+};
 ```
 
-### AI Parsing Import
+### Versioned SQLite Schema Migration
 
-In the `AI Smart Parsing` mode on the `AI Smart Entry` page, paste question text and the app will call the model configured in Settings to parse it into structured JSON. You can then choose a question bank and import the result.
+The database uses a `schema_migrations` table to track applied migrations. `DatabaseStore::open` runs pending migrations on startup and is idempotent — reopening a fully-migrated database applies nothing.
 
-Markdown question sets can be pasted directly. Headings, lists, blockquotes, bold text, inline code, fenced code blocks, and table separators are treated as structure hints and are converted into plain-text stems, options, answers, and explanations as much as possible before import.
+### Frontend Data Layer
 
-Common format example:
-
-```markdown
-## 1. JavaScript 基础
-
-1. 以下哪个是基本数据类型？
-   A. String
-   B. Array
-   C. Object
-   D. Function
-   答案：A
-   解析：String 是基本数据类型。
-
-> 答案：正确
-> 解析：也支持 Markdown 引用块中的答案和解析。
-
-Q2 React 的特点是什么？
-Answer: 组件化
-Explanation: 支持英文答案和解析标记。
-```
-
-Question numbers can be recognized in forms such as `1.`, `1、`, `(1)`, `【1】`, `第1题`, `Q1`, and `## 1`. Answers can be recognized with labels such as `答案：`, `Answer:`, `参考答案：`, `正确答案：`, and `> 答案`. Explanations can be recognized with labels such as `解析：`, `分析：`, `Explanation:`, and `> 解析`.
-
-Very long pasted content is split into chunks and parsed serially to avoid truncated model output. If some chunks fail, successfully parsed questions are still displayed, and failed chunks are shown above the parse result with expandable details.
-
-##### Screenshot:
-
-![AI smart parsing import](image/README/AI-Intelligent-Parsing.png)
+The React renderer uses **TanStack Query** for cache, deduplication, and background revalidation of Tauri `invoke` calls, all behind a typed `src/api/index.ts` adapter. **Zod** validates responses at the boundary, catching schema drift between Rust and TypeScript early.
 
 ---
 
-## Project Structure
+## Architecture
 
-```text
-questpilot/
-├── image/                    # README images
-│   └── README/               # Screenshots referenced by README files
-├── src-tauri/                # Tauri mainline runtime
-│   ├── src/                  # Rust commands, database, AI, CSV, and window capabilities
-│   ├── capabilities/         # Tauri capability permission configuration
-│   ├── icons/                # Tauri packaging icons
-│   ├── tests/                # Rust integration tests
-│   ├── tauri.conf.json       # Tauri app and packaging configuration
-│   └── target/release/bundle/nsis/
-│                              # Locally built Tauri Windows installer
-├── src/                      # React renderer process
-│   ├── pages/                # Pages: dashboard, import, practice, wrong book, settings, AI Q&A, etc.
-│   ├── components/           # Shared components
-│   ├── contexts/             # React Context
-│   └── api/                  # Desktop API adapter layer
-├── tests/                    # Frontend unit tests and Playwright end-to-end tests
-│   ├── unit/                 # Vitest unit and contract tests
-│   └── e2e/                  # Playwright end-to-end tests
-├── docs/                     # Architecture, migration, acceptance, and release-gate docs
-├── scripts/                  # Utility scripts
-├── build/                    # Build resources, including icons
-└── dist/                     # Vite build output
 ```
+┌──────────────────────────────────────────┐
+│  React 18 (renderer process)             │
+│  TanStack Query + Zod typed invoke layer │
+└──────────────────┬───────────────────────┘
+                   │  Tauri IPC (invoke)
+┌──────────────────▼───────────────────────┐
+│  Command layer  (src/commands/)          │  thin: parse → service → return
+├──────────────────────────────────────────┤
+│  Service layer  (src/services/)          │  business rules, multi-repo coordination
+├──────────────────────────────────────────┤
+│  Repository layer (src/database/         │  direct SQL via with_connection /
+│                    repositories/)        │  with_transaction
+├──────────────────────────────────────────┤
+│  DatabaseStore  (RefCell<Connection>)    │  connection lifecycle + schema migration
+└──────────────────┬───────────────────────┘
+                   │
+              SQLite (bundled rusqlite)
+```
+
+**Key invariants**
+- No SQL in Command or Service files.
+- Repositories call only `with_connection` / `with_transaction` — never domain methods on `DatabaseStore`.
+- All `!Send` types must be dropped before any `.await` point.
 
 ---
 
 ## Tech Stack
 
-| Category          | Technology              |
-| ----------------- | ----------------------- |
-| Desktop framework | Tauri 2                 |
-| Frontend          | React 18 + React Router |
-| Build tool        | Vite                    |
-| Styling           | Tailwind CSS + PostCSS  |
-| Local storage     | SQLite (Tauri mainline) |
-| CSV               | PapaParse               |
-| Charts            | Recharts                |
-| Animation         | Framer Motion           |
-| Markdown/math     | react-markdown + KaTeX  |
-| Icons             | lucide-react            |
+| Layer | Technology |
+|---|---|
+| Desktop shell | Tauri 2 |
+| Frontend framework | React 18 + React Router 6 |
+| Data fetching | TanStack Query 5 |
+| Schema validation | Zod 4 |
+| Build tool | Vite 5 |
+| Styling | Tailwind CSS + PostCSS |
+| Backend language | Rust (edition 2021) |
+| Database | SQLite via `rusqlite` 0.32 (bundled) |
+| HTTP client | `reqwest` 0.13 (rustls, no OpenSSL) |
+| Credential storage | `keyring` 3 (Windows Credential Manager) |
+| Animation | Framer Motion 11 |
+| Charts | Recharts 2 |
+| Markdown + math | react-markdown 10 + KaTeX |
+| CSV | PapaParse (frontend) + `csv` crate (Rust) |
+| Icons | lucide-react |
 
 ---
 
-## Scripts
+## Getting Started
 
-- **`npm run dev`**: start Vite.
-- **`npm run build`**: build the renderer process into `dist/`.
-- **`npm run preview`**: preview the Vite build output.
-- **`npm run tauri:dev`**: development mode with Vite + Tauri.
-- **`npm run tauri:build`**: build the Tauri release exe and Windows NSIS installer.
-- **`npm run tauri:info`**: inspect the Tauri environment.
-- **`npm test`**: run Vitest unit tests under `tests/unit`.
-- **`npm run test:api-contract`**: run desktop API normalization contract tests.
-- **`npm run test:e2e`**: run Playwright end-to-end tests.
-- **`npm run test:rust`**: run Tauri / Rust tests.
-- **`npm run clean`**: clean `dist/`.
+### Prerequisites
+
+- **Node.js** ≥ 18 and **npm** ≥ 9
+- **Rust** stable (install via [rustup](https://rustup.rs/))
+- **Windows WebView2 Runtime** (pre-installed on Windows 10 21H2+ and Windows 11)
+
+### Install
+
+```bash
+npm install
+```
+
+### Run in Development
+
+```bash
+# Full desktop app (Vite dev server + Tauri window)
+npm run tauri:dev
+
+# Renderer preview only (no Tauri IPC)
+npm run dev          # then open http://localhost:5173
+```
+
+### Build
+
+```bash
+# Tauri release build + Windows NSIS installer
+npm run tauri:build
+# Output: src-tauri/target/release/bundle/nsis/QuestPilot_<version>_x64-setup.exe
+```
+
+### Download Pre-built Installer
+
+Grab `QuestPilot_<version>_x64-setup.exe` from the [GitHub Releases](https://github.com/Congmoow/QuestPilot/releases) page.
 
 ---
 
-## Release (GitHub Actions)
+## Configuration
 
-The repository is configured to publish by tag through `.github/workflows/release.yml`:
+### AI API
 
-1. Push a tag such as `v1.0.0` to trigger the workflow.
-2. CI runs `npm ci` with Node.js 20.
-3. Install the Rust stable toolchain.
-4. Run `npm run tauri:build`.
-5. Upload `src-tauri/target/release/bundle/nsis/*.exe` to GitHub Releases.
+Open **System Settings → AI API Configuration**:
+
+| Field | Notes |
+|---|---|
+| **Provider** | OpenAI, Claude, Gemini, DeepSeek, Qwen, or any custom OpenAI-compatible endpoint |
+| **API URL** | Filled automatically for presets; custom mode accepts any base URL |
+| **API Key** | Stored in the system keychain when available; falls back to SQLite with compatibility migration for older app versions |
+| **Model** | e.g. `gpt-4o-mini`, `claude-3-5-sonnet-20241022`, `gemini-1.5-pro` |
+
+Claude and Gemini use their own request formats. All other providers use `/v1/chat/completions`.
+
+### Wrong-Question Threshold
+
+**System Settings → Wrong-Question Settings** — configure how many consecutive correct answers remove a question from the notebook (default: 3).
 
 ---
 
-## FAQ
+## Data Storage
 
-### `tauri:dev` fails to start or shows a blank screen
+All data is stored locally under `%APPDATA%\com.questpilot.desktop\questpilot.db` and never uploaded automatically.
 
-- Confirm port `5173` is not occupied. The Vite config uses this fixed port.
-- Confirm Rust stable, Windows WebView2 Runtime, and Tauri dependencies are installed.
-- If you change the port, also update `devUrl` in `src-tauri/tauri.conf.json`.
+**Legacy migration**: on first launch the app looks for a `questpilot.db` or `question-bank.db` from the previous Electron-based version and migrates it automatically. If the new database already contains user data, the Settings page provides a manual backup-and-replace flow.
 
-### AI calls fail
+---
 
-- Confirm the `API Key`, `API URL`, and `Model` in Settings are correct.
-- Claude and Gemini must use their official Base URLs.
-- For OpenAI-compatible providers, make sure they support `/v1/chat/completions`.
+## Testing
 
-### CSV import is garbled
+```bash
+# Rust integration tests (31 tests covering all repository + migration paths)
+npm run test:rust          # runs: cargo test --manifest-path src-tauri/Cargo.toml
 
-- Prefer the template downloaded from the app. It includes a UTF-8 BOM so Excel can detect the encoding more reliably.
+# Frontend unit + API contract tests
+npm test                   # runs: vitest run
+
+# Desktop invoke API contract tests only
+npm run test:api-contract
+
+# Playwright end-to-end tests
+npm run test:e2e
+```
+
+Test layout:
+
+| Suite | Location | What it covers |
+|---|---|---|
+| Rust integration | `src-tauri/tests/` | Repository CRUD, schema migrations, legacy migration, wrong-book workflow |
+| Unit / contract | `tests/unit/` | Runtime adapter normalisation, API type contracts |
+| End-to-end | `tests/e2e/` | Full user flows via Playwright |
+
+---
+
+## Roadmap
+
+- [ ] macOS support (keychain integration via `keyring` is already cross-platform)
+- [ ] Export to Anki-compatible format
+- [ ] Shared question bank via local network sync
+- [ ] Richer practice modes (timed exam, spaced repetition)
 
 ---
 
 ## Contributing
 
-Issues and pull requests are welcome.
+Issues and PRs are welcome. Suggested PR contents:
 
-Recommended PR content:
-
-- **Change summary**: what changed and why.
-- **Screenshots or recordings**: for UI changes.
-- **Self-test steps**: how the change was verified.
+- **Change summary** — what changed and why
+- **Screenshots** — for UI-facing changes
+- **Verification steps** — how you tested it
 
 ---
 
 ## License
 
 This project is for study, coursework, technical exchange, and personal research only.
-See the repository root [`LICENSE`](LICENSE) file for restrictions and disclaimers.
+See [`LICENSE`](LICENSE) for restrictions and disclaimers.
