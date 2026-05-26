@@ -62,6 +62,65 @@ impl DatabaseStore {
         query_random_wrong_questions(&connection, bank_id, limit)
     }
 
+    /// 清理孤儿错题记录（题目已被删除但 wrong_book 仍保留的行）。纯数据库写入。
+    pub fn cleanup_orphans(&self) -> Result<(), String> {
+        let connection = self.connection.borrow();
+        cleanup_wrong_book_orphans(&connection)
+    }
+
+    /// 写入或累加一条答错记录。纯数据库写入。
+    ///
+    /// - 新题目 → INSERT (wrong_count = 1, correct_count = 0)
+    /// - 已存在 → wrong_count + 1，更新 last_wrong_at
+    pub fn upsert_wrong_answer(&self, question_id: i64, bank_id: i64) -> Result<(), String> {
+        let connection = self.connection.borrow();
+        connection
+            .execute(
+                "
+                INSERT INTO wrong_book (question_id, bank_id, wrong_count, correct_count, added_at, last_wrong_at)
+                VALUES (?1, ?2, 1, 0, datetime('now'), datetime('now'))
+                ON CONFLICT(question_id) DO UPDATE SET
+                  bank_id = excluded.bank_id,
+                  wrong_count = wrong_count + 1,
+                  last_wrong_at = datetime('now')
+                ",
+                params![question_id, bank_id],
+            )
+            .map_err(|error| format!("写入错题本失败: {error}"))?;
+        Ok(())
+    }
+
+    /// 将指定题目的 correct_count 加一。纯数据库写入。
+    pub fn increment_correct_count(&self, question_id: i64) -> Result<(), String> {
+        let connection = self.connection.borrow();
+        connection
+            .execute(
+                "UPDATE wrong_book SET correct_count = correct_count + 1 WHERE question_id = ?1",
+                params![question_id],
+            )
+            .map_err(|error| format!("更新错题正确次数失败: {error}"))?;
+        Ok(())
+    }
+
+    /// 查询指定题目的 correct_count。纯数据库查询。
+    ///
+    /// 若该题不在错题本中（从未出错或已被移除），返回 `None`。
+    pub fn get_correct_count(&self, question_id: i64) -> Result<Option<i64>, String> {
+        let connection = self.connection.borrow();
+        connection
+            .query_row(
+                "SELECT correct_count FROM wrong_book WHERE question_id = ?1",
+                params![question_id],
+                |row| row.get::<_, i64>(0),
+            )
+            .optional()
+            .map_err(|error| format!("读取错题正确次数失败: {error}"))
+    }
+
+    /// 原有组合方法，保留以降低兼容风险。
+    ///
+    /// **已被 `WrongBookService::update_from_practice` 接管**，该方法包含了 threshold 判断
+    /// 与完整的业务循环。此处作为历史兼容入口，不再由 command 主路径调用。
     pub fn update_wrong_book_from_practice(
         &self,
         results: Vec<WrongBookPracticeResult>,
