@@ -2,7 +2,7 @@ use rusqlite::params;
 
 use crate::database::{ChatHistory, ChatHistoryInput, DatabaseStore};
 
-use super::super::queries::{find_chat_history_by_id, map_chat_history};
+use super::helpers::{find_chat_history_by_id, map_chat_history};
 use super::super::validation::validate_messages;
 
 /// 聊天记录数据访问对象（Phase 2：通过 `DatabaseStore::with_connection` 直接执行 SQL）。

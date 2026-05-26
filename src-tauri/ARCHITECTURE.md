@@ -1,105 +1,107 @@
-# QuestPilot 后端架构说明
+# QuestPilot Backend Architecture
 
-## 1. 分层结构
+## 1. Layer Structure
 
 ```
 Frontend (React/TypeScript)
         │  invoke(command_name, params)
         ▼
 ┌─────────────────────────────────┐
-│        Command 层                │  src-tauri/src/commands/
-│  接收前端参数，调用 Service       │
+│        Command layer             │  src-tauri/src/commands/
+│  Parse invoke params, call Service│
 └────────────┬────────────────────┘
              │
              ▼
 ┌─────────────────────────────────┐
-│        Service 层                │  src-tauri/src/services/
-│  业务逻辑编排，调用 Repository   │
+│        Service layer             │  src-tauri/src/services/
+│  Business logic, call Repository │
 └────────────┬────────────────────┘
              │
              ▼
 ┌─────────────────────────────────┐
-│       Repository 层              │  src-tauri/src/database/repositories/
-│  数据访问封装，委托 DatabaseStore │
+│       Repository layer           │  src-tauri/src/database/repositories/
+│  Data access via with_connection │
 └────────────┬────────────────────┘
              │
              ▼
 ┌─────────────────────────────────┐
 │       DatabaseStore              │  src-tauri/src/database/
-│  rusqlite Connection 持有者      │
+│  Holds rusqlite Connection       │
 └────────────┬────────────────────┘
              │
              ▼
            SQLite
 ```
 
-## 2. 各层职责
+## 2. Layer Responsibilities
 
-### Command 层
-- **文件**：`src/commands/`
-- **职责**：接收 Tauri invoke 参数 → 创建 Service → 调用 service 方法 → 返回结果
-- **不负责**：SQL 操作、业务规则、数据校验
-- **约束**：保持 command 名称/参数/返回结构稳定，前端 invoke 接口不得随意变更
-- **调用入口**：`open_store(&app)? → ServiceXxx::new(store) → service.method()`
+### Command layer
+- **Location**: `src/commands/`
+- **Responsibility**: receive Tauri invoke params → create Service → call service method → return result
+- **Not responsible for**: SQL, business rules, input validation
+- **Constraint**: command names, params, and return shapes must remain stable; the frontend invoke interface must not change arbitrarily
+- **Entry pattern**: `open_store(&app)? → ServiceXxx::new(store) → service.method()`
 
-### Service 层
-- **文件**：`src/services/`
-- **职责**：业务规则（如删除校验、阈值计算、分页协调）、多 Repository 协调
-- **不负责**：直接执行 SQL、持有 Connection
-- **构造约定**：`pub fn new(store: DatabaseStore) -> Self`（内部创建 Repository）
+### Service layer
+- **Location**: `src/services/`
+- **Responsibility**: business rules (delete guards, threshold calculation, pagination), multi-repository coordination
+- **Not responsible for**: executing SQL directly, holding a Connection
+- **Constructor convention**: `pub fn new(store: DatabaseStore) -> Self` (creates Repository internally)
 
-### Repository 层
-- **文件**：`src/database/repositories/`
-- **职责**：数据库读写接口封装，每个 Repository 对应一个领域（题库、题目、错题本等）
-- **当前实现**：Phase 1 持有 `DatabaseStore`，委托其方法
-- **不负责**：业务规则判断
+### Repository layer
+- **Location**: `src/database/repositories/`
+- **Responsibility**: database read/write encapsulation; one Repository per domain (question banks, questions, wrong book, etc.)
+- **Current implementation**: holds `DatabaseStore`, executes SQL directly via `with_connection` / `with_transaction`
+- **Shared helpers**: `repositories/helpers.rs` provides SQL helpers and row mappers reused across repositories
+- **Not responsible for**: business rule decisions
 
 ### DatabaseStore
-- **文件**：`src/database/`（`mod.rs` + 各 `impl` 文件）
-- **职责**：持有 `RefCell<Connection>`，提供原子 SQL 操作和事务接口
-- **兼容入口**：旧 `DatabaseStore` 方法全部保留，供 Repository 委托调用
+- **Location**: `src/database/mod.rs`
+- **Responsibility**: holds `RefCell<Connection>`, manages connection lifecycle, provides `with_connection` / `with_transaction`, initialises schema and runs migrations
+- **Removed**: all old domain methods (`create_bank`, `save_practice_record`, etc.) were deleted in the Phase 3 clean-up branch
 
-## 3. Repository 迁移进度
+### Phase 3 Clean-up (`feature/remove-legacy-databasestore-methods`)
 
-### Phase 1（其余 Repository 当前状态）
+Completed:
+1. Deleted all `impl DatabaseStore` domain methods from `database/{settings,question,question_bank,practice,wrong_book,ai,stats}.rs`
+2. Created `repositories/helpers.rs` to centralise SQL helpers and row mappers shared by `PromptRepository`, `ChatHistoryRepository`, and `QuestionRepository` (formerly in `queries.rs`)
+3. `SettingsRepository` and `QuestionBankRepository` now use public functions from `validation.rs`, removing inline duplicates
+4. `ExportService` migrated to `with_connection` direct SQL
+5. `tests/database_store.rs` fully rewritten to call through the Repository layer (`open_store_at` pattern)
+6. Deleted `database/queries.rs` (content migrated) and removed `mod` declarations for the 7 now-empty domain files
 
-采用**零侵入委托模式**：
+## 3. Repository Migration Status (all complete)
 
-```
-Repository.method() → store.method()
-```
+### Repositories migrated in Phase 2
 
-### Phase 2 已完成的 Repository
+- **`WrongBookRepository`** (first pilot): uses both `with_connection` and `with_transaction`
+- **`PracticeRepository`** (second): `with_connection` only, no transaction needed
+- **`QuestionBankRepository`** (third): `create/list_all/find_by_id/update` use `with_connection`; `delete` uses `with_transaction` (atomic delete of questions + bank) followed by `with_connection` (operation log)
+- **`SettingsRepository`**: `with_connection` throughout; inlines keychain helpers, preserves keychain read/write/migration logic
+- **`DraftRepository`**: `with_connection` throughout; simple single-row persistence
+- **`StatsRepository`**: `with_connection` throughout; inlines aggregation query helpers
+- **`PromptRepository`**: `with_connection` throughout; accesses shared helpers via `super::helpers`
+- **`ChatHistoryRepository`**: same as above
+- **`QuestionRepository`**: `create/list_by_bank/get_random/find_by_id/update/search/count` use `with_connection`; `create_batch/delete_batch` use `with_transaction` followed by `with_connection` (log), preserving original behaviour
 
-- **`WrongBookRepository`**（首个试点）：含事务，使用 `with_connection` + `with_transaction`
-- **`PracticeRepository`**（第二个）：纯 `with_connection`，无事务需求
-- **`QuestionBankRepository`**（第三个）：`create/list_all/find_by_id/update` 用 `with_connection`；`delete` 先 `with_transaction`（原子删除题目+题库）再 `with_connection`（写日志，与原行为一致）
-- **`SettingsRepository`**：全用 `with_connection`；内联 keychain helper，保留密钥库读写/迁移逐步逻辑
-- **`DraftRepository`**：全用 `with_connection`，简单单行持久化读写
-- **`StatsRepository`**：全用 `with_connection`，内联聊合查询 helper
-- **`PromptRepository`**：全用 `with_connection`；通过 `super::super::queries/schema/validation` 访问共享 helper
-- **`ChatHistoryRepository`**：全用 `with_connection`；同上访问共享 helper
-- **`QuestionRepository`**：`create/list_by_bank/get_random/find_by_id/update/search/count` 用 `with_connection`；`create_batch/delete_batch` 先 `with_transaction` 再 `with_connection`（日志）与原行为一致
-
-所有 Repository 均已迁移为**通过 `DatabaseStore::with_connection` / `with_transaction` 直接访问
-`rusqlite::Connection` / `Transaction`**，不再委托 `DatabaseStore` 的领域方法：
+All repositories now access `rusqlite::Connection` / `Transaction` directly through `DatabaseStore::with_connection` / `with_transaction` — no domain method delegation:
 
 ```
 Repository.read_method()
-  → DatabaseStore::with_connection(|conn| { /* 直接 SQL */ })
+  → DatabaseStore::with_connection(|conn| { /* direct SQL */ })
   → rusqlite::Connection
 ```
 
 ```
-Repository.atomic_batch_method()                  // 仅事务场景使用
-  → DatabaseStore::with_transaction(|tx| { /* 直接 SQL，单事务 */ })
+Repository.atomic_batch_method()          // transaction path only
+  → DatabaseStore::with_transaction(|tx| { /* direct SQL, single transaction */ })
   → rusqlite::Transaction
 ```
 
-#### with_connection / with_transaction 设计说明
+#### `with_connection` / `with_transaction` design
 
 ```rust
-// DatabaseStore 新增的受控访问入口（pub(crate)）
+// pub(crate) controlled access on DatabaseStore
 impl DatabaseStore {
     pub(crate) fn with_connection<T, F>(&self, f: F) -> Result<T, String>
     where F: FnOnce(&Connection) -> Result<T, String>
@@ -109,102 +111,94 @@ impl DatabaseStore {
 }
 ```
 
-- `with_connection`：borrow 不可变引用，适合读操作和单条写操作。
-- `with_transaction`：borrow 可变引用，开启 rusqlite 事务，闭包成功则 commit，失败或 panic 则自动 rollback。
-- 闭包内**不得**再调用任何会重新 borrow `self.connection` 的 `DatabaseStore` 方法（RefCell 重复借用 panic）。
-- `Transaction` 实现 `Deref<Target=Connection>`，私有 SQL helper 统一接收 `&Connection`，对事务闭包透明适用。
+- `with_connection`: borrows immutably; suitable for reads and single writes.
+- `with_transaction`: borrows mutably, opens a rusqlite transaction; commits on closure success, auto-rolls back on failure or panic.
+- The closure **must not** call any `DatabaseStore` method that would re-borrow `self.connection` (double-borrow RefCell panic).
+- `Transaction` implements `Deref<Target=Connection>`, so private SQL helpers that accept `&Connection` work transparently inside a transaction closure.
 
-#### DatabaseStore 旧方法处理
+#### Old DatabaseStore domain methods (already removed)
 
-`database/wrong_book.rs` 与 `database/practice.rs` 中所有旧 `DatabaseStore` 方法**全部保留**，
-注释统一标明"兼容入口保留；新主路径由 XxxRepository 直接访问 Connection"。
-确认无调用后，后续可在独立 PR 中按模块逐个删除。
+All domain methods and helpers in `database/{settings,question,question_bank,practice,wrong_book,ai,stats}.rs` and `queries.rs` were **fully deleted** in the Phase 3 clean-up branch; the corresponding `.rs` files were also removed.
 
-### 后续迁移建议
+## 4. Repository Migration Reference
 
-其余 Repository 可按 `WrongBookRepository` 模式逐步迁移：
-1. 在 Repository 方法中改调 `self.store.with_connection(...)` / `with_transaction(...)`
-2. 将 SQL 逻辑内联到 Repository 文件私有函数
-3. `DatabaseStore` 旧领域方法注释为兼容入口，暂不删除
+| Repository | Status |
+|---|---|
+| `WrongBookRepository` | ✅ complete |
+| `PracticeRepository` | ✅ complete |
+| `QuestionBankRepository` | ✅ complete |
+| `SettingsRepository` | ✅ complete |
+| `DraftRepository` | ✅ complete |
+| `StatsRepository` | ✅ complete |
+| `PromptRepository` | ✅ complete |
+| `ChatHistoryRepository` | ✅ complete |
+| `QuestionRepository` | ✅ complete |
 
-## 4. 迁移优先级建议（参考）
+## 5. Async Commands — `!Send` Two-Phase Rule
 
-| Repository | 迁移难度 | 建议顺序 |
-|---|---|---|
-| `WrongBookRepository` | ✅ 已完成 | — |
-| `PracticeRepository` | ✅ 已完成 | — |
-| `QuestionBankRepository` | ✅ 已完成 | — |
-| `SettingsRepository` | ✅ 已完成 | — |
-| `DraftRepository` | ✅ 已完成 | — |
-| `StatsRepository` | ✅ 已完成 | — |
-| `PromptRepository` | ✅ 已完成 | — |
-| `ChatHistoryRepository` | ✅ 已完成 | — |
-| `QuestionRepository` | ✅ 已完成 | — |
+`DatabaseStore` contains `RefCell<Connection>` and therefore does not implement `Send`. Tauri async commands require their futures to be `Send`.
 
-## 5. async Command 的 !Send 两阶段处理原则
+**Rule: all `!Send` types (DatabaseStore / Repository / Service) must be dropped before any `.await` point.**
 
-`DatabaseStore` 含 `RefCell<Connection>`，不实现 `Send`。Tauri async command 要求 future 为 `Send`。
-**解决原则：所有 `!Send` 类型（DatabaseStore / Repository / Service）必须在 `.await` 前析构。**
-
-### 标准两阶段模式
+### Standard two-phase pattern
 
 ```rust
-// ✅ 正确：Service 临时值在 await 前析构
+// ✅ Correct: Service temporary value dropped before await
 pub async fn some_command(app: AppHandle, ...) -> Result<_, AppError> {
-    // Phase 1：同步读取所需数据，Service 在语句末析构
+    // Phase 1: synchronous — all DB access completes, Service dropped at statement end
     let config = SettingsService::new(open_store(&app)?).get_api_config()?;
     let custom_prompt = match prompt_id {
         Some(pid) => PromptService::new(open_store(&app)?).get_by_id(pid).ok().flatten()...,
         None => None,
     };
-    // Phase 2：await，此时无 !Send 类型存活
+    // Phase 2: await — no !Send types alive
     some_async_call(...).await...
 }
 
-// ✅ 正确：await 后重新 open store
+// ✅ Correct: reopen store after await
 let result = some_async_call().await?;
 let output = SomeService::new(open_store(&app)?).write(result)?;
 ```
 
 ```rust
-// ❌ 错误：Service/store 跨越 await
+// ❌ Wrong: Service / store alive across await
 let service = SomeService::new(open_store(&app)?);
 let data = service.get_something()?;
-some_async_call().await?;  // service 仍存活 → !Send → 编译失败
+some_async_call().await?;  // service still alive → !Send → compile error
 ```
 
-## 6. wrong_book 事务化更新
+## 6. Wrong-Book Transactional Update
 
-`WrongBookService::update_from_practice` 是唯一涉及批量写入的方法，通过 `DatabaseStore::update_wrong_book_from_practice_tx` 保证原子性：
+`WrongBookService::update_from_practice` is the only method involving a batch write. It delegates to `WrongBookRepository::update_from_practice_tx` for atomicity:
 
-- 孤儿记录清理
-- 答错：`INSERT OR UPDATE wrong_count`  
-- 答对：`UPDATE correct_count + 1`，达阈值则 `DELETE`
+- Clean up orphan records
+- Wrong answer: `INSERT OR UPDATE wrong_count`
+- Correct answer: `UPDATE correct_count + 1`; delete when threshold reached
 
-所有操作在单个 `rusqlite::Transaction` 内完成，任一步骤失败则自动回滚。
+All operations run inside a single `rusqlite::Transaction`; any failure auto-rolls back the entire batch.
 
-## 7. 前端 invoke 接口稳定原则
+## 7. Frontend Invoke Contract
 
-- **命令名称不得重命名**：前端所有 `invoke('command_name', ...)` 调用均基于 Tauri command 名称
-- **参数和返回结构不得变更**：serde 的 `rename_all = "camelCase"` 设置已固定序列化格式
-- **新增 command 不影响旧命令**：如 `ai_import_questions_direct` 是新增，不替换 `ai_parse_questions`
-- **错误格式保持一致**：`AppError` 序列化为 `{ "kind": "Database" | "Ai" | "Config", "message": "..." }`
+- **Command names are immutable**: all frontend `invoke('command_name', ...)` calls depend on exact Tauri command names
+- **Params and return shapes must not change**: `serde rename_all = "camelCase"` fixes the serialisation format
+- **Adding a command does not affect existing ones**: e.g. `ai_import_questions_direct` is additive and does not replace `ai_parse_questions`
+- **Error format is stable**: `AppError` serialises to `{ "kind": "Database" | "Ai" | "Config", "message": "..." }`
 
-## 8. Service 覆盖状态（当前）
+## 8. Service Coverage (current)
 
-| 模块 | Repository | Service | Command 状态 |
-|------|-----------|---------|-------------|
-| question | `QuestionRepository` | `QuestionService` | ✅ 全覆盖 |
-| question_bank | `QuestionBankRepository` | `QuestionBankService` | ✅ 全覆盖 |
-| practice | `PracticeRepository` | `PracticeService` | ✅ 全覆盖 |
-| wrong_book | `WrongBookRepository` | `WrongBookService` | ✅ 全覆盖 |
-| import | `QuestionRepository` | `ImportService` | ✅ 全覆盖 |
-| settings | `SettingsRepository` | `SettingsService` | ✅ 全覆盖 |
-| prompt | `PromptRepository` | `PromptService` | ✅ 全覆盖 |
-| chat_history | `ChatHistoryRepository` | `ChatHistoryService` | ✅ 全覆盖 |
-| stats | `StatsRepository` | `StatsService` | ✅ 全覆盖 |
-| draft | `DraftRepository` | `DraftService` | ✅ 全覆盖 |
-| export (csv) | _(直接持有 store)_ | `ExportService` | ✅ 全覆盖 |
-| ai import | `QuestionRepository` | `ImportService` | ✅ 全覆盖 |
-| window | — | — | 无 DB 操作 |
-| migration | — | — | 使用 legacy 自由函数 |
+| Domain | Repository | Service | Command coverage |
+|---|---|---|---|
+| question | `QuestionRepository` | `QuestionService` | ✅ full |
+| question_bank | `QuestionBankRepository` | `QuestionBankService` | ✅ full |
+| practice | `PracticeRepository` | `PracticeService` | ✅ full |
+| wrong_book | `WrongBookRepository` | `WrongBookService` | ✅ full |
+| import | `QuestionRepository` | `ImportService` | ✅ full |
+| settings | `SettingsRepository` | `SettingsService` | ✅ full |
+| prompt | `PromptRepository` | `PromptService` | ✅ full |
+| chat_history | `ChatHistoryRepository` | `ChatHistoryService` | ✅ full |
+| stats | `StatsRepository` | `StatsService` | ✅ full |
+| draft | `DraftRepository` | `DraftService` | ✅ full |
+| export (csv) | _(direct store hold)_ | `ExportService` | ✅ full |
+| ai import | `QuestionRepository` | `ImportService` | ✅ full |
+| window | — | — | no DB ops |
+| migration | — | — | legacy free functions |

@@ -1,12 +1,20 @@
 use questpilot_tauri_lib::database::{
     legacy_database_candidates, legacy_database_status, replace_target_with_legacy_candidate,
-    ApiConfig, ChatHistoryInput, CreatePromptInput, CreateQuestionBankInput, CreateQuestionInput,
-    DatabaseStore, PracticeRecordInput, WrongBookPracticeResult,
+    ApiConfig, ChatHistoryInput, ChatHistoryRepository, CreatePromptInput,
+    CreateQuestionBankInput, CreateQuestionInput, DatabaseStore, DraftRepository,
+    PracticeRecordInput, PracticeRepository, PromptRepository, QuestionBankRepository,
+    QuestionRepository, SettingsRepository, StatsRepository, WrongBookPracticeResult,
+    WrongBookRepository,
 };
 use rusqlite::Connection;
 use serde_json::json;
 use std::path::Path;
 use tempfile::tempdir;
+
+/// 每次操作打开一个新 `DatabaseStore`（模拟生产环境 command 层的调用模式）。
+fn open_store_at(path: &Path) -> DatabaseStore {
+    DatabaseStore::open(path).expect("应能打开数据库")
+}
 
 fn read_schema_migrations(db_path: &Path) -> Vec<(i64, String)> {
     let connection = Connection::open(db_path).expect("应能打开迁移元数据数据库");
@@ -127,10 +135,8 @@ fn database_store_upgrades_file_without_schema_migration_metadata() {
 fn database_store_writes_bank_questions_and_random_queries() {
     let temp_dir = tempdir().expect("应能创建临时目录");
     let db_path = temp_dir.path().join("questpilot.db");
-    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
-
-    let bank = store
-        .create_bank(CreateQuestionBankInput {
+    let bank = QuestionBankRepository::new(open_store_at(&db_path))
+        .create(CreateQuestionBankInput {
             name: "  408  ".to_string(),
             description: Some("  数据结构  ".to_string()),
         })
@@ -140,8 +146,8 @@ fn database_store_writes_bank_questions_and_random_queries() {
     assert_eq!(bank.description.as_deref(), Some("数据结构"));
     assert_eq!(bank.question_count, 0);
 
-    let import_result = store
-        .create_questions_batch(
+    let import_result = QuestionRepository::new(open_store_at(&db_path))
+        .create_batch(
             bank.id,
             vec![
                 sample_single_question("第 1 题", "A"),
@@ -161,16 +167,18 @@ fn database_store_writes_bank_questions_and_random_queries() {
     assert_eq!(import_result.failed, 1);
     assert_eq!(import_result.errors[0].index, 2);
 
-    let banks = store.get_all_banks().expect("应能读取题库列表");
+    let banks = QuestionBankRepository::new(open_store_at(&db_path))
+        .list_all()
+        .expect("应能读取题库列表");
     assert_eq!(banks[0].question_count, 2);
 
-    let random = store
-        .get_random_questions(bank.id, Some(10), None)
+    let random = QuestionRepository::new(open_store_at(&db_path))
+        .get_random(bank.id, Some(10), None)
         .expect("应能随机抽题");
     assert_eq!(random.len(), 2);
 
-    let singles = store
-        .get_random_questions(bank.id, Some(10), Some("single".to_string()))
+    let singles = QuestionRepository::new(open_store_at(&db_path))
+        .get_random(bank.id, Some(10), Some("single".to_string()))
         .expect("应能按题型随机抽题");
     assert_eq!(singles.len(), 1);
     assert_eq!(singles[0].r#type, "single");
@@ -180,16 +188,24 @@ fn database_store_writes_bank_questions_and_random_queries() {
 fn database_store_persists_theme_setting() {
     let temp_dir = tempdir().expect("应能创建临时目录");
     let db_path = temp_dir.path().join("questpilot.db");
-    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
 
-    assert_eq!(store.get_theme().expect("应能读取默认主题"), "system");
+    assert_eq!(
+        SettingsRepository::new(open_store_at(&db_path))
+            .get_theme()
+            .expect("应能读取默认主题"),
+        "system"
+    );
 
-    store
+    SettingsRepository::new(open_store_at(&db_path))
         .set_theme("dark".to_string())
         .expect("应能保存主题设置");
 
-    let reopened = DatabaseStore::open(&db_path).expect("应能重新打开数据库");
-    assert_eq!(reopened.get_theme().expect("应能读取保存后的主题"), "dark");
+    assert_eq!(
+        SettingsRepository::new(open_store_at(&db_path))
+            .get_theme()
+            .expect("应能读取保存后的主题"),
+        "dark"
+    );
 }
 
 #[test]
@@ -198,18 +214,16 @@ fn database_store_can_open_from_legacy_candidate_when_target_is_missing() {
     let target_path = temp_dir.path().join("questpilot.db");
     let legacy_path = temp_dir.path().join("question-bank.db");
 
-    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建旧数据库");
-    legacy
-        .create_bank(CreateQuestionBankInput {
+    QuestionBankRepository::new(DatabaseStore::open(&legacy_path).expect("应能创建旧数据库"))
+        .create(CreateQuestionBankInput {
             name: "旧题库".to_string(),
             description: None,
         })
         .expect("旧数据库应能写入题库");
-    drop(legacy);
 
     let migrated = DatabaseStore::open_with_legacy_candidates(&target_path, &[legacy_path])
         .expect("应能从旧库候选路径迁移并打开");
-    let banks = migrated.get_all_banks().expect("应能读取迁移后的题库");
+    let banks = QuestionBankRepository::new(migrated).list_all().expect("应能读取迁移后的题库");
 
     assert!(target_path.exists());
     assert_eq!(banks.len(), 1);
@@ -222,22 +236,21 @@ fn database_store_replaces_empty_target_with_legacy_candidate() {
     let target_path = temp_dir.path().join("questpilot.db");
     let legacy_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
 
-    let target = DatabaseStore::open(&target_path).expect("应能创建 Tauri 空库");
-    assert!(target.get_all_banks().expect("应能读取空库题库").is_empty());
-    drop(target);
+    assert!(QuestionBankRepository::new(open_store_at(&target_path))
+        .list_all()
+        .expect("应能读取空库题库")
+        .is_empty());
 
-    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库");
-    legacy
-        .create_bank(CreateQuestionBankInput {
+    QuestionBankRepository::new(DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库"))
+        .create(CreateQuestionBankInput {
             name: "Electron 题库".to_string(),
             description: Some("来自 Electron 当前数据目录".to_string()),
         })
         .expect("候选库应能写入题库");
-    drop(legacy);
 
     let migrated = DatabaseStore::open_with_legacy_candidates(&target_path, &[legacy_path])
         .expect("应能用候选库替换无用户数据的 Tauri 空库");
-    let banks = migrated.get_all_banks().expect("应能读取迁移后的题库");
+    let banks = QuestionBankRepository::new(migrated).list_all().expect("应能读取迁移后的题库");
 
     assert_eq!(banks.len(), 1);
     assert_eq!(banks[0].name, "Electron 题库");
@@ -249,27 +262,23 @@ fn database_store_keeps_target_when_it_has_user_data() {
     let target_path = temp_dir.path().join("questpilot.db");
     let legacy_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
 
-    let target = DatabaseStore::open(&target_path).expect("应能创建 Tauri 库");
-    target
-        .create_bank(CreateQuestionBankInput {
+    QuestionBankRepository::new(open_store_at(&target_path))
+        .create(CreateQuestionBankInput {
             name: "Tauri 题库".to_string(),
             description: None,
         })
         .expect("Tauri 库应能写入题库");
-    drop(target);
 
-    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库");
-    legacy
-        .create_bank(CreateQuestionBankInput {
+    QuestionBankRepository::new(DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库"))
+        .create(CreateQuestionBankInput {
             name: "Electron 题库".to_string(),
             description: None,
         })
         .expect("Electron 候选库应能写入题库");
-    drop(legacy);
 
     let migrated = DatabaseStore::open_with_legacy_candidates(&target_path, &[legacy_path])
         .expect("目标库已有用户数据时应保留目标库");
-    let banks = migrated.get_all_banks().expect("应能读取目标库题库");
+    let banks = QuestionBankRepository::new(migrated).list_all().expect("应能读取目标库题库");
 
     assert_eq!(banks.len(), 1);
     assert_eq!(banks[0].name, "Tauri 题库");
@@ -281,23 +290,19 @@ fn legacy_database_status_reports_explicit_reset_needed() {
     let target_path = temp_dir.path().join("questpilot.db");
     let legacy_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
 
-    let target = DatabaseStore::open(&target_path).expect("应能创建 Tauri 库");
-    target
-        .create_bank(CreateQuestionBankInput {
+    QuestionBankRepository::new(open_store_at(&target_path))
+        .create(CreateQuestionBankInput {
             name: "Tauri 题库".to_string(),
             description: None,
         })
         .expect("Tauri 库应能写入题库");
-    drop(target);
 
-    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库");
-    legacy
-        .create_bank(CreateQuestionBankInput {
+    QuestionBankRepository::new(DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库"))
+        .create(CreateQuestionBankInput {
             name: "Electron 题库".to_string(),
             description: None,
         })
         .expect("Electron 候选库应能写入题库");
-    drop(legacy);
 
     let status =
         legacy_database_status(&target_path, &[legacy_path.clone()]).expect("应能读取旧库迁移状态");
@@ -315,23 +320,19 @@ fn replace_target_with_legacy_candidate_backs_up_existing_target() {
     let target_path = temp_dir.path().join("questpilot.db");
     let legacy_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
 
-    let target = DatabaseStore::open(&target_path).expect("应能创建 Tauri 库");
-    target
-        .create_bank(CreateQuestionBankInput {
+    QuestionBankRepository::new(open_store_at(&target_path))
+        .create(CreateQuestionBankInput {
             name: "Tauri 题库".to_string(),
             description: None,
         })
         .expect("Tauri 库应能写入题库");
-    drop(target);
 
-    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库");
-    legacy
-        .create_bank(CreateQuestionBankInput {
+    QuestionBankRepository::new(DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库"))
+        .create(CreateQuestionBankInput {
             name: "Electron 题库".to_string(),
             description: None,
         })
         .expect("Electron 候选库应能写入题库");
-    drop(legacy);
 
     let result = replace_target_with_legacy_candidate(
         &target_path,
@@ -342,13 +343,15 @@ fn replace_target_with_legacy_candidate_backs_up_existing_target() {
     .expect("应能显式备份并替换目标库");
 
     let backup_path = result.backup_path.expect("已有目标库时应创建备份");
-    let backup = DatabaseStore::open(&backup_path).expect("应能打开备份库");
-    let backup_banks = backup.get_all_banks().expect("应能读取备份库题库");
+    let backup_banks = QuestionBankRepository::new(open_store_at(&backup_path))
+        .list_all()
+        .expect("应能读取备份库题库");
     assert_eq!(backup_banks.len(), 1);
     assert_eq!(backup_banks[0].name, "Tauri 题库");
 
-    let replaced = DatabaseStore::open(&target_path).expect("应能打开替换后的目标库");
-    let replaced_banks = replaced.get_all_banks().expect("应能读取替换后的题库");
+    let replaced_banks = QuestionBankRepository::new(open_store_at(&target_path))
+        .list_all()
+        .expect("应能读取替换后的题库");
     assert_eq!(replaced_banks.len(), 1);
     assert_eq!(replaced_banks[0].name, "Electron 题库");
 }
@@ -359,14 +362,12 @@ fn replace_target_with_legacy_candidate_requires_confirmation() {
     let target_path = temp_dir.path().join("questpilot.db");
     let legacy_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
 
-    let legacy = DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库");
-    legacy
-        .create_bank(CreateQuestionBankInput {
+    QuestionBankRepository::new(DatabaseStore::open(&legacy_path).expect("应能创建 Electron 候选库"))
+        .create(CreateQuestionBankInput {
             name: "Electron 题库".to_string(),
             description: None,
         })
         .expect("Electron 候选库应能写入题库");
-    drop(legacy);
 
     let error = replace_target_with_legacy_candidate(
         &target_path,
@@ -387,14 +388,12 @@ fn replace_target_with_legacy_candidate_rejects_non_candidate_path() {
     let allowed_path = temp_dir.path().join("QuestPilot").join("questpilot.db");
     let external_path = temp_dir.path().join("Other").join("questpilot.db");
 
-    let external = DatabaseStore::open(&external_path).expect("应能创建外部库");
-    external
-        .create_bank(CreateQuestionBankInput {
+    QuestionBankRepository::new(DatabaseStore::open(&external_path).expect("应能创建外部库"))
+        .create(CreateQuestionBankInput {
             name: "不应导入的题库".to_string(),
             description: None,
         })
         .expect("外部库应能写入题库");
-    drop(external);
 
     let error = replace_target_with_legacy_candidate(
         &target_path,
@@ -433,17 +432,16 @@ fn legacy_database_candidates_include_current_electron_data_dirs() {
 fn database_store_updates_reads_and_deletes_banks() {
     let temp_dir = tempdir().expect("应能创建临时目录");
     let db_path = temp_dir.path().join("questpilot.db");
-    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
 
-    let bank = store
-        .create_bank(CreateQuestionBankInput {
+    let bank = QuestionBankRepository::new(open_store_at(&db_path))
+        .create(CreateQuestionBankInput {
             name: "原题库".to_string(),
             description: Some("原描述".to_string()),
         })
         .expect("应能创建题库");
 
-    let updated = store
-        .update_bank(
+    let updated = QuestionBankRepository::new(open_store_at(&db_path))
+        .update(
             bank.id,
             CreateQuestionBankInput {
                 name: "新题库".to_string(),
@@ -456,13 +454,17 @@ fn database_store_updates_reads_and_deletes_banks() {
     assert_eq!(updated.name, "新题库");
     assert_eq!(updated.description.as_deref(), Some("新描述"));
 
-    let by_id = store.get_bank_by_id(bank.id).expect("应能按 ID 读取题库");
+    let by_id = QuestionBankRepository::new(open_store_at(&db_path))
+        .find_by_id(bank.id)
+        .expect("应能按 ID 读取题库");
     assert_eq!(by_id.expect("题库应存在").name, "新题库");
 
-    store.delete_bank(bank.id).expect("应能删除题库");
+    QuestionBankRepository::new(open_store_at(&db_path))
+        .delete(bank.id)
+        .expect("应能删除题库");
 
-    assert!(store
-        .get_bank_by_id(bank.id)
+    assert!(QuestionBankRepository::new(open_store_at(&db_path))
+        .find_by_id(bank.id)
         .expect("删除后查询不应失败")
         .is_none());
 }
@@ -471,49 +473,46 @@ fn database_store_updates_reads_and_deletes_banks() {
 fn database_store_supports_question_crud_and_pagination_search() {
     let temp_dir = tempdir().expect("应能创建临时目录");
     let db_path = temp_dir.path().join("questpilot.db");
-    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
-    let bank = store
-        .create_bank(CreateQuestionBankInput {
-            name: "题库".to_string(),
-            description: None,
-        })
+
+    let bank = QuestionBankRepository::new(open_store_at(&db_path))
+        .create(CreateQuestionBankInput { name: "题库".to_string(), description: None })
         .expect("应能创建题库");
 
-    let first = store
-        .create_question(bank.id, sample_single_question("二叉树的高度", "A"))
+    let first = QuestionRepository::new(open_store_at(&db_path))
+        .create(bank.id, sample_single_question("二叉树的高度", "A"))
         .expect("应能创建题目");
-    let second = store
-        .create_question(bank.id, sample_boolean_question("图可以用邻接矩阵表示"))
+    let second = QuestionRepository::new(open_store_at(&db_path))
+        .create(bank.id, sample_boolean_question("图可以用邻接矩阵表示"))
         .expect("应能创建第二题");
 
     assert_eq!(first.bank_id, bank.id);
     assert_eq!(first.r#type, "single");
     assert_eq!(second.r#type, "boolean");
 
-    let page = store
-        .get_questions_by_bank_id(bank.id, 0, 1, None)
+    let page = QuestionRepository::new(open_store_at(&db_path))
+        .list_by_bank(bank.id, 0, 1, None)
         .expect("应能分页读取题目");
     assert_eq!(page.len(), 1);
 
-    let boolean_page = store
-        .get_questions_by_bank_id(bank.id, 0, 20, Some("boolean".to_string()))
+    let boolean_page = QuestionRepository::new(open_store_at(&db_path))
+        .list_by_bank(bank.id, 0, 20, Some("boolean".to_string()))
         .expect("应能按题型筛选读取题目");
     assert_eq!(boolean_page.len(), 1);
     assert_eq!(boolean_page[0].id, second.id);
 
-    let search = store
-        .search_questions(bank.id, "二叉树".to_string(), None, 0, 20)
+    let search = QuestionRepository::new(open_store_at(&db_path))
+        .search(bank.id, "二叉树".to_string(), None, 0, 20)
         .expect("应能搜索题干");
     assert_eq!(search.len(), 1);
     assert_eq!(search[0].id, first.id);
 
-    let total = store
-        .count_questions(bank.id, "".to_string(), None)
+    let total = QuestionRepository::new(open_store_at(&db_path))
+        .count(bank.id, "".to_string(), None)
         .expect("应能统计题目数量");
     assert_eq!(total, 2);
 
-    let updated = store
-        .update_question(
+    let updated = QuestionRepository::new(open_store_at(&db_path))
+        .update(
             first.id,
             CreateQuestionInput {
                 r#type: "single".to_string(),
@@ -532,18 +531,18 @@ fn database_store_supports_question_crud_and_pagination_search() {
     assert_eq!(updated.content, "平衡二叉树的特点");
     assert_eq!(updated.analysis.as_deref(), Some("AVL 树满足该性质"));
 
-    let by_id = store
-        .get_question_by_id(first.id)
+    let by_id = QuestionRepository::new(open_store_at(&db_path))
+        .find_by_id(first.id)
         .expect("按 ID 查询不应失败")
         .expect("题目应存在");
     assert_eq!(by_id.content, "平衡二叉树的特点");
 
-    store
-        .delete_questions(&[first.id, second.id])
+    QuestionRepository::new(open_store_at(&db_path))
+        .delete_batch(&[first.id, second.id])
         .expect("应能批量删除题目");
     assert_eq!(
-        store
-            .count_questions(bank.id, "".to_string(), None)
+        QuestionRepository::new(open_store_at(&db_path))
+            .count(bank.id, "".to_string(), None)
             .expect("删除后统计不应失败"),
         0
     );
@@ -553,26 +552,20 @@ fn database_store_supports_question_crud_and_pagination_search() {
 fn database_store_supports_practice_records_stats_and_logs() {
     let temp_dir = tempdir().expect("应能创建临时目录");
     let db_path = temp_dir.path().join("questpilot.db");
-    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
-    let bank = store
-        .create_bank(CreateQuestionBankInput {
-            name: "练习题库".to_string(),
-            description: None,
-        })
+
+    let bank = QuestionBankRepository::new(open_store_at(&db_path))
+        .create(CreateQuestionBankInput { name: "练习题库".to_string(), description: None })
         .expect("应能创建题库");
 
-    store
-        .create_questions_batch(
-            bank.id,
-            vec![
-                sample_single_question("排序算法", "A"),
-                sample_boolean_question("栈是先进后出结构"),
-            ],
-        )
+    QuestionRepository::new(open_store_at(&db_path))
+        .create_batch(bank.id, vec![
+            sample_single_question("排序算法", "A"),
+            sample_boolean_question("栈是先进后出结构"),
+        ])
         .expect("应能批量创建题目");
 
-    store
-        .save_practice_record(PracticeRecordInput {
+    PracticeRepository::new(open_store_at(&db_path))
+        .save_record(PracticeRecordInput {
             bank_id: bank.id,
             total: 2,
             correct: 1,
@@ -581,33 +574,37 @@ fn database_store_supports_practice_records_stats_and_logs() {
         })
         .expect("应能保存练习记录");
 
-    let records = store
-        .get_practice_records(bank.id, Some(10))
+    let records = PracticeRepository::new(open_store_at(&db_path))
+        .get_records(bank.id, Some(10))
         .expect("应能读取练习记录");
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].accuracy, 50);
 
-    let stats = store.get_all_practice_stats().expect("应能读取练习统计");
+    let stats = PracticeRepository::new(open_store_at(&db_path))
+        .get_all_stats()
+        .expect("应能读取练习统计");
     assert_eq!(stats.len(), 1);
     assert_eq!(stats[0].bank_id, bank.id);
     assert_eq!(stats[0].practice_count, 1);
     assert_eq!(stats[0].avg_accuracy, 50);
 
-    let dashboard = store.get_dashboard_stats().expect("应能读取仪表盘统计");
+    let dashboard = StatsRepository::new(open_store_at(&db_path))
+        .get_dashboard()
+        .expect("应能读取仪表盘统计");
     assert_eq!(dashboard.total_questions, 2);
     assert!(dashboard.today_questions >= 2);
     assert!(dashboard.week_questions >= 2);
     assert_eq!(dashboard.type_distribution.len(), 2);
 
-    let single_distribution = store
-        .get_question_count_by_type(Some(bank.id))
+    let single_distribution = StatsRepository::new(open_store_at(&db_path))
+        .get_type_distribution(Some(bank.id))
         .expect("应能按题库读取题型分布")
         .into_iter()
         .find(|item| item.r#type == "single")
         .expect("应包含单选题统计");
     assert_eq!(single_distribution.count, 1);
 
-    let logs = store
+    let logs = StatsRepository::new(open_store_at(&db_path))
         .get_operation_logs(Some(10))
         .expect("应能读取操作日志");
     assert!(!logs.is_empty());
@@ -618,118 +615,99 @@ fn database_store_supports_practice_records_stats_and_logs() {
 fn database_store_supports_wrong_book_workflow() {
     let temp_dir = tempdir().expect("应能创建临时目录");
     let db_path = temp_dir.path().join("questpilot.db");
-    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
-    let bank = store
-        .create_bank(CreateQuestionBankInput {
-            name: "错题题库".to_string(),
-            description: None,
-        })
+
+    let bank = QuestionBankRepository::new(open_store_at(&db_path))
+        .create(CreateQuestionBankInput { name: "错题题库".to_string(), description: None })
         .expect("应能创建题库");
-    let first = store
-        .create_question(bank.id, sample_single_question("错题 1", "A"))
+    let first = QuestionRepository::new(open_store_at(&db_path))
+        .create(bank.id, sample_single_question("错题 1", "A"))
         .expect("应能创建题目");
-    let second = store
-        .create_question(bank.id, sample_boolean_question("错题 2"))
+    let second = QuestionRepository::new(open_store_at(&db_path))
+        .create(bank.id, sample_boolean_question("错题 2"))
         .expect("应能创建第二题");
 
     assert_eq!(
-        store.get_wrong_book_threshold().expect("应能读取默认阈值"),
+        SettingsRepository::new(open_store_at(&db_path))
+            .get_wrong_book_threshold()
+            .expect("应能读取默认阈值"),
         3
     );
-    store
+    SettingsRepository::new(open_store_at(&db_path))
         .set_wrong_book_threshold(2)
         .expect("应能设置错题移除阈值");
     assert_eq!(
-        store.get_wrong_book_threshold().expect("应能读取保存阈值"),
+        SettingsRepository::new(open_store_at(&db_path))
+            .get_wrong_book_threshold()
+            .expect("应能读取保存阈值"),
         2
     );
 
-    store
-        .update_wrong_book_from_practice(
-            vec![
-                WrongBookPracticeResult {
-                    question_id: first.id,
-                    bank_id: bank.id,
-                    is_correct: false,
-                },
-                WrongBookPracticeResult {
-                    question_id: second.id,
-                    bank_id: bank.id,
-                    is_correct: false,
-                },
+    WrongBookRepository::new(open_store_at(&db_path))
+        .update_from_practice_tx(
+            &[
+                WrongBookPracticeResult { question_id: first.id, bank_id: bank.id, is_correct: false },
+                WrongBookPracticeResult { question_id: second.id, bank_id: bank.id, is_correct: false },
             ],
-            Some(2),
+            2,
         )
         .expect("应能同步错题本");
 
-    let counts = store
-        .get_wrong_book_counts_by_bank()
+    let counts = WrongBookRepository::new(open_store_at(&db_path))
+        .get_counts_by_bank()
         .expect("应能读取错题计数");
     assert_eq!(counts.len(), 1);
     assert_eq!(counts[0].bank_id, bank.id);
     assert_eq!(counts[0].count, 2);
 
-    let items = store
-        .get_wrong_book_items(Some(bank.id), 0, 20)
+    let items = WrongBookRepository::new(open_store_at(&db_path))
+        .get_items(Some(bank.id), 0, 20)
         .expect("应能读取错题列表");
     assert_eq!(items.len(), 2);
     assert!(items.iter().any(|item| item.question_id == first.id));
 
-    let random = store
-        .get_random_wrong_questions(Some(bank.id), Some(10))
+    let random = WrongBookRepository::new(open_store_at(&db_path))
+        .get_random_questions(Some(bank.id), Some(10))
         .expect("应能随机读取错题");
     assert_eq!(random.len(), 2);
 
-    store
-        .update_wrong_book_from_practice(
-            vec![
-                WrongBookPracticeResult {
-                    question_id: first.id,
-                    bank_id: bank.id,
-                    is_correct: true,
-                },
-                WrongBookPracticeResult {
-                    question_id: first.id,
-                    bank_id: bank.id,
-                    is_correct: true,
-                },
+    WrongBookRepository::new(open_store_at(&db_path))
+        .update_from_practice_tx(
+            &[
+                WrongBookPracticeResult { question_id: first.id, bank_id: bank.id, is_correct: true },
+                WrongBookPracticeResult { question_id: first.id, bank_id: bank.id, is_correct: true },
             ],
-            Some(2),
+            2,
         )
         .expect("连续答对应能同步错题本");
     assert_eq!(
-        store
-            .count_wrong_book_items(Some(bank.id))
+        WrongBookRepository::new(open_store_at(&db_path))
+            .count_items(Some(bank.id))
             .expect("应能统计错题数量"),
         1
     );
 
-    store
-        .remove_wrong_book_item(second.id)
+    WrongBookRepository::new(open_store_at(&db_path))
+        .remove_item(second.id)
         .expect("应能移除单个错题");
     assert_eq!(
-        store
-            .count_wrong_book_items(Some(bank.id))
+        WrongBookRepository::new(open_store_at(&db_path))
+            .count_items(Some(bank.id))
             .expect("移除后统计不应失败"),
         0
     );
 
-    store
-        .update_wrong_book_from_practice(
-            vec![WrongBookPracticeResult {
-                question_id: second.id,
-                bank_id: bank.id,
-                is_correct: false,
-            }],
-            None,
+    WrongBookRepository::new(open_store_at(&db_path))
+        .update_from_practice_tx(
+            &[WrongBookPracticeResult { question_id: second.id, bank_id: bank.id, is_correct: false }],
+            2,
         )
         .expect("应能使用默认阈值同步错题");
-    store
-        .clear_wrong_book(Some(bank.id))
+    WrongBookRepository::new(open_store_at(&db_path))
+        .clear(Some(bank.id))
         .expect("应能清空指定题库错题");
     assert_eq!(
-        store
-            .count_wrong_book_items(Some(bank.id))
+        WrongBookRepository::new(open_store_at(&db_path))
+            .count_items(Some(bank.id))
             .expect("清空后统计不应失败"),
         0
     );
@@ -739,38 +717,44 @@ fn database_store_supports_wrong_book_workflow() {
 fn database_store_supports_draft_and_api_config() {
     let temp_dir = tempdir().expect("应能创建临时目录");
     let db_path = temp_dir.path().join("questpilot.db");
-    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
 
-    assert!(store.load_draft().expect("读取空草稿不应失败").is_none());
+    assert!(DraftRepository::new(open_store_at(&db_path))
+        .load()
+        .expect("读取空草稿不应失败")
+        .is_none());
 
-    store
-        .save_draft(json!({
+    DraftRepository::new(open_store_at(&db_path))
+        .save(json!({
             "type": "single",
             "content": "CPU 的基本组成包括什么？",
             "answer": "运算器|控制器"
         }))
         .expect("应能保存草稿");
-    let draft = store
-        .load_draft()
+    let draft = DraftRepository::new(open_store_at(&db_path))
+        .load()
         .expect("应能读取草稿")
         .expect("草稿应存在");
     assert_eq!(draft["type"], "single");
     assert_eq!(draft["content"], "CPU 的基本组成包括什么？");
-    assert!(draft
-        .get("savedAt")
-        .and_then(|value| value.as_str())
-        .is_some());
+    assert!(draft.get("savedAt").and_then(|v| v.as_str()).is_some());
 
-    store.clear_draft().expect("应能清除草稿");
-    assert!(store.load_draft().expect("清除后读取不应失败").is_none());
+    DraftRepository::new(open_store_at(&db_path))
+        .clear()
+        .expect("应能清除草稿");
+    assert!(DraftRepository::new(open_store_at(&db_path))
+        .load()
+        .expect("清除后读取不应失败")
+        .is_none());
 
-    let default_config = store.get_api_config().expect("应能读取默认 API 配置");
+    let default_config = SettingsRepository::new(open_store_at(&db_path))
+        .get_api_config()
+        .expect("应能读取默认 API 配置");
     assert_eq!(default_config.api_url, "https://api.openai.com");
     assert_eq!(default_config.model_id, "gpt-3.5-turbo");
     assert_eq!(default_config.provider, "custom");
     assert_eq!(default_config.api_key, "");
 
-    store
+    SettingsRepository::new(open_store_at(&db_path))
         .set_api_config(ApiConfig {
             api_key: "token-test".to_string(),
             api_url: "https://api.example.com".to_string(),
@@ -778,13 +762,15 @@ fn database_store_supports_draft_and_api_config() {
             provider: "openai".to_string(),
         })
         .expect("应能保存 API 配置");
-    let saved_config = store.get_api_config().expect("应能读取保存后的 API 配置");
+    let saved_config = SettingsRepository::new(open_store_at(&db_path))
+        .get_api_config()
+        .expect("应能读取保存后的 API 配置");
     assert_eq!(saved_config.api_key, "token-test");
     assert_eq!(saved_config.api_url, "https://api.example.com");
     assert_eq!(saved_config.model_id, "model-x");
     assert_eq!(saved_config.provider, "openai");
 
-    store
+    SettingsRepository::new(open_store_at(&db_path))
         .set_api_config(ApiConfig {
             api_key: "   ".to_string(),
             api_url: "https://api.updated.example.com".to_string(),
@@ -792,7 +778,9 @@ fn database_store_supports_draft_and_api_config() {
             provider: "custom".to_string(),
         })
         .expect("空 API Key 应保留已有配置");
-    let preserved_config = store.get_api_config().expect("应能读取保留后的 API 配置");
+    let preserved_config = SettingsRepository::new(open_store_at(&db_path))
+        .get_api_config()
+        .expect("应能读取保留后的 API 配置");
     assert_eq!(preserved_config.api_key, "token-test");
     assert_eq!(preserved_config.api_url, "https://api.updated.example.com");
     assert_eq!(preserved_config.model_id, "model-y");
@@ -803,15 +791,16 @@ fn database_store_supports_draft_and_api_config() {
 fn database_store_supports_prompt_crud_with_default_prompt_guard() {
     let temp_dir = tempdir().expect("应能创建临时目录");
     let db_path = temp_dir.path().join("questpilot.db");
-    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
 
-    let prompts = store.get_all_prompts().expect("应能读取 Prompt 列表");
+    let prompts = PromptRepository::new(open_store_at(&db_path))
+        .list_all()
+        .expect("应能读取 Prompt 列表");
     assert_eq!(prompts.len(), 1);
     assert!(prompts[0].is_default);
     assert_eq!(prompts[0].name, "默认");
 
-    let created = store
-        .create_prompt(CreatePromptInput {
+    let created = PromptRepository::new(open_store_at(&db_path))
+        .create(CreatePromptInput {
             name: "  考研导师  ".to_string(),
             content: "  先诊断用户哪里没懂，再回答。  ".to_string(),
         })
@@ -820,8 +809,8 @@ fn database_store_supports_prompt_crud_with_default_prompt_guard() {
     assert_eq!(created.content, "先诊断用户哪里没懂，再回答。");
     assert!(!created.is_default);
 
-    let updated = store
-        .update_prompt(
+    let updated = PromptRepository::new(open_store_at(&db_path))
+        .update(
             created.id,
             CreatePromptInput {
                 name: "408 导师".to_string(),
@@ -832,23 +821,22 @@ fn database_store_supports_prompt_crud_with_default_prompt_guard() {
         .expect("Prompt 应存在");
     assert_eq!(updated.name, "408 导师");
 
-    let by_id = store
-        .get_prompt_by_id(created.id)
+    let by_id = PromptRepository::new(open_store_at(&db_path))
+        .find_by_id(created.id)
         .expect("按 ID 读取 Prompt 不应失败")
         .expect("Prompt 应存在");
     assert_eq!(by_id.content, "用 408 复习视角回答。");
 
-    let default_prompt = prompts
-        .into_iter()
-        .find(|prompt| prompt.is_default)
-        .unwrap();
-    assert!(store.delete_prompt(default_prompt.id).is_err());
+    let default_prompt = prompts.into_iter().find(|p| p.is_default).unwrap();
+    assert!(PromptRepository::new(open_store_at(&db_path))
+        .delete(default_prompt.id)
+        .is_err());
 
-    store
-        .delete_prompt(created.id)
+    PromptRepository::new(open_store_at(&db_path))
+        .delete(created.id)
         .expect("应能删除非默认 Prompt");
-    assert!(store
-        .get_prompt_by_id(created.id)
+    assert!(PromptRepository::new(open_store_at(&db_path))
+        .find_by_id(created.id)
         .expect("删除后查询不应失败")
         .is_none());
 }
@@ -857,16 +845,16 @@ fn database_store_supports_prompt_crud_with_default_prompt_guard() {
 fn database_store_supports_chat_history_crud() {
     let temp_dir = tempdir().expect("应能创建临时目录");
     let db_path = temp_dir.path().join("questpilot.db");
-    let store = DatabaseStore::open(&db_path).expect("应能打开数据库");
-    let prompt = store
-        .create_prompt(CreatePromptInput {
+
+    let prompt = PromptRepository::new(open_store_at(&db_path))
+        .create(CreatePromptInput {
             name: "答疑 Prompt".to_string(),
             content: "保持简洁。".to_string(),
         })
         .expect("应能创建 Prompt");
 
-    let saved = store
-        .save_chat_history(ChatHistoryInput {
+    let saved = ChatHistoryRepository::new(open_store_at(&db_path))
+        .save(ChatHistoryInput {
             title: Some("  二叉树问题  ".to_string()),
             messages: json!([
                 { "role": "user", "content": "什么是满二叉树？" },
@@ -888,15 +876,15 @@ fn database_store_supports_chat_history_crud() {
             == 2
     );
 
-    let list = store
-        .get_all_chat_history(Some(50))
+    let list = ChatHistoryRepository::new(open_store_at(&db_path))
+        .list_all(Some(50))
         .expect("应能读取聊天记录列表");
     assert_eq!(list.len(), 1);
     assert_eq!(list[0].id, saved.id);
     assert!(list[0].messages.is_none());
 
-    let updated = store
-        .update_chat_history(
+    let updated = ChatHistoryRepository::new(open_store_at(&db_path))
+        .update(
             saved.id,
             json!([
                 { "role": "user", "content": "更新后的问题" },
@@ -910,8 +898,8 @@ fn database_store_supports_chat_history_crud() {
         "更新后的问题"
     );
 
-    let by_id = store
-        .get_chat_history_by_id(saved.id)
+    let by_id = ChatHistoryRepository::new(open_store_at(&db_path))
+        .find_by_id(saved.id)
         .expect("按 ID 读取聊天记录不应失败")
         .expect("聊天记录应存在");
     assert_eq!(
@@ -919,11 +907,11 @@ fn database_store_supports_chat_history_crud() {
         "更新后的回答"
     );
 
-    store
-        .delete_chat_history(saved.id)
+    ChatHistoryRepository::new(open_store_at(&db_path))
+        .delete(saved.id)
         .expect("应能删除聊天记录");
-    assert!(store
-        .get_chat_history_by_id(saved.id)
+    assert!(ChatHistoryRepository::new(open_store_at(&db_path))
+        .find_by_id(saved.id)
         .expect("删除后查询不应失败")
         .is_none());
 }

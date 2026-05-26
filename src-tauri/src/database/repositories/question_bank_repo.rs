@@ -1,6 +1,7 @@
 use rusqlite::{params, OptionalExtension};
 
 use crate::database::{CreateQuestionBankInput, DatabaseStore, QuestionBank};
+use super::super::validation::{normalize_description, validate_bank_name};
 
 /// 题库数据访问对象（Phase 2：通过 `DatabaseStore::with_connection` /
 /// `with_transaction` 直接访问 `rusqlite::Connection` / `Transaction`）。
@@ -108,26 +109,6 @@ impl QuestionBankRepository {
 }
 
 // ── 私有 SQL helper（接受 &Connection；行为与对应 queries.rs / validation.rs 函数一致）
-
-/// 题库名称校验：去空格、不能为空、最多 50 字符。
-fn validate_bank_name(name: &str) -> Result<String, String> {
-    let trimmed = name.trim();
-    if trimmed.is_empty() {
-        return Err("题库名称不能为空".to_string());
-    }
-    if trimmed.chars().count() > 50 {
-        return Err("题库名称长度不能超过50字符".to_string());
-    }
-    Ok(trimmed.to_string())
-}
-
-/// 题库描述归一化：去空格后为空则返回 `None`。
-fn normalize_description(description: Option<String>) -> Option<String> {
-    description.and_then(|v| {
-        let trimmed = v.trim();
-        if trimmed.is_empty() { None } else { Some(trimmed.to_string()) }
-    })
-}
 
 /// 写入操作日志一行。
 fn add_operation_log_sql(

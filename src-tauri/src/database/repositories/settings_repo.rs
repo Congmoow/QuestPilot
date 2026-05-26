@@ -1,6 +1,7 @@
 use rusqlite::{params, OptionalExtension};
 
 use crate::database::{ApiConfig, DatabaseStore};
+use super::super::validation::default_if_blank;
 
 const KEYCHAIN_SERVICE: &str = "questpilot";
 const KEYCHAIN_ACCOUNT: &str = "ai_api_key";
@@ -208,7 +209,3 @@ fn add_operation_log_sql(
     Ok(())
 }
 
-fn default_if_blank(value: &str, default: &str) -> String {
-    let t = value.trim();
-    if t.is_empty() { default.to_string() } else { t.to_string() }
-}
