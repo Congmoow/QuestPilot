@@ -19,11 +19,9 @@ export const queryKeys = {
   dashboard: {
     stats: () => ['dashboard', 'stats'] as const,
     operationLogs: (limit: number) => ['dashboard', 'operationLogs', limit] as const,
-    typeDistribution: (bankId: number | null) =>
-      ['dashboard', 'typeDistribution', bankId] as const,
+    typeDistribution: (bankId: number | null) => ['dashboard', 'typeDistribution', bankId] as const,
     practiceStats: () => ['dashboard', 'practiceStats'] as const,
-    practiceRecords: (bankId: number | null) =>
-      ['dashboard', 'practiceRecords', bankId] as const,
+    practiceRecords: (bankId: number | null) => ['dashboard', 'practiceRecords', bankId] as const,
   },
   wrongBook: {
     items: (bankId: number | null, page: number, pageSize: number) =>

@@ -55,8 +55,7 @@ export const useWrongBook = () => {
   const loadError = itemsError instanceof Error ? itemsError.message : null;
   const loading = fetchingItems || practicing2;
 
-  const invalidateItems = () =>
-    qc.invalidateQueries({ queryKey: ['wrongBook', 'items'] });
+  const invalidateItems = () => qc.invalidateQueries({ queryKey: ['wrongBook', 'items'] });
 
   const { mutateAsync: removeMutation } = useMutation({
     mutationFn: (questionId: number) => api.wrongBook.removeItem(questionId),

@@ -117,12 +117,15 @@ export function QuestionProvider({ children }: { children: ReactNode }) {
     if (options.type !== undefined) setFilterType(options.type ?? null);
   }, []);
 
-  const search = useCallback(async (bankId: number, keyword: string, options: QueryOptions = {}) => {
-    setCurrentBankId(bankId);
-    setSearchKeyword(keyword);
-    setPage(options.page ?? 1);
-    if (options.type !== undefined) setFilterType(options.type ?? null);
-  }, []);
+  const search = useCallback(
+    async (bankId: number, keyword: string, options: QueryOptions = {}) => {
+      setCurrentBankId(bankId);
+      setSearchKeyword(keyword);
+      setPage(options.page ?? 1);
+      if (options.type !== undefined) setFilterType(options.type ?? null);
+    },
+    [],
+  );
 
   const addQuestion = useCallback(
     (data: CreateQuestionInput) => createMutation(data),
@@ -155,10 +158,7 @@ export function QuestionProvider({ children }: { children: ReactNode }) {
 
   const clearSelection = useCallback(() => setSelectedIds([]), []);
 
-  const selectAll = useCallback(
-    () => setSelectedIds(questions.map((q) => q.id)),
-    [questions],
-  );
+  const selectAll = useCallback(() => setSelectedIds(questions.map((q) => q.id)), [questions]);
 
   const reset = useCallback(() => {
     setCurrentBankId(null);

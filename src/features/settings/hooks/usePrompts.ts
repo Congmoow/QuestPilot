@@ -49,7 +49,10 @@ export const usePrompts = () => {
     if (!promptName.trim() || !promptContent.trim()) return;
     try {
       if (editingPrompt) {
-        await updateMutation({ id: editingPrompt.id, data: { name: promptName, content: promptContent } });
+        await updateMutation({
+          id: editingPrompt.id,
+          data: { name: promptName, content: promptContent },
+        });
       } else {
         await createMutation({ name: promptName, content: promptContent });
       }

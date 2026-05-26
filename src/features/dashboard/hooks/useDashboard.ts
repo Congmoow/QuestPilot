@@ -43,7 +43,11 @@ export const useDashboard = () => {
   const [isBankManuallySelected, setIsBankManuallySelected] = useState(false);
   const [selectedTypeBankId, setSelectedTypeBankId] = useState<number | null>(null);
 
-  const { data: dashboardStats, isLoading: loadingStats, error: statsError } = useQuery({
+  const {
+    data: dashboardStats,
+    isLoading: loadingStats,
+    error: statsError,
+  } = useQuery({
     queryKey: queryKeys.dashboard.stats(),
     queryFn: getDashboardStats,
   });
@@ -88,7 +92,6 @@ export const useDashboard = () => {
     weekQuestions: 0,
     typeDistribution: [],
   };
-
 
   const practiceLastTimeByBankId = useMemo(
     () =>
