@@ -19,6 +19,8 @@ mod settings;
 mod stats;
 mod wrong_book;
 
+pub mod repositories;
+
 pub use legacy::{
     legacy_database_candidates, legacy_database_status, replace_target_with_legacy_candidate,
     LegacyDatabaseCandidate, LegacyDatabaseReplaceResult, LegacyDatabaseStatus,
@@ -28,6 +30,10 @@ pub use types::{
     CreateQuestionInput, DashboardStats, ImportError, ImportResult, OperationLog, PracticeRecord,
     PracticeRecordInput, PracticeStats, Prompt, Question, QuestionBank, TypeDistribution,
     WrongBookCount, WrongBookItem, WrongBookPracticeResult,
+};
+pub use repositories::{
+    PracticeRepository, QuestionBankRepository, QuestionRepository, SettingsRepository,
+    WrongBookRepository,
 };
 
 use legacy::migrate_legacy_database;
