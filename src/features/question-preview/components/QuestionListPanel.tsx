@@ -1,10 +1,10 @@
+import { useState } from 'react';
 import {
   ArrowLeft,
   BookOpen,
   Download,
   Edit,
   Filter,
-  Loader2,
   Plus,
   Search,
   Trash2,
@@ -19,16 +19,18 @@ import CodeAwareText from '../../../components/CodeAwareText';
 import {
   ActionButton,
   AlertBanner,
+  DataTableShell,
   EmptyState,
   IconButton,
   PageHeader,
+  QuestionDetailSheet,
   SearchInput,
   SelectInput,
   SurfaceCard,
-  ToolbarCard,
+  TableSkeleton,
   TypeBadge,
 } from '../../../components/ui';
-import type { QuestionType } from '../../../api';
+import type { Question, QuestionType } from '../../../api';
 import type { QuestionPreviewState } from '../hooks/useQuestionPreview';
 
 const typeMap: Record<QuestionType, { label: string }> = {
@@ -113,7 +115,19 @@ const QuestionListPanel = ({
   handleSaveEditQuestion,
   clearSelection,
 }: QuestionListPanelProps) => {
+  const [viewingQuestion, setViewingQuestion] = useState<Question | null>(null);
+
   if (!selectedBank) return null;
+
+  const handleSheetEdit = (question: Question) => {
+    setViewingQuestion(null);
+    handleOpenEditQuestion(question, { stopPropagation: () => {} } as Parameters<typeof handleOpenEditQuestion>[1]);
+  };
+
+  const handleSheetDelete = (id: number) => {
+    setViewingQuestion(null);
+    handleDeleteSingleQuestion(id, { stopPropagation: () => {} } as Parameters<typeof handleDeleteSingleQuestion>[1]);
+  };
 
   return (
     <div className="space-y-6">
@@ -164,59 +178,55 @@ const QuestionListPanel = ({
         </span>
       </div>
 
-      <ToolbarCard>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-          <SearchInput
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onEnter={handleSearch}
-            onClear={handleClearSearch}
-            placeholder="搜索题目内容..."
-            className="w-full lg:max-w-md"
-          />
-          <ActionButton icon={Search} onClick={handleSearch}>
-            搜索
-          </ActionButton>
-          <div className="flex items-center gap-2 text-sm font-semibold text-gray-500">
-            <Filter size={18} />
-            题型筛选
+      <DataTableShell
+        toolbar={
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+            <SearchInput
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onEnter={handleSearch}
+              onClear={handleClearSearch}
+              placeholder="搜索题目内容..."
+              className="w-full lg:max-w-md"
+            />
+            <ActionButton icon={Search} onClick={handleSearch}>
+              搜索
+            </ActionButton>
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-500">
+              <Filter size={18} />
+              题型筛选
+            </div>
+            <SelectInput
+              value={filterType || 'all'}
+              onChange={(e) => handleTypeFilter(e.target.value as TypeFilterValue)}
+              className="w-full lg:w-44"
+            >
+              <option value="all">所有题型</option>
+              <option value="single">单选题</option>
+              <option value="multiple">多选题</option>
+              <option value="boolean">判断题</option>
+              <option value="fill">填空题</option>
+              <option value="short">简答题</option>
+            </SelectInput>
           </div>
-          <SelectInput
-            value={filterType || 'all'}
-            onChange={(e) => handleTypeFilter(e.target.value as TypeFilterValue)}
-            className="w-full lg:w-44"
-          >
-            <option value="all">所有题型</option>
-            <option value="single">单选题</option>
-            <option value="multiple">多选题</option>
-            <option value="boolean">判断题</option>
-            <option value="fill">填空题</option>
-            <option value="short">简答题</option>
-          </SelectInput>
-        </div>
-      </ToolbarCard>
+        }
+      >
+        {searchKeyword && (
+          <AlertBanner type="info">
+            搜索"{searchKeyword}"的结果：{total} 条
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="ml-2 font-semibold text-primary hover:underline"
+            >
+              清除搜索
+            </button>
+          </AlertBanner>
+        )}
 
-      {searchKeyword && (
-        <AlertBanner type="info">
-          搜索"{searchKeyword}"的结果：{total} 条
-          <button
-            type="button"
-            onClick={handleClearSearch}
-            className="ml-2 font-semibold text-primary hover:underline"
-          >
-            清除搜索
-          </button>
-        </AlertBanner>
-      )}
+        {questionsError && <AlertBanner type="danger">{questionsError}</AlertBanner>}
 
-      {questionsError && <AlertBanner type="danger">{questionsError}</AlertBanner>}
-
-      {questionsLoading && (
-        <SurfaceCard className="flex min-h-[240px] items-center justify-center gap-3 text-gray-500">
-          <Loader2 className="size-6 animate-spin text-primary" />
-          <span className="font-semibold">题目加载中...</span>
-        </SurfaceCard>
-      )}
+        {questionsLoading && <TableSkeleton />}
 
       {!questionsLoading && questions.length === 0 && (
         <SurfaceCard padding="p-8">
@@ -254,8 +264,9 @@ const QuestionListPanel = ({
                   initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.03 }}
+                  onClick={() => setViewingQuestion(q)}
                   className={cn(
-                    'ui-card group p-6 transition-all duration-200',
+                    'ui-card group cursor-pointer p-6 transition-all duration-200',
                     selectedIds.includes(q.id)
                       ? 'border-primary ring-2 ring-primary/20'
                       : 'hover:border-blue-200',
@@ -267,6 +278,7 @@ const QuestionListPanel = ({
                       className="mt-2 size-4 rounded border-gray-300 text-primary"
                       checked={selectedIds.includes(q.id)}
                       onChange={() => handleSelectOne(q.id)}
+                      onClick={(e) => e.stopPropagation()}
                     />
                     <div className="min-w-0 flex-1 space-y-4">
                       <div className="flex flex-wrap items-center gap-3">
@@ -372,6 +384,16 @@ const QuestionListPanel = ({
           </div>
         </SurfaceCard>
       )}
+
+      </DataTableShell>
+
+      <QuestionDetailSheet
+        question={viewingQuestion}
+        open={viewingQuestion !== null}
+        onClose={() => setViewingQuestion(null)}
+        onEdit={handleSheetEdit}
+        onDelete={handleSheetDelete}
+      />
 
       <ConfirmDialog
         open={deleteQuestionsDialogOpen}

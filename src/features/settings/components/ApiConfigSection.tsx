@@ -1,7 +1,8 @@
+import { useEffect } from 'react';
 import { Cpu, Globe, Key, TestTube } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   ActionButton,
-  AlertBanner,
   Field,
   PasswordInput,
   SelectInput,
@@ -33,6 +34,22 @@ const ApiConfigSection = () => {
     handleSaveApiConfig,
     handleTestConnection,
   } = useApiConfig();
+
+  useEffect(() => {
+    if (saved) {
+      toast.success('配置已保存');
+    }
+  }, [saved]);
+
+  useEffect(() => {
+    if (testResult) {
+      if (testResult.success) {
+        toast.success(testResult.message || 'API 连接成功');
+      } else {
+        toast.error(testResult.message || 'API 连接失败');
+      }
+    }
+  }, [testResult]);
 
   return (
     <SurfaceCard padding="p-6">
@@ -150,14 +167,6 @@ const ApiConfigSection = () => {
       </div>
 
       <div className="mt-5 space-y-3">
-        {testResult && (
-          <AlertBanner type={testResult.success ? 'success' : 'danger'}>
-            {testResult.message}
-          </AlertBanner>
-        )}
-
-        {saved && <AlertBanner type="success">配置已保存</AlertBanner>}
-
         <div className="flex flex-wrap gap-3">
           <ActionButton onClick={handleSaveApiConfig} disabled={saving} loading={saving}>
             保存配置

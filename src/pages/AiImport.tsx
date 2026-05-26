@@ -1,5 +1,7 @@
-import { CheckCircle, Code, Save, Trash2, Wand2, XCircle } from 'lucide-react';
+import { useEffect } from 'react';
+import { Code, Save, Trash2, Wand2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   ActionButton,
   AlertBanner,
@@ -7,6 +9,7 @@ import {
   PageHeader,
   ParsedQuestionItem,
   ParseEmptyState,
+  ParseResultSkeleton,
   SelectInput,
   SegmentedTabs,
   SurfaceCard,
@@ -98,6 +101,17 @@ const AiImport = () => {
 
   const currentInput = mode === 'ai' ? inputText : jsonInput;
   const currentPlaceholder = mode === 'ai' ? AI_PLACEHOLDER : JSON_PLACEHOLDER;
+
+  useEffect(() => {
+    if (!importResult) return;
+    if (importResult.failed === 0) {
+      toast.success(`导入成功！共 ${importResult.success} 道题目`);
+    } else {
+      toast.warning(
+        `部分导入失败：成功 ${importResult.success} 道，失败 ${importResult.failed} 道`,
+      );
+    }
+  }, [importResult]);
 
   return (
     <div className="space-y-6">
@@ -223,7 +237,9 @@ const AiImport = () => {
               </AlertBanner>
             )}
 
-            {parsedQuestions.length === 0 ? (
+            {parsing ? (
+              <ParseResultSkeleton />
+            ) : parsedQuestions.length === 0 ? (
               <ParseEmptyState />
             ) : (
               <div className="max-h-[442px] space-y-3 overflow-y-auto pr-1">
@@ -254,31 +270,19 @@ const AiImport = () => {
             </ActionButton>
           )}
 
-          {importResult && (
-            <AlertBanner
-              type={importResult.failed === 0 ? 'success' : 'warning'}
-              title={importResult.failed === 0 ? '导入成功' : '部分导入失败'}
-            >
-              <div className="flex items-center gap-2">
-                {importResult.failed === 0 ? <CheckCircle size={18} /> : <XCircle size={18} />}
-                <span>
-                  成功导入 {importResult.success} 道题目
-                  {importResult.failed > 0 && `，${importResult.failed} 道失败`}
-                </span>
+          {importResult && importResult.failed > 0 && importResult.errors?.length > 0 && (
+            <AlertBanner type="warning" title="失败详情">
+              <div className="mt-2 space-y-2">
+                {importResult.errors.map((item, index) => (
+                  <div
+                    key={`${item.index ?? index}-${index}`}
+                    className="rounded-xl bg-white/60 px-3 py-2 text-sm dark:bg-gray-900/30"
+                  >
+                    <span className="font-semibold">第 {(item.index ?? index) + 1} 道：</span>
+                    {item.message || '导入失败'}
+                  </div>
+                ))}
               </div>
-              {importResult.failed > 0 && importResult.errors?.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {importResult.errors.map((item, index) => (
-                    <div
-                      key={`${item.index ?? index}-${index}`}
-                      className="rounded-xl bg-white/60 px-3 py-2 text-sm dark:bg-gray-900/30"
-                    >
-                      <span className="font-semibold">第 {(item.index ?? index) + 1} 道：</span>
-                      {item.message || '导入失败'}
-                    </div>
-                  ))}
-                </div>
-              )}
             </AlertBanner>
           )}
         </div>
