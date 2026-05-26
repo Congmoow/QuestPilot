@@ -5,9 +5,10 @@ English | [简体中文](README.zh-CN.md)
 **QuestPilot** is a local-first, AI-powered desktop application for building, practising, and analysing question banks. All data stays on your machine — no cloud account required. Built with **Tauri 2 + React 18 + Rust + SQLite**.
 
 ![Tauri](https://img.shields.io/badge/Tauri-2.x-24C8DB?logo=tauri&logoColor=white)
-![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react&logoColor=white)
-![Rust](https://img.shields.io/badge/Rust-1.7x-orange?logo=rust&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-bundled-003B57?logo=sqlite&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![Rust](https://img.shields.io/badge/Rust-Backend-000000?logo=rust&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-Local--First-003B57?logo=sqlite&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-Type--Safe-3178C6?logo=typescript&logoColor=white)
 ![License](https://img.shields.io/badge/License-Study%20Only-lightgrey)
 
 ---
@@ -52,44 +53,17 @@ Tauri Command  →  Service  →  Repository  →  DatabaseStore (with_connectio
 
 ### Transaction-Safe Batch Operations
 
-Batch imports and wrong-book updates execute inside a single `rusqlite::Transaction`, guaranteeing atomicity:
-
-```rust
-// Wrong-book update: orphan cleanup + wrong-count upsert + correct-count increment + threshold DELETE
-self.store.with_transaction(|tx| {
-    cleanup_orphans_sql(tx)?;
-    for result in results { /* ... */ }
-    Ok(())
-})?;
-// Operation log written after commit in a separate with_connection call
-```
-
-Any SQL failure auto-rolls back the entire batch — no partial state is left behind.
+Batch imports and wrong-book updates run inside a single `rusqlite::Transaction`. Any SQL failure auto-rolls back the entire batch — no partial state is left behind. The wrong-book update covers orphan cleanup, wrong-count upsert, correct-count increment, and threshold deletion in one atomic unit.
 
 ### Async-Safe AI Commands (`!Send` Two-Phase Pattern)
 
-`DatabaseStore` holds a `RefCell<Connection>`, making it `!Send`. Tauri async commands must hold no `!Send` types across `.await`. The solution is a strict two-phase pattern enforced in every async command:
-
-```rust
-pub async fn ai_parse_questions(app: AppHandle, content: String) -> Result<Value, AppError> {
-    // Phase 1: synchronous — all DB access completes, store/service dropped at statement end
-    let config = SettingsService::new(open_store(&app)?).get_api_config()?;
-    // Phase 2: async — no !Send types alive
-    parse_questions_with_ai(&config, &content).await
-}
-```
+`DatabaseStore` wraps `RefCell<Connection>` and is therefore `!Send`. Every async Tauri command follows a strict two-phase pattern: all DB access completes and the store is dropped **before** any `.await`, satisfying Rust’s `Send` bound without unsafe code.
 
 ### Credential Handling
 
-AI API keys are stored in the **system keychain** (Windows Credential Manager via the `keyring` crate) when available. If the keychain write fails — or if a plaintext key was saved by an earlier app version — the app transparently falls back to SQLite and attempts keychain migration on next read:
+AI API keys are stored in the **system keychain** (Windows Credential Manager via the `keyring` crate) when available. If the keychain write fails — or if a key was saved in plaintext by an older app version — the app transparently falls back to SQLite and attempts migration on the next read.
 
-```rust
-// get_api_config: try keychain first, migrate legacy SQLite key if found
-let api_key = match read_keychain_key() {
-    Some(key) => key,
-    None => { /* attempt migration from SQLite */ legacy_key }
-};
-```
+> Full design details and code invariants are documented in [src-tauri/ARCHITECTURE.md](src-tauri/ARCHITECTURE.md).
 
 ### Versioned SQLite Schema Migration
 
@@ -247,10 +221,10 @@ Test layout:
 
 ## Roadmap
 
-- [ ] macOS support (keychain integration via `keyring` is already cross-platform)
-- [ ] Export to Anki-compatible format
-- [ ] Shared question bank via local network sync
-- [ ] Richer practice modes (timed exam, spaced repetition)
+- Add more repository-level integration tests
+- Improve backup and restore workflows
+- Support additional import formats such as TOML and Markdown
+- Explore richer practice analytics and spaced repetition strategies
 
 ---
 
