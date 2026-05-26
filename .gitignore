@@ -13,12 +13,10 @@ src-tauri/target/
 # Kiro IDE
 .kiro/
 
-# Local tests
-tests/*
-!src-tauri/tests/
-!src-tauri/tests/**
-!tests/e2e/
-!tests/e2e/**
+# Test outputs
+coverage/
+test-results/
+playwright-report/
 
 # Logs
 *.log
@@ -59,7 +57,8 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 
-# Electron
+# Electron (legacy, not maintained)
+# 防止本地敏感配置测试和 Electron legacy 测试意外入库
 *.asar
 electron/
 electron-builder.json

@@ -47,7 +47,7 @@ test.describe('题库管理', () => {
     await page.waitForTimeout(500);
 
     const createBtn = page.getByRole('button', { name: /新建|创建|添加题库/ });
-    if (await createBtn.count() > 0) {
+    if ((await createBtn.count()) > 0) {
       await createBtn.first().click();
       // 对话框或表单应出现
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 3000 });

@@ -47,10 +47,11 @@ test.describe('设置页 — API 配置', () => {
 
     // provider / model 选择区域
     const body = page.locator('body');
-    const hasProvider = await body.evaluate((el) =>
-      el.textContent?.includes('服务商') ||
-      el.textContent?.includes('模型') ||
-      el.textContent?.includes('API'),
+    const hasProvider = await body.evaluate(
+      (el) =>
+        el.textContent?.includes('服务商') ||
+        el.textContent?.includes('模型') ||
+        el.textContent?.includes('API'),
     );
     expect(hasProvider).toBeTruthy();
   });
