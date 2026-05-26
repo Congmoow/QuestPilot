@@ -41,6 +41,7 @@ fn delete_keychain_key() {
 }
 
 impl DatabaseStore {
+    /// 兼容入口保留；新主路径由 [`SettingsRepository::get_theme`] 直接访问 Connection。
     pub fn get_theme(&self) -> Result<String, String> {
         let connection = self.connection.borrow();
         let theme = connection
@@ -59,6 +60,7 @@ impl DatabaseStore {
         }
     }
 
+    /// 兼容入口保留；新主路径由 [`SettingsRepository::set_theme`] 直接访问 Connection。
     pub fn set_theme(&self, theme: String) -> Result<(), String> {
         if !matches!(theme.as_str(), "light" | "dark" | "system") {
             return Err("无效的主题设置".to_string());
@@ -74,6 +76,7 @@ impl DatabaseStore {
         Ok(())
     }
 
+    /// 兼容入口保留；新主路径由 [`SettingsRepository::get_wrong_book_threshold`] 直接访问 Connection。
     pub fn get_wrong_book_threshold(&self) -> Result<i64, String> {
         let connection = self.connection.borrow();
         get_setting(&connection, "wrong_book_threshold")?
@@ -82,6 +85,7 @@ impl DatabaseStore {
             .map_or(Ok(3), Ok)
     }
 
+    /// 兼容入口保留；新主路径由 [`SettingsRepository::set_wrong_book_threshold`] 直接访问 Connection。
     pub fn set_wrong_book_threshold(&self, threshold: i64) -> Result<(), String> {
         let safe_threshold = if threshold > 0 { threshold } else { 3 };
         let connection = self.connection.borrow();
@@ -97,6 +101,7 @@ impl DatabaseStore {
         )
     }
 
+    /// 兼容入口保留；新主路径由 [`SettingsRepository::get_api_config`] 直接访问 Connection（含 keychain 路径）。
     pub fn get_api_config(&self) -> Result<ApiConfig, String> {
         let connection = self.connection.borrow();
 
@@ -138,6 +143,7 @@ impl DatabaseStore {
         })
     }
 
+    /// 兼容入口保留；新主路径由 [`SettingsRepository::set_api_config`] 直接访问 Connection（含 keychain 路径）。
     pub fn set_api_config(&self, config: ApiConfig) -> Result<(), String> {
         let connection = self.connection.borrow();
 
@@ -171,6 +177,7 @@ impl DatabaseStore {
         add_operation_log(&connection, "更改设置", "更新 AI API 配置")
     }
 
+    /// 兼容入口保留；新主路径由 [`DraftRepository::save`] 直接访问 Connection。
     pub fn save_draft(&self, data: serde_json::Value) -> Result<(), String> {
         if !data.is_object() {
             return Err("草稿数据无效".to_string());
@@ -189,6 +196,7 @@ impl DatabaseStore {
         Ok(())
     }
 
+    /// 兼容入口保留；新主路径由 [`DraftRepository::load`] 直接访问 Connection。
     pub fn load_draft(&self) -> Result<Option<serde_json::Value>, String> {
         let connection = self.connection.borrow();
         let row = connection
@@ -212,6 +220,7 @@ impl DatabaseStore {
         Ok(Some(value))
     }
 
+    /// 兼容入口保留；新主路径由 [`DraftRepository::clear`] 直接访问 Connection。
     pub fn clear_draft(&self) -> Result<(), String> {
         let connection = self.connection.borrow();
         connection

@@ -74,8 +74,14 @@ Repository.method() → store.method()
 - **`WrongBookRepository`**（首个试点）：含事务，使用 `with_connection` + `with_transaction`
 - **`PracticeRepository`**（第二个）：纯 `with_connection`，无事务需求
 - **`QuestionBankRepository`**（第三个）：`create/list_all/find_by_id/update` 用 `with_connection`；`delete` 先 `with_transaction`（原子删除题目+题库）再 `with_connection`（写日志，与原行为一致）
+- **`SettingsRepository`**：全用 `with_connection`；内联 keychain helper，保留密钥库读写/迁移逐步逻辑
+- **`DraftRepository`**：全用 `with_connection`，简单单行持久化读写
+- **`StatsRepository`**：全用 `with_connection`，内联聊合查询 helper
+- **`PromptRepository`**：全用 `with_connection`；通过 `super::super::queries/schema/validation` 访问共享 helper
+- **`ChatHistoryRepository`**：全用 `with_connection`；同上访问共享 helper
+- **`QuestionRepository`**：`create/list_by_bank/get_random/find_by_id/update/search/count` 用 `with_connection`；`create_batch/delete_batch` 先 `with_transaction` 再 `with_connection`（日志）与原行为一致
 
-三者均已迁移为**通过 `DatabaseStore::with_connection` / `with_transaction` 直接访问
+所有 Repository 均已迁移为**通过 `DatabaseStore::with_connection` / `with_transaction` 直接访问
 `rusqlite::Connection` / `Transaction`**，不再委托 `DatabaseStore` 的领域方法：
 
 ```
@@ -128,10 +134,12 @@ impl DatabaseStore {
 | `WrongBookRepository` | ✅ 已完成 | — |
 | `PracticeRepository` | ✅ 已完成 | — |
 | `QuestionBankRepository` | ✅ 已完成 | — |
-| `SettingsRepository` | 低 | 次优先 |
-| `StatsRepository` | 低（只读多） | 第三 |
-| `QuestionRepository` | 中（有分页/批量） | 第四 |
-| 其余 | 低 | 按需 |
+| `SettingsRepository` | ✅ 已完成 | — |
+| `DraftRepository` | ✅ 已完成 | — |
+| `StatsRepository` | ✅ 已完成 | — |
+| `PromptRepository` | ✅ 已完成 | — |
+| `ChatHistoryRepository` | ✅ 已完成 | — |
+| `QuestionRepository` | ✅ 已完成 | — |
 
 ## 5. async Command 的 !Send 两阶段处理原则
 

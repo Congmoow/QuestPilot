@@ -9,6 +9,7 @@ use super::{
 };
 
 impl DatabaseStore {
+    /// 兼容入口保留；新主路径由 [`StatsRepository::get_type_distribution`] 直接访问 Connection。
     pub fn get_question_count_by_type(
         &self,
         bank_id: Option<i64>,
@@ -17,6 +18,7 @@ impl DatabaseStore {
         get_question_count_by_type(&connection, bank_id)
     }
 
+    /// 兼容入口保留；新主路径由 [`StatsRepository::get_dashboard`] 直接访问 Connection。
     pub fn get_dashboard_stats(&self) -> Result<DashboardStats, String> {
         let connection = self.connection.borrow();
         let total_questions = count_all_questions(&connection)?;
@@ -32,6 +34,7 @@ impl DatabaseStore {
         })
     }
 
+    /// 兼容入口保留；新主路径由 [`StatsRepository::get_operation_logs`] 直接访问 Connection。
     pub fn get_operation_logs(&self, limit: Option<u32>) -> Result<Vec<OperationLog>, String> {
         let safe_limit = i64::from(limit.unwrap_or(10).clamp(1, 1000));
         let connection = self.connection.borrow();
