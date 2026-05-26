@@ -1,7 +1,10 @@
 use rusqlite::params;
 
 use super::{
-    queries::{add_operation_log, bank_exists, map_practice_record, map_practice_stats, validate_practice_record},
+    queries::{
+        add_operation_log, bank_exists, map_practice_record, map_practice_stats,
+        validate_practice_record,
+    },
     types::{PracticeRecord, PracticeRecordInput, PracticeStats},
     DatabaseStore,
 };

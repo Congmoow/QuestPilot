@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../../api';
-import type { WrongBookItem, WrongBookPracticeResult } from '../../../api';
+import { queryKeys } from '../../../api/queryKeys';
+import type { WrongBookPracticeResult } from '../../../api';
 import { countFillBlanks } from '../../../lib/fillBlank';
 import { useQuestionBanks } from '../../../contexts/QuestionBankContext';
 import type {
@@ -17,18 +19,14 @@ import {
 } from '../utils/practiceHelpers';
 
 export const useWrongBook = () => {
-  const { banks, fetchBanks: refreshBanks } = useQuestionBanks();
+  const qc = useQueryClient();
+  const { banks } = useQuestionBanks();
 
   const [selectedBankId, setSelectedBankId] = useState<number | null>(null);
   const [practiceCount, setPracticeCount] = useState(20);
 
-  const [items, setItems] = useState<WrongBookItem[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
-  const [totalPages, setTotalPages] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [practicing, setPracticing] = useState(false);
   const [questions, setQuestions] = useState<PracticeQuestion[]>([]);
@@ -40,36 +38,45 @@ export const useWrongBook = () => {
 
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [removingId, setRemovingId] = useState<number | null>(null);
+  const [practicing2, setPracticing2] = useState(false);
 
-  useEffect(() => {
-    refreshBanks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const {
+    data: itemsPage,
+    isFetching: fetchingItems,
+    error: itemsError,
+  } = useQuery({
+    queryKey: queryKeys.wrongBook.items(selectedBankId, page, pageSize),
+    queryFn: () => api.wrongBook.getItems(selectedBankId, { page, pageSize }),
+  });
 
-  const loadItems = async (bankId: number | null, targetPage = 1) => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const result = await api.wrongBook.getItems(bankId, { page: targetPage, pageSize });
-      setItems(result.data || []);
-      setTotal(result.total || 0);
-      setPage(result.page || 1);
-      setTotalPages(result.totalPages || 0);
-    } catch (error) {
-      console.error('加载错题本失败:', error);
-      setItems([]);
-      setTotal(0);
-      setTotalPages(0);
-      setLoadError(error instanceof Error ? error.message : '加载错题本失败');
-    } finally {
-      setLoading(false);
-    }
+  const items = itemsPage?.data ?? [];
+  const total = itemsPage?.total ?? 0;
+  const totalPages = itemsPage?.totalPages ?? 0;
+  const loadError = itemsError instanceof Error ? itemsError.message : null;
+  const loading = fetchingItems || practicing2;
+
+  const invalidateItems = () =>
+    qc.invalidateQueries({ queryKey: ['wrongBook', 'items'] });
+
+  const { mutateAsync: removeMutation } = useMutation({
+    mutationFn: (questionId: number) => api.wrongBook.removeItem(questionId),
+    onSuccess: invalidateItems,
+  });
+
+  const { mutateAsync: clearMutation } = useMutation({
+    mutationFn: (bankId: number | null) => api.wrongBook.clear(bankId),
+    onSuccess: invalidateItems,
+  });
+
+  const { mutateAsync: updateFromPracticeMutation } = useMutation({
+    mutationFn: (results: Parameters<typeof api.wrongBook.updateFromPractice>[0]) =>
+      api.wrongBook.updateFromPractice(results),
+    onSuccess: invalidateItems,
+  });
+
+  const loadItems = (_bankId: number | null, targetPage = 1) => {
+    setPage(targetPage);
   };
-
-  useEffect(() => {
-    loadItems(selectedBankId, 1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBankId]);
 
   const currentBankName = useMemo(() => {
     if (!selectedBankId) return '全部题库';
@@ -90,7 +97,7 @@ export const useWrongBook = () => {
   };
 
   const startPractice = async () => {
-    setLoading(true);
+    setPracticing2(true);
     try {
       const count = Number(practiceCount) > 0 ? Number(practiceCount) : 20;
       const result = await api.wrongBook.getRandomQuestions(selectedBankId, count);
@@ -113,7 +120,7 @@ export const useWrongBook = () => {
     } catch (error) {
       console.error('加载错题练习失败:', error);
     } finally {
-      setLoading(false);
+      setPracticing2(false);
     }
   };
 
@@ -202,12 +209,12 @@ export const useWrongBook = () => {
     }
 
     try {
-      await api.wrongBook.updateFromPractice(perQuestionResults);
+      await updateFromPracticeMutation(perQuestionResults);
     } catch (error) {
       console.error('同步错题本失败:', error);
     }
 
-    await loadItems(selectedBankId, 1);
+    setPage(1);
   };
 
   const nextQuestion = () => {
@@ -231,8 +238,7 @@ export const useWrongBook = () => {
   const handleRemoveItem = async (questionId: number) => {
     setRemovingId(questionId);
     try {
-      await api.wrongBook.removeItem(questionId);
-      await loadItems(selectedBankId, page);
+      await removeMutation(questionId);
     } catch (error) {
       console.error('移除错题失败:', error);
     } finally {
@@ -242,8 +248,7 @@ export const useWrongBook = () => {
 
   const handleClear = async () => {
     try {
-      await api.wrongBook.clear(selectedBankId);
-      await loadItems(selectedBankId, 1);
+      await clearMutation(selectedBankId);
     } catch (error) {
       console.error('清空错题本失败:', error);
     }

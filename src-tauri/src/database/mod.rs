@@ -72,7 +72,6 @@ impl DatabaseStore {
 
         Ok(count)
     }
-
 }
 
 fn open_database_at(path: &Path) -> Result<DatabaseStore, String> {
@@ -86,4 +85,3 @@ fn open_database_at(path: &Path) -> Result<DatabaseStore, String> {
         connection: RefCell::new(connection),
     })
 }
-

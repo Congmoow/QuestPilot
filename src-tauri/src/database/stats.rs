@@ -2,8 +2,7 @@ use rusqlite::params;
 
 use super::{
     queries::{
-        count_all_questions, count_recent_questions, get_question_count_by_type,
-        map_operation_log,
+        count_all_questions, count_recent_questions, get_question_count_by_type, map_operation_log,
     },
     types::{DashboardStats, OperationLog, TypeDistribution},
     DatabaseStore,

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createQuestion,
   deleteQuestions,
@@ -12,6 +13,7 @@ import {
   type Question,
   type QuestionType,
 } from '../api';
+import { queryKeys } from '../api/queryKeys';
 
 type QuestionContextValue = {
   questions: Question[];
@@ -44,10 +46,6 @@ const QuestionContext = createContext<QuestionContextValue | null>(null);
 
 const DEFAULT_PAGE_SIZE = 10;
 
-const errorMessage = (error: unknown, fallback: string) => {
-  return error instanceof Error ? error.message : fallback;
-};
-
 const emptyPage = (): PaginatedResult<Question> => ({
   data: [],
   total: 0,
@@ -57,165 +55,117 @@ const emptyPage = (): PaginatedResult<Question> => ({
 });
 
 export function QuestionProvider({ children }: { children: ReactNode }) {
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(DEFAULT_PAGE_SIZE);
-  const [totalPages, setTotalPages] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const qc = useQueryClient();
+
   const [currentBankId, setCurrentBankId] = useState<number | null>(null);
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(DEFAULT_PAGE_SIZE);
   const [filterType, setFilterType] = useState<QuestionType | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
-  const applyResult = (result: PaginatedResult<Question>) => {
-    setQuestions(result.data || []);
-    setTotal(result.total || 0);
-    setPage(result.page || 1);
-    setTotalPages(result.totalPages || 0);
-    setSelectedIds([]);
-  };
+  const queryKey =
+    searchKeyword && currentBankId
+      ? queryKeys.questions.search(currentBankId, searchKeyword, page, pageSize, filterType)
+      : queryKeys.questions.list(currentBankId ?? 0, page, pageSize, filterType);
 
-  const fetchQuestions = useCallback(
-    async (bankId: number, options: QueryOptions = {}) => {
-      setLoading(true);
-      setError(null);
-      setCurrentBankId(bankId);
-
-      const queryOptions: QueryOptions = {
-        page: options.page || page,
-        pageSize: options.pageSize || pageSize,
-        type: options.type !== undefined ? options.type : filterType,
-      };
-
-      try {
-        const result = searchKeyword
-          ? await searchQuestions(bankId, searchKeyword, queryOptions)
-          : await getQuestionsByBankId(bankId, queryOptions);
-        applyResult(result);
-      } catch (err) {
-        setError(errorMessage(err, '获取题目列表失败'));
-        applyResult(emptyPage());
-      } finally {
-        setLoading(false);
-      }
+  const {
+    data = emptyPage(),
+    isFetching: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey,
+    queryFn: () => {
+      if (!currentBankId) return Promise.resolve(emptyPage());
+      return searchKeyword
+        ? searchQuestions(currentBankId, searchKeyword, { page, pageSize, type: filterType })
+        : getQuestionsByBankId(currentBankId, { page, pageSize, type: filterType });
     },
-    [page, pageSize, filterType, searchKeyword],
-  );
+    enabled: currentBankId !== null,
+  });
 
-  const search = useCallback(
-    async (bankId: number, keyword: string, options: QueryOptions = {}) => {
-      setLoading(true);
-      setError(null);
-      setSearchKeyword(keyword);
-      setCurrentBankId(bankId);
+  const questions = data.data;
+  const total = data.total;
+  const totalPages = data.totalPages;
+  const error = queryError instanceof Error ? queryError.message : null;
 
-      const queryOptions: QueryOptions = {
-        page: options.page || 1,
-        pageSize: options.pageSize || pageSize,
-        type: options.type !== undefined ? options.type : filterType,
-      };
+  const invalidateQuestions = useCallback(() => {
+    if (currentBankId !== null) {
+      qc.invalidateQueries({ queryKey: ['questions', currentBankId] });
+    }
+  }, [qc, currentBankId]);
 
-      try {
-        const result = await searchQuestions(bankId, keyword, queryOptions);
-        applyResult(result);
-      } catch (err) {
-        setError(errorMessage(err, '搜索题目失败'));
-        applyResult(emptyPage());
-      } finally {
-        setLoading(false);
-      }
-    },
-    [pageSize, filterType],
-  );
+  const { mutateAsync: createMutation } = useMutation({
+    mutationFn: createQuestion,
+    onSuccess: invalidateQuestions,
+  });
+
+  const { mutateAsync: updateMutation } = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<CreateQuestionInput> }) =>
+      updateQuestion(id, data),
+    onSuccess: invalidateQuestions,
+  });
+
+  const { mutateAsync: deleteMutation } = useMutation({
+    mutationFn: deleteQuestions,
+    onSuccess: invalidateQuestions,
+  });
+
+  const fetchQuestions = useCallback(async (bankId: number, options: QueryOptions = {}) => {
+    setCurrentBankId(bankId);
+    if (options.page !== undefined) setPage(options.page);
+    if (options.type !== undefined) setFilterType(options.type ?? null);
+  }, []);
+
+  const search = useCallback(async (bankId: number, keyword: string, options: QueryOptions = {}) => {
+    setCurrentBankId(bankId);
+    setSearchKeyword(keyword);
+    setPage(options.page ?? 1);
+    if (options.type !== undefined) setFilterType(options.type ?? null);
+  }, []);
 
   const addQuestion = useCallback(
-    async (data: CreateQuestionInput) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const newQuestion = await createQuestion(data);
-        if (currentBankId) {
-          await fetchQuestions(currentBankId);
-        }
-        return newQuestion;
-      } catch (err) {
-        setError(errorMessage(err, '创建题目失败'));
-        throw err;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [currentBankId, fetchQuestions],
+    (data: CreateQuestionInput) => createMutation(data),
+    [createMutation],
   );
 
-  const editQuestion = useCallback(async (id: number, data: Partial<CreateQuestionInput>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const updatedQuestion = await updateQuestion(id, data);
-      if (updatedQuestion) {
-        setQuestions((prev) => prev.map((q) => (q.id === id ? updatedQuestion : q)));
-      }
-      return updatedQuestion;
-    } catch (err) {
-      setError(errorMessage(err, '更新题目失败'));
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const editQuestion = useCallback(
+    (id: number, data: Partial<CreateQuestionInput>) => updateMutation({ id, data }),
+    [updateMutation],
+  );
 
   const removeQuestions = useCallback(
     async (ids: number[]) => {
-      setLoading(true);
-      setError(null);
-      try {
-        await deleteQuestions(ids);
-        setQuestions((prev) => prev.filter((q) => !ids.includes(q.id)));
-        setSelectedIds((prev) => prev.filter((id) => !ids.includes(id)));
-        setTotal((prev) => prev - ids.length);
-        if (questions.length === ids.length && page > 1) {
-          setPage(page - 1);
-        }
-      } catch (err) {
-        setError(errorMessage(err, '删除题目失败'));
-        throw err;
-      } finally {
-        setLoading(false);
+      await deleteMutation(ids);
+      if (questions.length === ids.length && page > 1) {
+        setPage((prev) => prev - 1);
       }
+      setSelectedIds((prev) => prev.filter((id) => !ids.includes(id)));
     },
-    [questions.length, page],
+    [deleteMutation, questions.length, page],
   );
 
   const getById = useCallback(async (id: number) => {
     try {
       return await getQuestionById(id);
-    } catch (err) {
-      setError(errorMessage(err, '获取题目失败'));
+    } catch {
       return null;
     }
   }, []);
 
-  const clearSelection = useCallback(() => {
-    setSelectedIds([]);
-  }, []);
+  const clearSelection = useCallback(() => setSelectedIds([]), []);
 
-  const selectAll = useCallback(() => {
-    setSelectedIds(questions.map((q) => q.id));
-  }, [questions]);
+  const selectAll = useCallback(
+    () => setSelectedIds(questions.map((q) => q.id)),
+    [questions],
+  );
 
   const reset = useCallback(() => {
-    setQuestions([]);
-    setTotal(0);
-    setPage(1);
-    setTotalPages(0);
     setCurrentBankId(null);
     setSearchKeyword('');
+    setPage(1);
     setFilterType(null);
     setSelectedIds([]);
-    setError(null);
   }, []);
 
   const value: QuestionContextValue = {

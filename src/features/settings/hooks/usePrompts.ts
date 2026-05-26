@@ -1,33 +1,42 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../../api';
 import type { Prompt } from '../../../api';
-
-const errorMessage = (error: unknown, fallback: string) =>
-  error instanceof Error ? error.message : fallback;
+import { queryKeys } from '../../../api/queryKeys';
 
 export const usePrompts = () => {
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const qc = useQueryClient();
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
   const [promptName, setPromptName] = useState('');
   const [promptContent, setPromptContent] = useState('');
   const [showPromptForm, setShowPromptForm] = useState(false);
-  const [savingPrompt, setSavingPrompt] = useState(false);
   const [deletePromptDialogOpen, setDeletePromptDialogOpen] = useState(false);
   const [deletingPrompt, setDeletingPrompt] = useState<Prompt | null>(null);
-  const [deletingPromptLoading, setDeletingPromptLoading] = useState(false);
 
-  useEffect(() => {
-    loadPrompts();
-  }, []);
+  const { data: prompts = [] } = useQuery({
+    queryKey: queryKeys.prompts.all(),
+    queryFn: () => api.prompt.getAll(),
+  });
 
-  const loadPrompts = async () => {
-    try {
-      const list = await api.prompt.getAll();
-      setPrompts(list);
-    } catch (error) {
-      console.error('加载 Prompt 列表失败:', error);
-    }
-  };
+  const invalidatePrompts = () => qc.invalidateQueries({ queryKey: queryKeys.prompts.all() });
+
+  const { mutateAsync: createMutation, isPending: creating } = useMutation({
+    mutationFn: (data: { name: string; content: string }) => api.prompt.create(data),
+    onSuccess: invalidatePrompts,
+  });
+
+  const { mutateAsync: updateMutation, isPending: updating } = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { name: string; content: string } }) =>
+      api.prompt.update(id, data),
+    onSuccess: invalidatePrompts,
+  });
+
+  const { mutateAsync: deleteMutation, isPending: deletingPromptLoading } = useMutation({
+    mutationFn: (id: number) => api.prompt.delete(id),
+    onSuccess: invalidatePrompts,
+  });
+
+  const savingPrompt = creating || updating;
 
   const resetPromptForm = () => {
     setEditingPrompt(null);
@@ -38,19 +47,15 @@ export const usePrompts = () => {
 
   const handleSavePrompt = async () => {
     if (!promptName.trim() || !promptContent.trim()) return;
-    setSavingPrompt(true);
     try {
       if (editingPrompt) {
-        await api.prompt.update(editingPrompt.id, { name: promptName, content: promptContent });
+        await updateMutation({ id: editingPrompt.id, data: { name: promptName, content: promptContent } });
       } else {
-        await api.prompt.create({ name: promptName, content: promptContent });
+        await createMutation({ name: promptName, content: promptContent });
       }
-      await loadPrompts();
       resetPromptForm();
     } catch (error) {
       console.error('保存 Prompt 失败:', error);
-    } finally {
-      setSavingPrompt(false);
     }
   };
 
@@ -73,18 +78,15 @@ export const usePrompts = () => {
 
   const handleDeletePrompt = async () => {
     if (!deletingPrompt) return;
-    setDeletingPromptLoading(true);
     try {
-      await api.prompt.delete(deletingPrompt.id);
-      await loadPrompts();
+      await deleteMutation(deletingPrompt.id);
       if (editingPrompt?.id === deletingPrompt.id) {
         resetPromptForm();
       }
+      handleCloseDeletePromptDialog();
     } catch (error) {
-      alert(errorMessage(error, '删除失败'));
+      alert(error instanceof Error ? error.message : '删除失败');
       throw error;
-    } finally {
-      setDeletingPromptLoading(false);
     }
   };
 

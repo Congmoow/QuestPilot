@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { getDashboardStats, getOperationLogs, getTypeDistribution } from '../../../api';
 import api from '../../../api';
 import { useQuestionBanks } from '../../../contexts/QuestionBankContext';
+import { queryKeys } from '../../../api/queryKeys';
 
 export const TYPE_ORDER = ['single', 'multiple', 'boolean', 'fill', 'short'];
 export const TYPE_COLORS = ['#2563EB', '#16A34A', '#F97316', '#8B5CF6', '#38BDF8'];
@@ -36,70 +38,57 @@ export const formatOperationTime = (value: unknown): string => {
 export const formatNumber = (num: unknown): string => Number(num || 0).toLocaleString('zh-CN');
 
 export const useDashboard = () => {
-  const { banks, fetchBanks: refreshBanks } = useQuestionBanks();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [dashboardStats, setDashboardStats] = useState({
+  const { banks } = useQuestionBanks();
+  const [selectedBankId, setSelectedBankId] = useState<number | null>(null);
+  const [isBankManuallySelected, setIsBankManuallySelected] = useState(false);
+  const [selectedTypeBankId, setSelectedTypeBankId] = useState<number | null>(null);
+
+  const { data: dashboardStats, isLoading: loadingStats, error: statsError } = useQuery({
+    queryKey: queryKeys.dashboard.stats(),
+    queryFn: getDashboardStats,
+  });
+
+  const { data: operationLogs = [] } = useQuery({
+    queryKey: queryKeys.dashboard.operationLogs(10),
+    queryFn: () => getOperationLogs(10),
+  });
+
+  const { data: practiceStatsRaw = [] } = useQuery({
+    queryKey: queryKeys.dashboard.practiceStats(),
+    queryFn: () =>
+      api.practice.getAllStats().catch((e: unknown) => {
+        console.error('加载练习统计失败:', e);
+        return [];
+      }),
+  });
+
+  const { data: practiceRecordsRaw = [], isFetching: loadingRecords } = useQuery({
+    queryKey: queryKeys.dashboard.practiceRecords(selectedBankId),
+    queryFn: async () => {
+      if (!selectedBankId) return [];
+      const records = await api.practice.getRecords(selectedBankId, 10);
+      return (records as unknown[]).slice().reverse();
+    },
+    enabled: selectedBankId !== null,
+  });
+
+  const { data: typeDistributionRaw = [] } = useQuery({
+    queryKey: queryKeys.dashboard.typeDistribution(selectedTypeBankId),
+    queryFn: () => getTypeDistribution(selectedTypeBankId),
+  });
+
+  const loading = loadingStats;
+  const error = statsError instanceof Error ? statsError.message : null;
+  const practiceStats = practiceStatsRaw;
+  const practiceRecords = practiceRecordsRaw;
+  const typeDistribution = typeDistributionRaw as Array<{ type: string; count: number }>;
+  const stats = dashboardStats ?? {
     totalQuestions: 0,
     todayQuestions: 0,
     weekQuestions: 0,
-    typeDistribution: [] as unknown[],
-  });
-  const [operationLogs, setOperationLogs] = useState<unknown[]>([]);
-  const [selectedBankId, setSelectedBankId] = useState<number | null>(null);
-  const [isBankManuallySelected, setIsBankManuallySelected] = useState(false);
-  const [practiceRecords, setPracticeRecords] = useState<unknown[]>([]);
-  const [loadingRecords, setLoadingRecords] = useState(false);
-  const [practiceStats, setPracticeStats] = useState<unknown[]>([]);
-  const [selectedTypeBankId, setSelectedTypeBankId] = useState<number | null>(null);
-  const [typeDistribution, setTypeDistribution] = useState<unknown[]>([]);
+    typeDistribution: [],
+  };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const [stats, logs, allPracticeStats] = await Promise.all([
-          getDashboardStats(),
-          getOperationLogs(10),
-          api.practice.getAllStats().catch((e: unknown) => {
-            console.error('加载练习统计失败:', e);
-            return [];
-          }),
-        ]);
-        setDashboardStats(stats as typeof dashboardStats);
-        setOperationLogs(logs as unknown[]);
-        setPracticeStats(Array.isArray(allPracticeStats) ? allPracticeStats : []);
-        await refreshBanks();
-      } catch (err: unknown) {
-        console.error('加载数据失败:', err);
-        setError(err instanceof Error ? err.message : '加载数据失败');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const loadPracticeRecords = async () => {
-      if (!selectedBankId) {
-        setPracticeRecords([]);
-        return;
-      }
-      setLoadingRecords(true);
-      try {
-        const records = await api.practice.getRecords(selectedBankId, 10);
-        setPracticeRecords((records as unknown[]).reverse());
-      } catch (error) {
-        console.error('加载练习记录失败:', error);
-      } finally {
-        setLoadingRecords(false);
-      }
-    };
-    loadPracticeRecords();
-  }, [selectedBankId]);
 
   const practiceLastTimeByBankId = useMemo(
     () =>
@@ -151,18 +140,6 @@ export const useDashboard = () => {
     if (!selectedBankId && trendBanks.length > 0) setSelectedBankId(trendBanks[0].id);
   }, [isBankManuallySelected, latestPracticedBankId, selectedBankId, trendBanks]);
 
-  useEffect(() => {
-    const loadTypeDistribution = async () => {
-      try {
-        const data = await getTypeDistribution(selectedTypeBankId);
-        setTypeDistribution(data as unknown[]);
-      } catch (error) {
-        console.error('加载题型分布失败:', error);
-      }
-    };
-    loadTypeDistribution();
-  }, [selectedTypeBankId]);
-
   const totalPracticeCount = useMemo(
     () =>
       (practiceStats as Array<{ practiceCount?: unknown }>).reduce(
@@ -203,7 +180,7 @@ export const useDashboard = () => {
     banks,
     loading,
     error,
-    dashboardStats,
+    dashboardStats: stats,
     operationLogs,
     selectedBankId,
     setSelectedBankId,
