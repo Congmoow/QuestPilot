@@ -44,55 +44,30 @@ impl WrongBookService {
         Ok(self.store.get_random_wrong_questions(bank_id, limit)?)
     }
 
-    /// 根据练习结果批量更新错题本。
+    /// 根据练习结果批量更新错题本（带事务原子性）。
     ///
-    /// 业务规则（完整在 Service 层编排）：
+    /// ## Service 层职责（此处）
     /// 1. 解析 remove_threshold：传入值 > 0 → 优先用；否则读 DB 设置；最终兜底 3
-    /// 2. 清理孤儿记录（题目已删除但错题本仍保留的行）
-    /// 3. 跳过 question_id ≤ 0 或 bank_id ≤ 0 的无效条目
-    /// 4. 答错 → `upsert_wrong_answer`：新增或累加 wrong_count
-    /// 5. 答对 → `increment_correct_count`；再读 `get_correct_count`；
-    ///    若 correct_count ≥ threshold → `remove_wrong_book_item` 移除
+    /// 2. 将解析好的 threshold 连同 results 传入 database 层事务方法
     ///
-    /// # TODO (Phase 3)
-    /// 当前各条目独立执行 SQL，中途失败可能造成部分更新。
-    /// 后续可将整个循环包裹在 rusqlite transaction 中以保证原子性，
-    /// 但需解决 `RefCell<Connection>` 的借用生命周期问题（需 `borrow_mut` 持有事务）。
+    /// ## Database 层职责（`update_wrong_book_from_practice_tx`）
+    /// - 在单个 rusqlite 事务内完成全部 SQL 写入
+    /// - 孤儿清理 / 答错 upsert / 答对 correct_count+1 / 达阈值删除
+    /// - 任一步骤失败则整体回滚，不会留下半成品数据
     pub fn update_from_practice(
         &self,
         results: Vec<WrongBookPracticeResult>,
         threshold: Option<i64>,
     ) -> Result<(), AppError> {
-        // 解析移除阈值
+        // Service 层：解析业务阈值（纯业务规则，不涉及 SQL 写入）
         let remove_threshold = threshold
             .filter(|v| *v > 0)
             .or_else(|| self.store.get_wrong_book_threshold().ok())
             .unwrap_or(3);
 
-        // 清理孤儿错题记录
-        self.store.cleanup_orphans()?;
-
-        for result in results {
-            // 跳过无效 ID
-            if result.question_id <= 0 || result.bank_id <= 0 {
-                continue;
-            }
-
-            if result.is_correct {
-                // 累加答对次数
-                self.store.increment_correct_count(result.question_id)?;
-
-                // 达到阈值则移除（已掌握）
-                let correct_count = self.store.get_correct_count(result.question_id)?;
-                if matches!(correct_count, Some(v) if v >= remove_threshold) {
-                    self.store.remove_wrong_book_item(result.question_id)?;
-                }
-            } else {
-                // 新增或累加答错记录
-                self.store
-                    .upsert_wrong_answer(result.question_id, result.bank_id)?;
-            }
-        }
+        // Database 层：原子事务写入
+        self.store
+            .update_wrong_book_from_practice_tx(&results, remove_threshold)?;
 
         Ok(())
     }

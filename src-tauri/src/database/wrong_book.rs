@@ -117,6 +117,79 @@ impl DatabaseStore {
             .map_err(|error| format!("读取错题正确次数失败: {error}"))
     }
 
+    /// 在单个 rusqlite 事务中批量处理练习结果，更新错题本。
+    ///
+    /// **这是 command 主路径调用的方法。** threshold 由上层 [`WrongBookService`] 解析后传入，
+    /// 此方法只负责 SQL 一致性：所有写入要么全部成功，要么整体回滚。
+    ///
+    /// ## 事务内 SQL 操作
+    /// 1. 清理孤儿错题记录（`DELETE FROM wrong_book WHERE question_id NOT IN (...)`)
+    /// 2. 答错 → `INSERT OR UPDATE wrong_book`（累加 wrong_count）
+    /// 3. 答对 → `UPDATE SET correct_count + 1`；查询 correct_count；达阈值则 `DELETE`
+    ///
+    /// ## 回滚
+    /// 若循环中任一 SQL 失败，`tx` drop 时自动 rollback，不会留下半成品数据。
+    pub fn update_wrong_book_from_practice_tx(
+        &self,
+        results: &[WrongBookPracticeResult],
+        remove_threshold: i64,
+    ) -> Result<(), String> {
+        let mut conn = self.connection.borrow_mut();
+        let tx = conn
+            .transaction()
+            .map_err(|e| format!("开启错题本更新事务失败: {e}"))?;
+
+        // 清理孤儿记录（Transaction deref 为 &Connection，满足函数签名）
+        cleanup_wrong_book_orphans(&tx)?;
+
+        for result in results {
+            if result.question_id <= 0 || result.bank_id <= 0 {
+                continue;
+            }
+
+            if result.is_correct {
+                tx.execute(
+                    "UPDATE wrong_book SET correct_count = correct_count + 1 WHERE question_id = ?1",
+                    params![result.question_id],
+                )
+                .map_err(|e| format!("更新错题正确次数失败: {e}"))?;
+
+                let correct_count: Option<i64> = tx
+                    .query_row(
+                        "SELECT correct_count FROM wrong_book WHERE question_id = ?1",
+                        params![result.question_id],
+                        |row| row.get(0),
+                    )
+                    .optional()
+                    .map_err(|e| format!("读取错题正确次数失败: {e}"))?;
+
+                if matches!(correct_count, Some(v) if v >= remove_threshold) {
+                    tx.execute(
+                        "DELETE FROM wrong_book WHERE question_id = ?1",
+                        params![result.question_id],
+                    )
+                    .map_err(|e| format!("移除已掌握错题失败: {e}"))?;
+                }
+            } else {
+                tx.execute(
+                    "
+                    INSERT INTO wrong_book (question_id, bank_id, wrong_count, correct_count, added_at, last_wrong_at)
+                    VALUES (?1, ?2, 1, 0, datetime('now'), datetime('now'))
+                    ON CONFLICT(question_id) DO UPDATE SET
+                      bank_id = excluded.bank_id,
+                      wrong_count = wrong_count + 1,
+                      last_wrong_at = datetime('now')
+                    ",
+                    params![result.question_id, result.bank_id],
+                )
+                .map_err(|e| format!("写入错题本失败: {e}"))?;
+            }
+        }
+
+        tx.commit()
+            .map_err(|e| format!("提交错题本更新事务失败: {e}"))
+    }
+
     /// 原有组合方法，保留以降低兼容风险。
     ///
     /// **已被 `WrongBookService::update_from_practice` 接管**，该方法包含了 threshold 判断
