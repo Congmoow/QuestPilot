@@ -136,7 +136,7 @@ In the app, open `System Settings` -> `AI API Configuration` and configure:
 - **API URL**:
   - Preset providers fill this automatically, and some providers use OpenAI-compatible APIs.
   - Custom mode accepts any OpenAI-compatible API Base URL.
-- **API Key**: your key, stored only in the local database.
+- **API Key**: your key, stored securely in the system keychain (Windows Credential Manager). It is never written in plaintext to the database.
 - **Model**: for example `gpt-4o-mini`, `claude-3-5-sonnet-20241022`, or `gemini-1.5-pro`.
 
 Click `Test Connection` to verify whether the configuration works.

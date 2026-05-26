@@ -15,19 +15,33 @@ src-tauri/src/
 ├── ai.rs               # AI HTTP 客户端（OpenAI 兼容接口、测试连接）
 ├── csv_tools.rs        # CSV 解析 / 生成 / 导出工具
 │
-├── commands/           # Tauri 命令层 — 按域一文件一责
+├── commands/           # Tauri 命令层 — 薄层包装，按域一文件一责
 │   ├── mod.rs          # 共享 helper：open_store / main_window / ai_config_from_database
 │   ├── window.rs       # window_minimize / maximize / close / is_maximized
 │   ├── question_bank.rs  # question_bank_create / get_all / get_by_id / update / delete
 │   ├── question.rs     # question_create / batch / get / search / update / delete + PaginatedQuestions
 │   ├── stats.rs        # stats_get_dashboard / operation_logs / type_distribution
 │   ├── settings.rs     # settings_* / migration_* + PublicApiConfig / mask_api_key
-│   ├── ai_cmd.rs       # ai_parse_questions / ai_chat
+│   ├── ai_cmd.rs       # ai_parse_questions / ai_chat / ai_import_questions_direct
 │   ├── draft.rs        # draft_save / load / clear
 │   ├── prompt_chat.rs  # prompt_* / chat_history_*
 │   ├── practice.rs     # practice_save_record / get_records / get_all_stats
 │   ├── wrong_book.rs   # wrong_book_* + PaginatedWrongBookItems
 │   └── csv.rs          # csv_select_file / download_template / parse / import / export
+│
+├── services/           # Service 层 — 业务逻辑，按域一文件一责
+│   ├── mod.rs
+│   ├── question_service.rs
+│   ├── question_bank_service.rs
+│   ├── practice_service.rs
+│   ├── wrong_book_service.rs
+│   ├── import_service.rs
+│   ├── settings_service.rs
+│   ├── prompt_service.rs
+│   ├── chat_history_service.rs
+│   ├── stats_service.rs
+│   ├── draft_service.rs
+│   └── export_service.rs
 │
 └── database/           # 持久化层 — rusqlite + SQLite
     ├── mod.rs          # DatabaseStore 结构体 + open / open_with_legacy_candidates / table_count
@@ -43,7 +57,18 @@ src-tauri/src/
     ├── ai.rs           # impl DatabaseStore { get_all_prompts … delete_chat_history }
     ├── practice.rs     # impl DatabaseStore { save_practice_record … get_all_practice_stats }
     ├── wrong_book.rs   # impl DatabaseStore { get_wrong_book_counts … clear_wrong_book }
-    └── stats.rs        # impl DatabaseStore { get_question_count_by_type … get_operation_logs }
+    ├── stats.rs        # impl DatabaseStore { get_question_count_by_type … get_operation_logs }
+    └── repositories/   # Repository 层 — 域级数据访问对象（Phase 1：委托 DatabaseStore）
+        ├── mod.rs
+        ├── question_repo.rs
+        ├── question_bank_repo.rs
+        ├── practice_repo.rs
+        ├── wrong_book_repo.rs
+        ├── settings_repo.rs
+        ├── prompt_repo.rs
+        ├── chat_history_repo.rs
+        ├── stats_repo.rs
+        └── draft_repo.rs
 ```
 
 ---
@@ -52,19 +77,29 @@ src-tauri/src/
 
 ```
 前端 (invoke)
-      │
-      ▼
-commands/<domain>.rs   ← Tauri #[command] 函数（薄层，调用 open_store()）
-      │
-      ▼
-database::DatabaseStore ← 单连接包装器（RefCell<Connection>）
-      │
-      ├── database/<domain>.rs  ← impl DatabaseStore { 域方法 }
-      │
-      └── database/queries.rs   ← 共享 SQL helper（map_*、find_*、count_*）
+        │
+        ▼
+commands/<domain>.rs          ← Tauri #[command] 薄层，调用 open_store() → ServiceXxx::new(store)
+        │
+        ▼
+services/<domain>_service.rs  ← 业务逻辑、校验、多步编排
+        │
+        ▼
+database/repositories/<domain>_repo.rs  ← 数据访问对象，委托 DatabaseStore 方法
+        │
+        ▼
+database::DatabaseStore       ← 单连接包装器（RefCell<Connection>）
+        │
+        ├── database/<domain>.rs  ← impl DatabaseStore { 域 SQL 方法 }
+        │
+        └── database/queries.rs   ← 共享 SQL helper（map_*、find_*、count_*）
 ```
 
-**约定**：命令层调用 `open_store()` → `DatabaseStore` 方法 → `queries.rs` helper。命令文件中不允许出现 SQL。
+**约定**：
+- 命令层和 Service 层不允许出现 SQL。
+- 业务规则（校验、阈值、限制）居于 Service 层。
+- Repository 是唯一可以调用 `DatabaseStore` 方法的层。
+- 所有 `DatabaseStore` / Repository / Service 实例必须在任意 `.await` 点前析构，以满足 Rust `!Send` 约束（见下方《Async 命令》）。
 
 ---
 
@@ -136,8 +171,9 @@ database::DatabaseStore ← 单连接包装器（RefCell<Connection>）
 |------|------|--------|
 | `ai_parse_questions` | `content: String` | `serde_json::Value` |
 | `ai_chat` | `messages: Vec<AiMessage>`, `prompt_id?` | `serde_json::Value` |
+| `ai_import_questions_direct` | `content: String`, `bank_id: i64` | `AiImportResult` |
 
-两个命令均为 `async`，调用时从数据库读取 API 配置。
+三个命令均为 `async`，采用两阶段模式：所有数据库访问（通过 `SettingsService`、`PromptService` 等）在 `.await` 网络调用前完成并析构；如需写库则在 await 后重新打开 store。
 
 ### 草稿（`commands/draft.rs`）
 
@@ -229,7 +265,7 @@ database::DatabaseStore ← 单连接包装器（RefCell<Connection>）
 |----|--------|------|
 | `theme` | `system` | `light` / `dark` / `system` |
 | `wrong_book_threshold` | `3` | 连续答对次数达到阈值后自动移除错题 |
-| `ai_api_key` | `""` | 以明文存储于本地 |
+| `ai_api_key` | `""` | 存储于系统密钥管理器（Windows Credential Manager），数据库字段仅存空占位符 |
 | `ai_api_url` | `https://api.openai.com` | Base URL，不含尾部斜杠 |
 | `ai_model_id` | `gpt-3.5-turbo` | 模型标识符 |
 | `ai_provider` | `custom` | 前端用于预设显示 |
@@ -245,7 +281,7 @@ database::DatabaseStore ← 单连接包装器（RefCell<Connection>）
 | `added_at` | TEXT | 首次答错时间 |
 | `last_wrong_at` | TEXT | 最近答错时间 |
 
-在 `update_wrong_book_from_practice` 中，`correct_count >= threshold` 时自动移除。
+在 `update_wrong_book_from_practice` 中，`correct_count >= threshold` 时自动移除。整个批量更新（孤儿记录清理 + 错误次数更新 + 正确次数增加 + 阈值移除）在单个 `rusqlite::Transaction` 内完成，任意步骤失败则自动回滚。
 
 ### `practice_records`
 
@@ -335,7 +371,7 @@ pub struct AiConfig {
 
 ## 错误处理
 
-所有公开数据库方法和命令均返回 `Result<T, String>`。`String` 错误会直接转发给前端，作为 `invoke` Promise 的 reject 值。错误信息以中文编写，面向最终用户。
+命令返回 `Result<T, AppError>`。`AppError` 由 Tauri 序列化后转发给前端，作为 `invoke` Promise 的 reject 值。错误信息以中文编写，面向最终用户。
 
 约定：
 - **数据库错误**带上下文：`"创建题目失败: {rusqlite 错误}"`。
@@ -348,11 +384,29 @@ pub struct AiConfig {
 ## 新增命令流程
 
 1. **数据库方法**——在对应 `database/<domain>.rs` 中以 `impl DatabaseStore { ... }` 添加 `pub fn your_method(...)`。
-2. **命令函数**——在 `commands/<domain>.rs` 中添加 `#[tauri::command(rename_all = "camelCase")] pub fn your_command(app: AppHandle, ...) -> Result<T, String>`，调用 `open_store(&app)?`。
-3. **注册**——在 `lib.rs` 的 `tauri::generate_handler![...]` 中添加 `your_command`。
-4. **前端绑定**——在 `src/api/index.ts` 中添加对应的 `invoke` 调用。
+2. **Repository**——在 `database/repositories/<domain>_repo.rs` 中暴露该方法。
+3. **Service**——在 `services/<domain>_service.rs` 中添加业务逻辑，调用 Repository。
+4. **命令函数**——在 `commands/<domain>.rs` 中添加命令，调用如下：
+   ```rust
+   ServiceXxx::new(open_store(&app)?).your_method(params)
+   ```
+5. **注册**——在 `lib.rs` 的 `tauri::generate_handler![...]` 中添加 `your_command`。
+6. **前端绑定**——在 `src/api/index.ts` 中添加对应的 `invoke` 调用。
 
-对于 `async` 命令（AI 调用、文件对话框）：使用 `pub async fn`，根据需要接收 `AppHandle` / `WebviewWindow` 参数。
+### Async 命令（AI 调用、文件对话框）
+
+使用 `pub async fn`。因 `DatabaseStore` 内含 `RefCell<Connection>`（`!Send`），所有数据库访问必须在 `.await` 前完成并析构：
+
+```rust
+pub async fn my_async_command(app: AppHandle, ...) -> Result<T, AppError> {
+    // 阶段1：同步读取数据——Service 在语句末析构
+    let data = MyService::new(open_store(&app)?).read_something()?;
+    // 阶段2：await 网络调用——无 !Send 类型存活
+    let result = some_async_call(data).await?;
+    // 阶段3（如需）：重新打开 store 写库
+    MyService::new(open_store(&app)?).write_something(result)
+}
+```
 
 ---
 

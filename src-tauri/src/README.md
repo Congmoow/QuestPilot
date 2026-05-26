@@ -12,22 +12,36 @@ Rust + Tauri 2.x backend. Exposes SQLite persistence and AI networking to the fr
 src-tauri/src/
 ├── lib.rs              # Entry point: mod declarations + invoke_handler registration + run()
 ├── main.rs             # Binary entry: calls lib::run()
-├── ai.rs               # AI HTTP client (OpenAI-compatible API, streaming, test connection)
+├── ai.rs               # AI HTTP client (OpenAI-compatible API, test connection)
 ├── csv_tools.rs        # CSV parse / generate / export utilities
 │
-├── commands/           # Tauri command layer — one file per domain
+├── commands/           # Tauri command layer — thin wrappers, one file per domain
 │   ├── mod.rs          # Shared helpers: open_store / main_window / ai_config_from_database
 │   ├── window.rs       # window_minimize / maximize / close / is_maximized
 │   ├── question_bank.rs  # question_bank_create / get_all / get_by_id / update / delete
 │   ├── question.rs     # question_create / batch / get / search / update / delete + PaginatedQuestions
 │   ├── stats.rs        # stats_get_dashboard / operation_logs / type_distribution
 │   ├── settings.rs     # settings_* / migration_* + PublicApiConfig / mask_api_key
-│   ├── ai_cmd.rs       # ai_parse_questions / ai_chat
+│   ├── ai_cmd.rs       # ai_parse_questions / ai_chat / ai_import_questions_direct
 │   ├── draft.rs        # draft_save / load / clear
 │   ├── prompt_chat.rs  # prompt_* / chat_history_*
 │   ├── practice.rs     # practice_save_record / get_records / get_all_stats
 │   ├── wrong_book.rs   # wrong_book_* + PaginatedWrongBookItems
 │   └── csv.rs          # csv_select_file / download_template / parse / import / export
+│
+├── services/           # Service layer — business logic, one file per domain
+│   ├── mod.rs
+│   ├── question_service.rs
+│   ├── question_bank_service.rs
+│   ├── practice_service.rs
+│   ├── wrong_book_service.rs
+│   ├── import_service.rs
+│   ├── settings_service.rs
+│   ├── prompt_service.rs
+│   ├── chat_history_service.rs
+│   ├── stats_service.rs
+│   ├── draft_service.rs
+│   └── export_service.rs
 │
 └── database/           # Persistence layer — SQLite via rusqlite
     ├── mod.rs          # DatabaseStore struct + open / open_with_legacy_candidates / table_count
@@ -43,7 +57,18 @@ src-tauri/src/
     ├── ai.rs           # impl DatabaseStore { get_all_prompts … delete_chat_history }
     ├── practice.rs     # impl DatabaseStore { save_practice_record … get_all_practice_stats }
     ├── wrong_book.rs   # impl DatabaseStore { get_wrong_book_counts … clear_wrong_book }
-    └── stats.rs        # impl DatabaseStore { get_question_count_by_type … get_operation_logs }
+    ├── stats.rs        # impl DatabaseStore { get_question_count_by_type … get_operation_logs }
+    └── repositories/   # Repository layer — domain-scoped data-access objects (Phase 1: delegate to DatabaseStore)
+        ├── mod.rs
+        ├── question_repo.rs
+        ├── question_bank_repo.rs
+        ├── practice_repo.rs
+        ├── wrong_book_repo.rs
+        ├── settings_repo.rs
+        ├── prompt_repo.rs
+        ├── chat_history_repo.rs
+        ├── stats_repo.rs
+        └── draft_repo.rs
 ```
 
 ---
@@ -52,19 +77,29 @@ src-tauri/src/
 
 ```
 Frontend (invoke)
-      │
-      ▼
-commands/<domain>.rs   ← Tauri #[command] functions (thin, call open_store())
-      │
-      ▼
-database::DatabaseStore ← Single connection wrapper (RefCell<Connection>)
-      │
-      ├── database/<domain>.rs  ← impl DatabaseStore { domain methods }
-      │
-      └── database/queries.rs   ← Shared SQL helpers (map_*, find_*, count_*)
+        │
+        ▼
+commands/<domain>.rs      ← Tauri #[command] thin wrapper; calls open_store() → ServiceXxx::new(store)
+        │
+        ▼
+services/<domain>_service.rs  ← Business logic, validation, multi-step coordination
+        │
+        ▼
+database/repositories/<domain>_repo.rs  ← Data-access object; delegates to DatabaseStore methods
+        │
+        ▼
+database::DatabaseStore   ← Single connection wrapper (RefCell<Connection>)
+        │
+        ├── database/<domain>.rs  ← impl DatabaseStore { domain SQL methods }
+        │
+        └── database/queries.rs   ← Shared SQL helpers (map_*, find_*, count_*)
 ```
 
-**Rule**: Commands call `open_store()` → `DatabaseStore` methods → `queries.rs` helpers. No SQL in command files.
+**Rules**:
+- No SQL in command or service files.
+- Business rules (validation, thresholds, limits) live in the Service layer.
+- Repositories are the only layer that calls `DatabaseStore` methods.
+- All `DatabaseStore` / Repository / Service instances must be dropped before any `.await` point to satisfy Rust's `!Send` constraint (see _Async Commands_ below).
 
 ---
 
@@ -136,8 +171,9 @@ All commands are registered in `lib.rs` and exposed to the frontend via `src/api
 |---------|-----------|---------|
 | `ai_parse_questions` | `content: String` | `serde_json::Value` |
 | `ai_chat` | `messages: Vec<AiMessage>`, `prompt_id?` | `serde_json::Value` |
+| `ai_import_questions_direct` | `content: String`, `bank_id: i64` | `AiImportResult` |
 
-Both commands are `async` and read the API config from the database at call time.
+All three commands are `async`. They follow a two-phase pattern to satisfy Rust's `!Send` constraint: all database access (via `SettingsService`, `PromptService`, etc.) completes and drops before the `.await` network call; any post-call DB writes reopen a fresh store afterward.
 
 ### Draft (`commands/draft.rs`)
 
@@ -229,7 +265,7 @@ Key-value store. Known keys:
 |-----|---------|-------|
 | `theme` | `system` | `light` / `dark` / `system` |
 | `wrong_book_threshold` | `3` | Consecutive correct answers before auto-removal |
-| `ai_api_key` | `""` | Stored in plaintext locally |
+| `ai_api_key` | `""` | Stored in the system keychain (Windows Credential Manager); the database field holds an empty placeholder |
 | `ai_api_url` | `https://api.openai.com` | Base URL, no trailing slash |
 | `ai_model_id` | `gpt-3.5-turbo` | Model identifier |
 | `ai_provider` | `custom` | Used by frontend for preset display |
@@ -245,7 +281,7 @@ Key-value store. Known keys:
 | `added_at` | TEXT | First wrong occurrence |
 | `last_wrong_at` | TEXT | Most recent wrong occurrence |
 
-Auto-removal fires when `correct_count >= threshold` after a correct answer in `update_wrong_book_from_practice`.
+Auto-removal fires when `correct_count >= threshold` after a correct answer in `update_wrong_book_from_practice`. The entire batch update (orphan cleanup + wrong-count upsert + correct-count increment + threshold removal) runs inside a single `rusqlite::Transaction` to guarantee atomicity.
 
 ### `practice_records`
 
@@ -335,7 +371,7 @@ pub struct AiConfig {
 
 ## Error Handling
 
-All public database methods and commands return `Result<T, String>`. The `String` error is forwarded directly to the frontend as a rejected `invoke` promise. Error messages are written in Chinese for end-user display.
+Commands return `Result<T, AppError>`. `AppError` is serialised by Tauri and forwarded to the frontend as a rejected `invoke` promise. Error messages are written in Chinese for end-user display.
 
 Conventions:
 - **Database errors** include context: `"创建题目失败: {rusqlite error}"`.
@@ -348,11 +384,29 @@ Conventions:
 ## Adding a New Command
 
 1. **Database method** — add `pub fn your_method(...)` to the relevant `database/<domain>.rs` as `impl DatabaseStore { ... }`.
-2. **Command function** — add `#[tauri::command(rename_all = "camelCase")] pub fn your_command(app: AppHandle, ...) -> Result<T, String>` to `commands/<domain>.rs`, calling `open_store(&app)?`.
-3. **Register** — add `your_command` to `tauri::generate_handler![...]` in `lib.rs`.
-4. **Frontend binding** — add the corresponding `invoke` call to `src/api/index.ts`.
+2. **Repository** — expose the method through the relevant `database/repositories/<domain>_repo.rs`.
+3. **Service** — add business logic to `services/<domain>_service.rs`; call the repository.
+4. **Command function** — add `#[tauri::command(rename_all = "camelCase")] pub fn your_command(app: AppHandle, ...) -> Result<T, AppError>` to `commands/<domain>.rs`:
+   ```rust
+   ServiceXxx::new(open_store(&app)?).your_method(params)
+   ```
+5. **Register** — add `your_command` to `tauri::generate_handler![...]` in `lib.rs`.
+6. **Frontend binding** — add the corresponding `invoke` call to `src/api/index.ts`.
 
-For `async` commands (AI calls, file dialogs): use `pub async fn` and `AppHandle` / `WebviewWindow` as needed.
+### Async Commands (AI calls, file dialogs)
+
+Use `pub async fn`. Because `DatabaseStore` contains `RefCell<Connection>` which is `!Send`, **all** DB access must be complete and dropped before any `.await`:
+
+```rust
+pub async fn my_async_command(app: AppHandle, ...) -> Result<T, AppError> {
+    // Phase 1: synchronous DB reads — Service drops at end of statement
+    let data = MyService::new(open_store(&app)?).read_something()?;
+    // Phase 2: async network call — no !Send types alive
+    let result = some_async_call(data).await?;
+    // Phase 3 (if needed): reopen store for DB writes
+    MyService::new(open_store(&app)?).write_something(result)
+}
+```
 
 ---
 
