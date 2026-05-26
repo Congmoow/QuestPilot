@@ -5,6 +5,7 @@ use tauri::{AppHandle, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
 
 use crate::error::AppError;
+use crate::services::import_service::ImportService;
 use crate::{csv_tools, database};
 
 use super::open_store;
@@ -61,7 +62,7 @@ pub fn csv_import(
     bank_id: i64,
     questions: Vec<database::CreateQuestionInput>,
 ) -> Result<database::ImportResult, AppError> {
-    Ok(open_store(&app)?.create_questions_batch(bank_id, questions)?)
+    Ok(ImportService::new(open_store(&app)?).import_questions(bank_id, questions)?)
 }
 
 #[tauri::command(rename_all = "camelCase")]
