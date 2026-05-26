@@ -69,20 +69,22 @@ Frontend (React/TypeScript)
 Repository.method() → store.method()
 ```
 
-### Phase 2 试点：WrongBookRepository（已完成）
+### Phase 2 已完成的 Repository
 
-`WrongBookRepository` 已迁移为**通过 `DatabaseStore::with_connection` /
-`with_transaction` 直接访问 `rusqlite::Connection` / `Transaction`**，不再委托
-`DatabaseStore` 的领域方法：
+- **`WrongBookRepository`**（首个试点）：含事务，使用 `with_connection` + `with_transaction`
+- **`PracticeRepository`**（第二个）：纯 `with_connection`，无事务需求
+
+两者均已迁移为**通过 `DatabaseStore::with_connection` / `with_transaction` 直接访问
+`rusqlite::Connection` / `Transaction`**，不再委托 `DatabaseStore` 的领域方法：
 
 ```
-WrongBookRepository.method()
+Repository.read_method()
   → DatabaseStore::with_connection(|conn| { /* 直接 SQL */ })
   → rusqlite::Connection
 ```
 
 ```
-WrongBookRepository::update_from_practice_tx()
+Repository.atomic_batch_method()                  // 仅事务场景使用
   → DatabaseStore::with_transaction(|tx| { /* 直接 SQL，单事务 */ })
   → rusqlite::Transaction
 ```
@@ -107,9 +109,9 @@ impl DatabaseStore {
 
 #### DatabaseStore 旧方法处理
 
-`database/wrong_book.rs` 中的所有旧 `DatabaseStore` wrong_book 方法**全部保留**，
-注释标明"兼容入口保留；新主路径由 WrongBookRepository 直接访问 Connection"。
-确认无调用后，后续可在独立 PR 中删除。
+`database/wrong_book.rs` 与 `database/practice.rs` 中所有旧 `DatabaseStore` 方法**全部保留**，
+注释统一标明"兼容入口保留；新主路径由 XxxRepository 直接访问 Connection"。
+确认无调用后，后续可在独立 PR 中按模块逐个删除。
 
 ### 后续迁移建议
 
@@ -123,11 +125,11 @@ impl DatabaseStore {
 | Repository | 迁移难度 | 建议顺序 |
 |---|---|---|
 | `WrongBookRepository` | ✅ 已完成 | — |
-| `PracticeRepository` | 低（无复杂事务） | 次优先 |
-| `QuestionRepository` | 中（有分页/批量） | 第三 |
-| `QuestionBankRepository` | 低 | 第四 |
-| `SettingsRepository` | 低 | 第五 |
-| `StatsRepository` | 低（只读多） | 第六 |
+| `PracticeRepository` | ✅ 已完成 | — |
+| `QuestionBankRepository` | 低 | 次优先 |
+| `SettingsRepository` | 低 | 第三 |
+| `StatsRepository` | 低（只读多） | 第四 |
+| `QuestionRepository` | 中（有分页/批量） | 第五 |
 | 其余 | 低 | 按需 |
 
 ## 5. async Command 的 !Send 两阶段处理原则
