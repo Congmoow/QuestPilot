@@ -15,8 +15,10 @@ const PromptsSection = () => {
   const {
     prompts,
     editingPrompt,
-    promptName, setPromptName,
-    promptContent, setPromptContent,
+    promptName,
+    setPromptName,
+    promptContent,
+    setPromptContent,
     showPromptForm,
     savingPrompt,
     deletePromptDialogOpen,
@@ -95,13 +97,18 @@ const PromptsSection = () => {
 
       <div className="grid gap-3">
         {prompts.map((prompt) => (
-          <div key={prompt.id} className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+          <div
+            key={prompt.id}
+            className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
+          >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h4 className="text-sm font-bold text-gray-900 dark:text-white">{prompt.name}</h4>
                   {prompt.isDefault && (
-                    <span className="rounded-lg bg-primary-soft px-2 py-0.5 text-xs font-bold text-primary">默认</span>
+                    <span className="rounded-lg bg-primary-soft px-2 py-0.5 text-xs font-bold text-primary">
+                      默认
+                    </span>
                   )}
                 </div>
                 <p className="mt-1 line-clamp-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
@@ -109,7 +116,11 @@ const PromptsSection = () => {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <IconButton label="编辑 Prompt" icon={Pencil} onClick={() => handleEditPrompt(prompt)} />
+                <IconButton
+                  label="编辑 Prompt"
+                  icon={Pencil}
+                  onClick={() => handleEditPrompt(prompt)}
+                />
                 {!prompt.isDefault && (
                   <IconButton
                     label="删除 Prompt"

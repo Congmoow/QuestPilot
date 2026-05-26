@@ -12,9 +12,14 @@ export const normalizeBooleanAnswer = (answer: unknown): string => {
 
 export const normalizeChoiceAnswer = (answer: unknown, multiple = false): string => {
   if (Array.isArray(answer)) {
-    return answer.map((a) => normalizeChoiceAnswer(a, false)).filter(Boolean).join('|');
+    return answer
+      .map((a) => normalizeChoiceAnswer(a, false))
+      .filter(Boolean)
+      .join('|');
   }
-  const raw = String(answer ?? '').trim().toUpperCase();
+  const raw = String(answer ?? '')
+    .trim()
+    .toUpperCase();
   if (!raw) return raw;
   const parts = raw
     .replace(/[，,、;；\s]+/g, '|')

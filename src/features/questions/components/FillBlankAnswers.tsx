@@ -6,7 +6,11 @@ type FillBlankAnswersProps = {
   onUpdateFillAnswer: (index: number, value: string) => void;
 };
 
-const FillBlankAnswers = ({ blankCount, fillAnswers, onUpdateFillAnswer }: FillBlankAnswersProps) => (
+const FillBlankAnswers = ({
+  blankCount,
+  fillAnswers,
+  onUpdateFillAnswer,
+}: FillBlankAnswersProps) => (
   <Field label="答案设置" required>
     {blankCount === 0 ? (
       <div className="rounded-2xl border border-dashed border-blue-200 bg-blue-50/70 px-4 py-5 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-700/40 dark:text-gray-300">

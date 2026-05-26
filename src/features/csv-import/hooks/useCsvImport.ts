@@ -113,11 +113,16 @@ export const useCsvImport = () => {
   const handleBackToBank = () => navigate('/question-preview');
 
   return {
-    bankId, bank,
-    currentStep, setCurrentStep,
-    file, uploadStatus,
-    parseResult, importResult,
-    errorMessage, setErrorMessage,
+    bankId,
+    bank,
+    currentStep,
+    setCurrentStep,
+    file,
+    uploadStatus,
+    parseResult,
+    importResult,
+    errorMessage,
+    setErrorMessage,
     downloading,
     handleDownloadTemplate,
     handleSelectFile,

@@ -2,6 +2,7 @@ pub mod ai;
 pub mod commands;
 pub mod csv_tools;
 pub mod database;
+pub mod error;
 
 use commands::{
     ai_cmd::{ai_chat, ai_parse_questions},
@@ -18,8 +19,8 @@ use commands::{
         question_get_by_id, question_get_random, question_search, question_update,
     },
     question_bank::{
-        question_bank_create, question_bank_delete, question_bank_get_all,
-        question_bank_get_by_id, question_bank_update,
+        question_bank_create, question_bank_delete, question_bank_get_all, question_bank_get_by_id,
+        question_bank_update,
     },
     settings::{
         migration_backup_and_replace_from_legacy, migration_get_legacy_status,
@@ -36,6 +37,13 @@ use commands::{
 };
 
 pub fn run() {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+        )
+        .init();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![

@@ -22,21 +22,47 @@ import CuotiIcon from './CuotiIcon';
 
 type WrongBookListProps = Pick<
   WrongBookState,
-  | 'banks' | 'selectedBankId' | 'setSelectedBankId'
-  | 'practiceCount' | 'setPracticeCount'
-  | 'items' | 'total' | 'totalPages' | 'page' | 'loading' | 'loadError'
-  | 'removingId' | 'clearDialogOpen' | 'setClearDialogOpen'
+  | 'banks'
+  | 'selectedBankId'
+  | 'setSelectedBankId'
+  | 'practiceCount'
+  | 'setPracticeCount'
+  | 'items'
+  | 'total'
+  | 'totalPages'
+  | 'page'
+  | 'loading'
+  | 'loadError'
+  | 'removingId'
+  | 'clearDialogOpen'
+  | 'setClearDialogOpen'
   | 'currentBankName'
-  | 'loadItems' | 'startPractice' | 'handleRemoveItem' | 'handleClear'
+  | 'loadItems'
+  | 'startPractice'
+  | 'handleRemoveItem'
+  | 'handleClear'
 >;
 
 const WrongBookList = ({
-  banks, selectedBankId, setSelectedBankId,
-  practiceCount, setPracticeCount,
-  items, total, totalPages, page, loading, loadError,
-  removingId, clearDialogOpen, setClearDialogOpen,
+  banks,
+  selectedBankId,
+  setSelectedBankId,
+  practiceCount,
+  setPracticeCount,
+  items,
+  total,
+  totalPages,
+  page,
+  loading,
+  loadError,
+  removingId,
+  clearDialogOpen,
+  setClearDialogOpen,
   currentBankName,
-  loadItems, startPractice, handleRemoveItem, handleClear,
+  loadItems,
+  startPractice,
+  handleRemoveItem,
+  handleClear,
 }: WrongBookListProps) => (
   <div className="space-y-6">
     <PageHeader title="错题本" subtitle="记录每次练习做错的题目，并支持随机练错题" />
@@ -50,7 +76,9 @@ const WrongBookList = ({
           >
             <option value="">全部题库</option>
             {banks.map((bank) => (
-              <option key={bank.id} value={bank.id}>{bank.name}</option>
+              <option key={bank.id} value={bank.id}>
+                {bank.name}
+              </option>
             ))}
           </SelectInput>
         </Field>
@@ -81,7 +109,8 @@ const WrongBookList = ({
       </div>
 
       <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-        当前筛选：<span className="text-primary">{currentBankName}</span>，共 <span className="text-primary">{total}</span> 道错题
+        当前筛选：<span className="text-primary">{currentBankName}</span>，共{' '}
+        <span className="text-primary">{total}</span> 道错题
       </div>
     </ToolbarCard>
 
@@ -117,7 +146,10 @@ const WrongBookList = ({
                 <div className="flex items-start gap-4">
                   <div className="min-w-0 flex-1 space-y-4">
                     <div className="flex flex-wrap items-center gap-3">
-                      <TypeBadge type={item.question?.type} label={TYPE_LABELS[item.question?.type] || '题目'} />
+                      <TypeBadge
+                        type={item.question?.type}
+                        label={TYPE_LABELS[item.question?.type] || '题目'}
+                      />
                       <span className="ml-auto rounded-xl bg-red-50 px-3 py-1 text-xs font-bold text-red-600">
                         错 {item.wrongCount} 次 / 对 {item.correctCount} 次
                       </span>
@@ -129,7 +161,10 @@ const WrongBookList = ({
 
                     {item.question?.analysis && (
                       <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm text-gray-600 dark:bg-blue-900/20 dark:text-gray-300">
-                        <CodeAwareText text={item.question.analysis} className="bg-transparent p-0" />
+                        <CodeAwareText
+                          text={item.question.analysis}
+                          className="bg-transparent p-0"
+                        />
                       </div>
                     )}
                   </div>

@@ -20,7 +20,7 @@ const WrongBook = () => {
           { label: '正确', value: practiceResult.correct, className: 'bg-green-50 text-green-700' },
           { label: '错误', value: practiceResult.wrong, className: 'bg-red-50 text-red-700' },
         ]}
-        actions={(
+        actions={
           <>
             <ActionButton variant="secondary" icon={RotateCcw} onClick={state.restart}>
               返回错题本
@@ -29,7 +29,7 @@ const WrongBook = () => {
               再练一次
             </ActionButton>
           </>
-        )}
+        }
       />
     );
   }

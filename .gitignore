@@ -1,4 +1,4 @@
-# Dependencies
+﻿# Dependencies
 node_modules/
 
 # Build outputs
@@ -14,9 +14,11 @@ src-tauri/target/
 .kiro/
 
 # Local tests
-tests/
+tests/*
 !src-tauri/tests/
 !src-tauri/tests/**
+!tests/e2e/
+!tests/e2e/**
 
 # Logs
 *.log

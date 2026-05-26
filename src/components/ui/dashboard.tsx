@@ -4,13 +4,6 @@ import { getPublicAssetPath } from '../../lib/assets';
 import { cn } from '../../lib/utils';
 import { SurfaceCard, StatusBadge } from './base';
 
-const toneMap = {
-  blue: 'from-blue-500 to-blue-600 text-white shadow-blue-500/25',
-  green: 'from-emerald-500 to-emerald-600 text-white shadow-emerald-500/25',
-  orange: 'from-orange-400 to-orange-500 text-white shadow-orange-500/25',
-  purple: 'from-violet-500 to-violet-600 text-white shadow-violet-500/25',
-};
-
 const DASHBOARD_ICONS = [
   '/dashboard-icons/iocn-1.webp',
   '/dashboard-icons/icon-2.webp',
@@ -18,11 +11,27 @@ const DASHBOARD_ICONS = [
   '/dashboard-icons/icon-4.webp',
 ];
 
-export function StatCard({ title, value, trend, iconIndex = 0, tone = 'blue' }: { title: ReactNode; value: ReactNode; trend?: { label: ReactNode; value: ReactNode }; iconIndex?: number; tone?: string }) {
+export function StatCard({
+  title,
+  value,
+  trend,
+  iconIndex = 0,
+  tone: _tone = 'blue',
+}: {
+  title: ReactNode;
+  value: ReactNode;
+  trend?: { label: ReactNode; value: ReactNode };
+  iconIndex?: number;
+  tone?: string;
+}) {
   const iconSrc = getPublicAssetPath(DASHBOARD_ICONS[iconIndex % DASHBOARD_ICONS.length]);
 
   return (
-    <SurfaceCard hover className="min-h-[120px] hover:shadow-none [&:hover]:border-transparent" padding="p-0">
+    <SurfaceCard
+      hover
+      className="min-h-[120px] hover:shadow-none [&:hover]:border-transparent"
+      padding="p-0"
+    >
       <div className="flex h-[120px] items-center justify-between gap-0">
         <div className="min-w-0 p-5">
           <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">{title}</p>
@@ -43,7 +52,19 @@ export function StatCard({ title, value, trend, iconIndex = 0, tone = 'blue' }: 
   );
 }
 
-export function ChartCard({ title, icon: Icon, action, children, className }: { title: ReactNode; icon?: React.ElementType; action?: ReactNode; children?: ReactNode; className?: string }) {
+export function ChartCard({
+  title,
+  icon: Icon,
+  action,
+  children,
+  className,
+}: {
+  title: ReactNode;
+  icon?: React.ElementType;
+  action?: ReactNode;
+  children?: ReactNode;
+  className?: string;
+}) {
   return (
     <SurfaceCard className={className} padding="p-5">
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -58,7 +79,17 @@ export function ChartCard({ title, icon: Icon, action, children, className }: { 
   );
 }
 
-export function TimelineLog({ logs, formatTime, emptyText = '暂无操作记录', className }: { logs?: Array<{ id?: number; action: string; detail?: string; createdAt: string }>; formatTime?: (value: string) => string; emptyText?: ReactNode; className?: string }) {
+export function TimelineLog({
+  logs,
+  formatTime,
+  emptyText = '暂无操作记录',
+  className,
+}: {
+  logs?: Array<{ id?: number; action: string; detail?: string; createdAt: string }>;
+  formatTime?: (value: string) => string;
+  emptyText?: ReactNode;
+  className?: string;
+}) {
   const getVariant = (action = '') => {
     if (action.includes('删除')) return 'danger';
     if (action.includes('添加') || action.includes('新增')) return 'success';
@@ -68,7 +99,12 @@ export function TimelineLog({ logs, formatTime, emptyText = '暂无操作记录'
 
   if (!logs || logs.length === 0) {
     return (
-      <div className={cn('flex min-h-[220px] flex-col items-center justify-center text-center text-gray-400', className)}>
+      <div
+        className={cn(
+          'flex min-h-[220px] flex-col items-center justify-center text-center text-gray-400',
+          className,
+        )}
+      >
         <Clock size={34} className="mb-3 opacity-60" />
         <p>{emptyText}</p>
       </div>
@@ -80,15 +116,30 @@ export function TimelineLog({ logs, formatTime, emptyText = '暂无操作记录'
       {logs.map((log, index) => (
         <div key={log.id || index} className="flex gap-3">
           <div className="flex flex-col items-center pt-2">
-            <span className={cn('size-2.5 rounded-full', getVariant(log.action) === 'success' ? 'bg-success' : getVariant(log.action) === 'danger' ? 'bg-danger' : 'bg-primary')} />
-            {index < logs.length - 1 && <span className="mt-2 h-full min-h-11 w-px bg-gray-200 dark:bg-gray-700" />}
+            <span
+              className={cn(
+                'size-2.5 rounded-full',
+                getVariant(log.action) === 'success'
+                  ? 'bg-success'
+                  : getVariant(log.action) === 'danger'
+                    ? 'bg-danger'
+                    : 'bg-primary',
+              )}
+            />
+            {index < logs.length - 1 && (
+              <span className="mt-2 h-full min-h-11 w-px bg-gray-200 dark:bg-gray-700" />
+            )}
           </div>
           <div className="min-w-0 flex-1 pb-4">
             <div className="flex items-start justify-between gap-3">
               <StatusBadge variant={getVariant(log.action)}>{log.action}</StatusBadge>
-              <span className="shrink-0 text-xs text-gray-400">{formatTime ? formatTime(log.createdAt) : log.createdAt}</span>
+              <span className="shrink-0 text-xs text-gray-400">
+                {formatTime ? formatTime(log.createdAt) : log.createdAt}
+              </span>
             </div>
-            <p className="mt-2 line-clamp-2 text-sm leading-6 text-gray-600 dark:text-gray-300">{log.detail || '无详细信息'}</p>
+            <p className="mt-2 line-clamp-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+              {log.detail || '无详细信息'}
+            </p>
           </div>
         </div>
       ))}

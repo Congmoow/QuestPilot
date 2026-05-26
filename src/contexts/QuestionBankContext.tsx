@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, type ReactNode } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createQuestionBank,
   deleteQuestionBank,
@@ -8,6 +9,7 @@ import {
   type CreateQuestionBankInput,
   type QuestionBank,
 } from '../api';
+import { queryKeys } from '../api/queryKeys';
 
 type QuestionBankContextValue = {
   banks: QuestionBank[];
@@ -22,87 +24,59 @@ type QuestionBankContextValue = {
 
 const QuestionBankContext = createContext<QuestionBankContextValue | null>(null);
 
-const errorMessage = (error: unknown, fallback: string) => {
-  return error instanceof Error ? error.message : fallback;
-};
-
 export function QuestionBankProvider({ children }: { children: ReactNode }) {
-  const [banks, setBanks] = useState<QuestionBank[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const qc = useQueryClient();
+
+  const {
+    data: banks = [],
+    isFetching: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: queryKeys.questionBanks.all(),
+    queryFn: getAllQuestionBanks,
+  });
+
+  const error = queryError instanceof Error ? queryError.message : null;
 
   const fetchBanks = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getAllQuestionBanks();
-      setBanks(data || []);
-    } catch (err) {
-      setError(errorMessage(err, '获取题库列表失败'));
-      setBanks([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    await qc.invalidateQueries({ queryKey: queryKeys.questionBanks.all() });
+  }, [qc]);
 
-  const addBank = useCallback(async (data: CreateQuestionBankInput) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const newBank = await createQuestionBank(data);
-      setBanks((prev) => [...prev, newBank]);
-      return newBank;
-    } catch (err) {
-      setError(errorMessage(err, '创建题库失败'));
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { mutateAsync: createMutation } = useMutation({
+    mutationFn: createQuestionBank,
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.questionBanks.all() }),
+  });
 
-  const editBank = useCallback(async (id: number, data: CreateQuestionBankInput) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const updatedBank = await updateQuestionBank(id, data);
-      if (updatedBank) {
-        setBanks((prev) => prev.map((bank) => (bank.id === id ? updatedBank : bank)));
-      }
-      return updatedBank;
-    } catch (err) {
-      setError(errorMessage(err, '更新题库失败'));
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { mutateAsync: updateMutation } = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CreateQuestionBankInput }) =>
+      updateQuestionBank(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.questionBanks.all() }),
+  });
 
-  const removeBank = useCallback(async (id: number) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await deleteQuestionBank(id);
-      setBanks((prev) => prev.filter((bank) => bank.id !== id));
-    } catch (err) {
-      setError(errorMessage(err, '删除题库失败'));
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { mutateAsync: deleteMutation } = useMutation({
+    mutationFn: deleteQuestionBank,
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.questionBanks.all() }),
+  });
+
+  const addBank = useCallback(
+    (data: CreateQuestionBankInput) => createMutation(data),
+    [createMutation],
+  );
+
+  const editBank = useCallback(
+    (id: number, data: CreateQuestionBankInput) => updateMutation({ id, data }),
+    [updateMutation],
+  );
+
+  const removeBank = useCallback((id: number) => deleteMutation(id), [deleteMutation]);
 
   const getBankById = useCallback(async (id: number) => {
     try {
       return await getQuestionBankById(id);
-    } catch (err) {
-      setError(errorMessage(err, '获取题库失败'));
+    } catch {
       return null;
     }
   }, []);
-
-  useEffect(() => {
-    fetchBanks();
-  }, [fetchBanks]);
 
   const value: QuestionBankContextValue = {
     banks,

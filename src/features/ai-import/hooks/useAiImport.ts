@@ -29,11 +29,21 @@ type RawJsonQuestion = {
 };
 
 const JSON_TYPE_MAP: Record<string, QuestionType> = {
-  '单选题': 'single', '单选': 'single', 'single': 'single',
-  '多选题': 'multiple', '多选': 'multiple', 'multiple': 'multiple',
-  '判断题': 'boolean', '判断': 'boolean', 'boolean': 'boolean',
-  '填空题': 'fill', '填空': 'fill', 'fill': 'fill',
-  '简答题': 'short', '简答': 'short', 'short': 'short',
+  单选题: 'single',
+  单选: 'single',
+  single: 'single',
+  多选题: 'multiple',
+  多选: 'multiple',
+  multiple: 'multiple',
+  判断题: 'boolean',
+  判断: 'boolean',
+  boolean: 'boolean',
+  填空题: 'fill',
+  填空: 'fill',
+  fill: 'fill',
+  简答题: 'short',
+  简答: 'short',
+  short: 'short',
 };
 
 export const useAiImport = () => {
@@ -68,7 +78,10 @@ export const useAiImport = () => {
   }, [fetchBanks]);
 
   const handleParse = async () => {
-    if (!inputText.trim()) { setError('请输入要解析的题目内容'); return; }
+    if (!inputText.trim()) {
+      setError('请输入要解析的题目内容');
+      return;
+    }
     setParsing(true);
     setError(null);
     setParsedQuestions([]);
@@ -77,16 +90,24 @@ export const useAiImport = () => {
     setShowParseWarnings(false);
     try {
       const result = await api.ai.parseQuestions(inputText);
-      const chunkErrors: ParseChunkError[] = Array.isArray(result.chunkErrors) ? result.chunkErrors as ParseChunkError[] : [];
+      const chunkErrors: ParseChunkError[] = Array.isArray(result.chunkErrors)
+        ? (result.chunkErrors as ParseChunkError[])
+        : [];
       if (result.questions && result.questions.length > 0) {
         setParsedQuestions(result.questions);
         if (chunkErrors.length > 0) {
-          setParseWarnings({ questionCount: result.questions.length, chunkErrors, chunks: result.chunks });
+          setParseWarnings({
+            questionCount: result.questions.length,
+            chunkErrors,
+            chunks: result.chunks,
+          });
         }
       } else {
         if (chunkErrors.length > 0) {
           const messages = chunkErrors
-            .map((item) => `第 ${Number(item.chunkIndex) + 1} 个片段：${item.message || '解析失败'}`)
+            .map(
+              (item) => `第 ${Number(item.chunkIndex) + 1} 个片段：${item.message || '解析失败'}`,
+            )
             .join('\n');
           setError(`未能识别出有效的题目。\n${messages}`);
         } else {
@@ -105,8 +126,14 @@ export const useAiImport = () => {
   };
 
   const handleImport = async () => {
-    if (!selectedBankId) { setError('请先选择目标题库'); return; }
-    if (parsedQuestions.length === 0) { setError('没有可导入的题目'); return; }
+    if (!selectedBankId) {
+      setError('请先选择目标题库');
+      return;
+    }
+    if (parsedQuestions.length === 0) {
+      setError('没有可导入的题目');
+      return;
+    }
     setImporting(true);
     setError(null);
     setImportResult(null);
@@ -144,7 +171,10 @@ export const useAiImport = () => {
   };
 
   const handleJsonParse = () => {
-    if (!jsonInput.trim()) { setError('请输入 JSON 格式的题目数据'); return; }
+    if (!jsonInput.trim()) {
+      setError('请输入 JSON 格式的题目数据');
+      return;
+    }
     setError(null);
     setParsedQuestions([]);
     setImportResult(null);
@@ -169,7 +199,9 @@ export const useAiImport = () => {
             normalizedOptions = options.map((opt, i) => {
               if (typeof opt === 'string') {
                 const match = opt.match(/^([A-Z])[.、．]\s*(.+)$/);
-                return match ? { id: match[1], text: match[2] } : { id: String.fromCharCode(65 + i), text: opt };
+                return match
+                  ? { id: match[1], text: match[2] }
+                  : { id: String.fromCharCode(65 + i), text: opt };
               }
               return opt as { id: string; text: string };
             });
@@ -189,21 +221,35 @@ export const useAiImport = () => {
           }
           const answerCount = normalizedAnswer.split('|').length;
           if (answerCount !== blankCount) {
-            throw new Error(`第 ${index + 1} 道填空题答案数量(${answerCount})与空栏数量(${blankCount})不匹配`);
+            throw new Error(
+              `第 ${index + 1} 道填空题答案数量(${answerCount})与空栏数量(${blankCount})不匹配`,
+            );
           }
         }
         if (normalizedType === 'boolean') normalizedAnswer = normalizeBooleanAnswer(answer);
 
         return {
-          type: normalizedType, content, answer: normalizedAnswer, analysis,
+          type: normalizedType,
+          content,
+          answer: normalizedAnswer,
+          analysis,
           ...(normalizedOptions && { options: normalizedOptions }),
         };
       });
 
-      if (questions.length === 0) { setError('未能解析出有效的题目'); return; }
+      if (questions.length === 0) {
+        setError('未能解析出有效的题目');
+        return;
+      }
       setParsedQuestions(questions);
     } catch (err) {
-      setError(err instanceof SyntaxError ? 'JSON 格式错误，请检查语法' : (err instanceof Error ? err.message : '解析失败'));
+      setError(
+        err instanceof SyntaxError
+          ? 'JSON 格式错误，请检查语法'
+          : err instanceof Error
+            ? err.message
+            : '解析失败',
+      );
     }
   };
 
@@ -217,12 +263,28 @@ export const useAiImport = () => {
   };
 
   return {
-    banks, selectedBankId, setSelectedBankId,
-    mode, inputText, setInputText, jsonInput, setJsonInput,
-    parsing, parsedQuestions,
-    error, importing, importResult,
-    hasApiKey, parseWarnings, showParseWarnings, setShowParseWarnings,
-    handleParse, handleRemoveQuestion, handleImport,
-    handleClear, handleJsonParse, handleModeChange,
+    banks,
+    selectedBankId,
+    setSelectedBankId,
+    mode,
+    inputText,
+    setInputText,
+    jsonInput,
+    setJsonInput,
+    parsing,
+    parsedQuestions,
+    error,
+    importing,
+    importResult,
+    hasApiKey,
+    parseWarnings,
+    showParseWarnings,
+    setShowParseWarnings,
+    handleParse,
+    handleRemoveQuestion,
+    handleImport,
+    handleClear,
+    handleJsonParse,
+    handleModeChange,
   };
 };

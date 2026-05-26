@@ -1,10 +1,32 @@
-import React, { useRef, useCallback, type ChangeEventHandler, type ElementType, type KeyboardEventHandler, type ReactNode, type RefObject } from 'react';
-import { Bot, Camera, Paperclip, Send, Sparkles, ArrowRight } from 'lucide-react';
+import React, {
+  useRef,
+  useCallback,
+  type ChangeEventHandler,
+  type ElementType,
+  type KeyboardEventHandler,
+  type ReactNode,
+  type RefObject,
+} from 'react';
+import { Paperclip, Send, Sparkles, ArrowRight } from 'lucide-react';
 import { getPublicAssetPath } from '../../lib/assets';
 import { cn } from '../../lib/utils';
-import { ActionButton, EmptyState, SurfaceCard } from './base';
+import { EmptyState, SurfaceCard } from './base';
 
-export function JsonEditorPanel({ value, onChange, placeholder, title = '输入 JSON 数据', supportText, className }: { value: string; onChange: ChangeEventHandler<HTMLTextAreaElement>; placeholder?: string; title?: ReactNode; supportText?: ReactNode; className?: string }) {
+export function JsonEditorPanel({
+  value,
+  onChange,
+  placeholder,
+  title = '输入 JSON 数据',
+  supportText,
+  className,
+}: {
+  value: string;
+  onChange: ChangeEventHandler<HTMLTextAreaElement>;
+  placeholder?: string;
+  title?: ReactNode;
+  supportText?: ReactNode;
+  className?: string;
+}) {
   const lineCount = Math.max(18, String(value || placeholder || '').split('\n').length);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -22,7 +44,10 @@ export function JsonEditorPanel({ value, onChange, placeholder, title = '输入 
         {supportText && <span className="text-xs text-gray-400">{supportText}</span>}
       </div>
       <div className="grid h-[434px] grid-cols-[54px_1fr] overflow-hidden bg-white font-mono text-sm dark:bg-gray-800">
-        <div ref={lineNumbersRef} className="overflow-y-hidden select-none border-r border-gray-100 bg-slate-50 px-3 py-4 text-right leading-7 text-gray-400 dark:border-gray-700 dark:bg-gray-900/30">
+        <div
+          ref={lineNumbersRef}
+          className="overflow-y-hidden select-none border-r border-gray-100 bg-slate-50 px-3 py-4 text-right leading-7 text-gray-400 dark:border-gray-700 dark:bg-gray-900/30"
+        >
           {Array.from({ length: lineCount }).map((_, i) => (
             <div key={i}>{i + 1}</div>
           ))}
@@ -42,16 +67,32 @@ export function JsonEditorPanel({ value, onChange, placeholder, title = '输入 
   );
 }
 
-export function ParsedQuestionItem({ question, index, typeLabel, onRemove, removeIcon: RemoveIcon }: { question: { content: string; answer: string }; index: number; typeLabel: ReactNode; onRemove?: () => void; removeIcon?: ElementType }) {
+export function ParsedQuestionItem({
+  question,
+  index,
+  typeLabel,
+  onRemove,
+  removeIcon: RemoveIcon,
+}: {
+  question: { content: string; answer: string };
+  index: number;
+  typeLabel: ReactNode;
+  onRemove?: () => void;
+  removeIcon?: ElementType;
+}) {
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-4 transition-colors hover:border-blue-200 hover:bg-blue-50/40 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="mb-2 flex items-center gap-2">
-            <span className="rounded-lg bg-primary-soft px-2.5 py-1 text-xs font-bold text-primary">{typeLabel}</span>
+            <span className="rounded-lg bg-primary-soft px-2.5 py-1 text-xs font-bold text-primary">
+              {typeLabel}
+            </span>
             <span className="text-xs font-semibold text-gray-400">#{index + 1}</span>
           </div>
-          <p className="line-clamp-2 text-sm font-semibold leading-6 text-gray-900 dark:text-white">{question.content}</p>
+          <p className="line-clamp-2 text-sm font-semibold leading-6 text-gray-900 dark:text-white">
+            {question.content}
+          </p>
           <p className="mt-2 text-xs font-semibold text-success">答案：{question.answer}</p>
         </div>
         {onRemove && (
@@ -76,7 +117,13 @@ export function AIChatWelcome({
   heroImageClassName = 'h-56',
   heroImageLabel,
 }: {
-  features?: Array<{ title: string; description: string; icon?: ElementType; iconSrc?: string; iconClass?: string }>;
+  features?: Array<{
+    title: string;
+    description: string;
+    icon?: ElementType;
+    iconSrc?: string;
+    iconClass?: string;
+  }>;
   heroImageSrc?: string;
   heroImageAlt?: string;
   heroImageClassName?: string;
@@ -92,7 +139,9 @@ export function AIChatWelcome({
           className={cn('relative w-auto object-contain', heroImageClassName)}
         />
         {heroImageLabel && (
-          <div className="text-sm font-semibold text-gray-600 dark:text-gray-300">{heroImageLabel}</div>
+          <div className="text-sm font-semibold text-gray-600 dark:text-gray-300">
+            {heroImageLabel}
+          </div>
         )}
       </div>
 
@@ -106,15 +155,28 @@ export function AIChatWelcome({
                 className="group relative overflow-hidden rounded-[20px] border border-gray-100 bg-white text-left transition-all duration-200 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 dark:border-gray-700 dark:bg-gray-800"
               >
                 {feature.iconSrc ? (
-                  <img src={getPublicAssetPath(feature.iconSrc)} alt="" className="h-24 w-full object-contain object-left" />
+                  <img
+                    src={getPublicAssetPath(feature.iconSrc)}
+                    alt=""
+                    className="h-24 w-full object-contain object-left"
+                  />
                 ) : (
-                  <div className={cn('flex h-28 items-center justify-center', feature.iconClass || 'bg-primary-soft text-primary')}>
+                  <div
+                    className={cn(
+                      'flex h-28 items-center justify-center',
+                      feature.iconClass || 'bg-primary-soft text-primary',
+                    )}
+                  >
                     <Icon size={56} />
                   </div>
                 )}
                 <div className="px-5 pb-5 pt-3">
-                  <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">{feature.title}</h3>
-                  <p className="mt-1.5 whitespace-pre-line text-[13px] leading-[1.7] text-gray-500 dark:text-gray-400">{feature.description}</p>
+                  <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-1.5 whitespace-pre-line text-[13px] leading-[1.7] text-gray-500 dark:text-gray-400">
+                    {feature.description}
+                  </p>
                 </div>
                 <div className="absolute bottom-5 right-5 flex size-7 items-center justify-center rounded-full bg-gray-50 text-gray-400 transition-colors group-hover:bg-primary-soft group-hover:text-primary dark:bg-gray-700">
                   <ArrowRight size={14} />
@@ -128,23 +190,63 @@ export function AIChatWelcome({
   );
 }
 
-export function ChatMessageBubble({ role, children, avatar, className }: { role: string; children?: ReactNode; avatar?: ReactNode; className?: string }) {
+export function ChatMessageBubble({
+  role,
+  children,
+  avatar,
+  className,
+}: {
+  role: string;
+  children?: ReactNode;
+  avatar?: ReactNode;
+  className?: string;
+}) {
   const isUser = role === 'user';
   return (
     <div className={cn('flex gap-3', isUser && 'flex-row-reverse', className)}>
       {avatar && (
-        <div className={cn('flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl', isUser ? 'bg-primary text-white' : 'bg-primary-soft text-primary')}>
+        <div
+          className={cn(
+            'flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl',
+            isUser ? 'bg-primary text-white' : 'bg-primary-soft text-primary',
+          )}
+        >
           {avatar}
         </div>
       )}
-      <div className={cn('max-w-[82%] rounded-3xl px-5 py-4 text-sm leading-7 shadow-sm', isUser ? 'rounded-tr-md bg-primary text-white' : 'rounded-tl-md bg-white text-gray-800 dark:bg-gray-700 dark:text-gray-100')}>
+      <div
+        className={cn(
+          'max-w-[82%] rounded-3xl px-5 py-4 text-sm leading-7 shadow-sm',
+          isUser
+            ? 'rounded-tr-md bg-primary text-white'
+            : 'rounded-tl-md bg-white text-gray-800 dark:bg-gray-700 dark:text-gray-100',
+        )}
+      >
         {children}
       </div>
     </div>
   );
 }
 
-export function ChatComposer({ value, onChange, onKeyDown, onSend, loading, disabled, inputRef, placeholder = '输入你的问题...' }: { value: string; onChange: ChangeEventHandler<HTMLTextAreaElement>; onKeyDown?: KeyboardEventHandler<HTMLTextAreaElement>; onSend: () => void; loading?: boolean; disabled?: boolean; inputRef?: RefObject<HTMLTextAreaElement>; placeholder?: string }) {
+export function ChatComposer({
+  value,
+  onChange,
+  onKeyDown,
+  onSend,
+  loading,
+  disabled,
+  inputRef,
+  placeholder = '输入你的问题...',
+}: {
+  value: string;
+  onChange: ChangeEventHandler<HTMLTextAreaElement>;
+  onKeyDown?: KeyboardEventHandler<HTMLTextAreaElement>;
+  onSend: () => void;
+  loading?: boolean;
+  disabled?: boolean;
+  inputRef?: RefObject<HTMLTextAreaElement>;
+  placeholder?: string;
+}) {
   return (
     <div className="rounded-[20px] border border-blue-200/60 bg-white p-4 shadow-[0_2px_16px_rgba(37,99,235,0.06)] dark:border-gray-700 dark:bg-gray-800">
       <textarea
@@ -165,9 +267,7 @@ export function ChatComposer({ value, onChange, onKeyDown, onSend, loading, disa
           <Paperclip size={16} />
         </button>
         <div className="flex items-center gap-3">
-          <span className="text-[12px] text-gray-400">
-            按 Enter 发送，Shift + Enter 换行
-          </span>
+          <span className="text-[12px] text-gray-400">按 Enter 发送，Shift + Enter 换行</span>
           <button
             type="button"
             onClick={onSend}
@@ -185,7 +285,13 @@ export function ChatComposer({ value, onChange, onKeyDown, onSend, loading, disa
 }
 
 const JiexiIcon = ({ size = 44, ...props }: { size?: number; [key: string]: unknown }) => (
-  <img src={getPublicAssetPath('/jiexi-icon.webp')} alt="解析" width={size} height={size} {...props} />
+  <img
+    src={getPublicAssetPath('/jiexi-icon.webp')}
+    alt="解析"
+    width={size}
+    height={size}
+    {...props}
+  />
 );
 
 export function ParseEmptyState() {

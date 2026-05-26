@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, type ChangeEvent, type FormEvent } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo, type FormEvent } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import Dialog from './Dialog';
 import { countFillBlanks } from '../lib/fillBlank';
@@ -27,7 +27,13 @@ type QuestionEditDialogProps = {
   loading?: boolean;
 };
 
-const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }: QuestionEditDialogProps) => {
+const QuestionEditDialog = ({
+  open,
+  onClose,
+  question,
+  onSave,
+  loading = false,
+}: QuestionEditDialogProps) => {
   const [type, setType] = useState<QuestionType>(question?.type || 'single');
   const [content, setContent] = useState(question?.content || '');
   const [options, setOptions] = useState<QuestionOption[]>(question?.options || []);
@@ -52,7 +58,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
       if (question.type === 'fill') {
         const bc = countFillBlanks(question.content);
         const parsed = String(question.answer || '').split('|');
-        const next = parsed.map(v => String(v ?? ''));
+        const next = parsed.map((v) => String(v ?? ''));
         while (next.length < bc) next.push('');
         if (next.length > bc) next.length = bc;
         setFillAnswers(next);
@@ -82,7 +88,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
   // 验证表单
   const validate = () => {
     const newErrors: QuestionEditDialogErrors = {};
-    
+
     if (!content.trim()) {
       newErrors.content = '题干内容不能为空';
     }
@@ -102,7 +108,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
 
     if (type === 'fill') {
       const blankCount = countFillBlanks(content);
-      const answerCount = answer.split('|').filter(a => a.trim()).length;
+      const answerCount = answer.split('|').filter((a) => a.trim()).length;
       if (blankCount === 0) {
         newErrors.content = '填空题题干中需要包含空栏标记（_、___、＿＿、（ ）或( )）';
       } else if (blankCount !== answerCount) {
@@ -121,7 +127,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
   // 提交表单
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     if (!validate()) return;
 
     setSubmitting(true);
@@ -129,7 +135,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
       await onSave({
         type,
         content: content.trim(),
-        options: (type === 'single' || type === 'multiple') ? options : null,
+        options: type === 'single' || type === 'multiple' ? options : null,
         answer: answer.trim(),
         analysis: analysis.trim() || null,
       });
@@ -150,7 +156,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
     // 重新编号
     const reindexed = newOptions.map((opt, i) => ({
       ...opt,
-      id: String.fromCharCode(65 + i)
+      id: String.fromCharCode(65 + i),
     }));
     setOptions(reindexed);
     // 清除已删除选项的答案
@@ -160,17 +166,17 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
         setAnswer('');
       } else {
         // 更新答案ID
-        const answerIndex = options.findIndex(o => o.id === answer);
+        const answerIndex = options.findIndex((o) => o.id === answer);
         if (answerIndex > index) {
           setAnswer(String.fromCharCode(65 + answerIndex - 1));
         }
       }
     } else if (type === 'multiple') {
       const removedId = options[index].id;
-      const answerIds = answer.split('|').filter(id => id !== removedId);
+      const answerIds = answer.split('|').filter((id) => id !== removedId);
       // 更新答案ID
-      const newAnswerIds = answerIds.map(id => {
-        const oldIndex = options.findIndex(o => o.id === id);
+      const newAnswerIds = answerIds.map((id) => {
+        const oldIndex = options.findIndex((o) => o.id === id);
         if (oldIndex > index) {
           return String.fromCharCode(65 + oldIndex - 1);
         }
@@ -196,7 +202,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
   const handleMultipleAnswer = (optionId: string) => {
     const currentAnswers = answer ? answer.split('|') : [];
     if (currentAnswers.includes(optionId)) {
-      setAnswer(currentAnswers.filter(id => id !== optionId).join('|'));
+      setAnswer(currentAnswers.filter((id) => id !== optionId).join('|'));
     } else {
       setAnswer([...currentAnswers, optionId].sort().join('|'));
     }
@@ -241,8 +247,10 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
             }}
             className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
           >
-            {typeOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            {typeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
             ))}
           </select>
         </div>
@@ -267,15 +275,17 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={4}
-            placeholder={type === 'fill' ? '请输入题干，使用 _、___、＿＿、（ ）或( ) 表示空栏' : '请输入题干内容'}
+            placeholder={
+              type === 'fill'
+                ? '请输入题干，使用 _、___、＿＿、（ ）或( ) 表示空栏'
+                : '请输入题干内容'
+            }
             className={cn(
-              "w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border rounded-lg text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none",
-              errors.content ? "border-danger" : "border-gray-200 dark:border-gray-600"
+              'w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border rounded-lg text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none',
+              errors.content ? 'border-danger' : 'border-gray-200 dark:border-gray-600',
             )}
           />
-          {errors.content && (
-            <p className="mt-1 text-sm text-danger">{errors.content}</p>
-          )}
+          {errors.content && <p className="mt-1 text-sm text-danger">{errors.content}</p>}
         </div>
 
         {/* 选项（单选/多选题） */}
@@ -333,12 +343,8 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
                 </button>
               )}
             </div>
-            {errors.options && (
-              <p className="mt-1 text-sm text-danger">{errors.options}</p>
-            )}
-            {errors.answer && (
-              <p className="mt-1 text-sm text-danger">{errors.answer}</p>
-            )}
+            {errors.options && <p className="mt-1 text-sm text-danger">{errors.options}</p>}
+            {errors.answer && <p className="mt-1 text-sm text-danger">{errors.answer}</p>}
           </div>
         )}
 
@@ -370,9 +376,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
                 <span className="text-gray-700 dark:text-gray-300">错误</span>
               </label>
             </div>
-            {errors.answer && (
-              <p className="mt-1 text-sm text-danger">{errors.answer}</p>
-            )}
+            {errors.answer && <p className="mt-1 text-sm text-danger">{errors.answer}</p>}
           </div>
         )}
 
@@ -400,8 +404,8 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
                       onChange={(e) => updateFillAnswer(index, e.target.value)}
                       placeholder={`请输入第 ${index + 1} 空的答案`}
                       className={cn(
-                        "flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-700 border rounded-lg text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none",
-                        errors.answer ? "border-danger" : "border-gray-200 dark:border-gray-600"
+                        'flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-700 border rounded-lg text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none',
+                        errors.answer ? 'border-danger' : 'border-gray-200 dark:border-gray-600',
                       )}
                     />
                   </div>
@@ -409,9 +413,7 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
               </div>
             )}
 
-            {errors.answer && (
-              <p className="mt-1 text-sm text-danger">{errors.answer}</p>
-            )}
+            {errors.answer && <p className="mt-1 text-sm text-danger">{errors.answer}</p>}
           </div>
         )}
 
@@ -427,13 +429,11 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
               rows={3}
               placeholder="请输入参考答案"
               className={cn(
-                "w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border rounded-lg text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none",
-                errors.answer ? "border-danger" : "border-gray-200 dark:border-gray-600"
+                'w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border rounded-lg text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none',
+                errors.answer ? 'border-danger' : 'border-gray-200 dark:border-gray-600',
               )}
             />
-            {errors.answer && (
-              <p className="mt-1 text-sm text-danger">{errors.answer}</p>
-            )}
+            {errors.answer && <p className="mt-1 text-sm text-danger">{errors.answer}</p>}
           </div>
         )}
 
@@ -468,8 +468,20 @@ const QuestionEditDialog = ({ open, onClose, question, onSave, loading = false }
           >
             {(submitting || loading) && (
               <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
               </svg>
             )}
             保存

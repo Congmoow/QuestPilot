@@ -4,10 +4,14 @@
  */
 
 import { getDesktopRuntime, invokeTauriCommand } from '../lib/desktopRuntime';
+import { normalizeFileSelectionResult, normalizeSaveDialogResult } from './runtimeAdapters';
 import {
-  normalizeFileSelectionResult,
-  normalizeSaveDialogResult,
-} from './runtimeAdapters';
+  AiParseResultSchema,
+  ApiConfigSchema,
+  QuestionBankSchema,
+  safeValidate,
+  strictValidate,
+} from './schemas';
 import type {
   AiChatResult,
   AiMessage,
@@ -21,12 +25,10 @@ import type {
   DraftData,
   FileSelectionResult,
   ImportResult,
-  LegacyDatabaseCandidate,
   LegacyDatabaseReplaceResult,
   LegacyDatabaseStatus,
   OperationLog,
   PaginatedResult,
-  ParseError,
   ParseResult,
   PracticeRecord,
   PracticeRecordInput,
@@ -96,7 +98,9 @@ export const createQuestionBank = async (data: CreateQuestionBankInput): Promise
 
 export const getAllQuestionBanks = async (): Promise<QuestionBank[]> => {
   const banks = await invokeTauriCommand<QuestionBank[]>('question_bank_get_all');
-  return banks.map(normalizeBank);
+  return banks
+    .map(normalizeBank)
+    .map((b) => safeValidate(QuestionBankSchema, b, 'getAllQuestionBanks'));
 };
 
 export const getQuestionBankById = async (id: number): Promise<QuestionBank | null> => {
@@ -159,7 +163,10 @@ export const updateQuestion = async (
   id: number,
   data: Partial<CreateQuestionInput>,
 ): Promise<Question | null> => {
-  return invokeTauriCommand<Question | null>('question_update', { id, data: questionPayload(data as CreateQuestionInput) });
+  return invokeTauriCommand<Question | null>('question_update', {
+    id,
+    data: questionPayload(data as CreateQuestionInput),
+  });
 };
 
 export const deleteQuestions = async (ids: number[]): Promise<void> => {
@@ -194,7 +201,10 @@ export const parseCsvFile = async (filePath: string): Promise<ParseResult> => {
   return invokeTauriCommand('csv_parse_file', { filePath });
 };
 
-export const importQuestions = async (bankId: number, questions: CreateQuestionInput[]): Promise<ImportResult> => {
+export const importQuestions = async (
+  bankId: number,
+  questions: CreateQuestionInput[],
+): Promise<ImportResult> => {
   return invokeTauriCommand<ImportResult>('csv_import', { bankId, questions });
 };
 
@@ -204,7 +214,8 @@ export const exportQuestionBank = async (bankId: number): Promise<SaveDialogResu
 
 // ==================== 统计 API ====================
 
-export const getDashboardStats = async (): Promise<DashboardStats> => invokeTauriCommand('stats_get_dashboard');
+export const getDashboardStats = async (): Promise<DashboardStats> =>
+  invokeTauriCommand('stats_get_dashboard');
 
 export const getOperationLogs = async (limit = 10): Promise<OperationLog[]> => {
   return invokeTauriCommand<OperationLog[]>('stats_get_operation_logs', { limit });
@@ -234,21 +245,27 @@ export const setWrongBookThreshold = async (threshold: number): Promise<void> =>
 
 // ==================== 草稿 API ====================
 
-export const saveDraft = async (data: DraftData): Promise<{ success: boolean }> => invokeTauriCommand('draft_save', { data });
+export const saveDraft = async (data: DraftData): Promise<{ success: boolean }> =>
+  invokeTauriCommand('draft_save', { data });
 
 export const loadDraft = async (): Promise<DraftData | null> => invokeTauriCommand('draft_load');
 
-export const clearDraft = async (): Promise<{ success: boolean }> => invokeTauriCommand('draft_clear');
+export const clearDraft = async (): Promise<{ success: boolean }> =>
+  invokeTauriCommand('draft_clear');
 
 // ==================== 设置扩展 API ====================
 
-export const getApiConfig = async (): Promise<ApiConfig> => invokeTauriCommand('settings_get_api_config');
+export const getApiConfig = async (): Promise<ApiConfig> => {
+  const raw = await invokeTauriCommand('settings_get_api_config');
+  return safeValidate(ApiConfigSchema, raw, 'getApiConfig');
+};
 
 export const setApiConfig = async (
   config: Pick<ApiConfig, 'apiKey' | 'apiUrl' | 'modelId' | 'provider'>,
 ): Promise<{ success: boolean }> => invokeTauriCommand('settings_set_api_config', { config });
 
-export const testApiConnection = async (): Promise<ApiConnectionResult> => invokeTauriCommand('settings_test_api_connection');
+export const testApiConnection = async (): Promise<ApiConnectionResult> =>
+  invokeTauriCommand('settings_test_api_connection');
 
 // ==================== 数据迁移 API ====================
 
@@ -258,7 +275,9 @@ export const getLegacyDatabaseStatus = async (): Promise<LegacyDatabaseStatus> =
 
 export const getRuntimeName = (): 'tauri' => getDesktopRuntime();
 
-export const backupAndReplaceFromLegacy = async (legacyPath: string): Promise<LegacyDatabaseReplaceResult> => {
+export const backupAndReplaceFromLegacy = async (
+  legacyPath: string,
+): Promise<LegacyDatabaseReplaceResult> => {
   return invokeTauriCommand('migration_backup_and_replace_from_legacy', {
     legacyPath,
     confirmation: 'BACKUP_AND_REPLACE',
@@ -268,10 +287,14 @@ export const backupAndReplaceFromLegacy = async (legacyPath: string): Promise<Le
 // ==================== AI API ====================
 
 export const parseQuestionsWithAI = async (content: string): Promise<AiParseResult> => {
-  return invokeTauriCommand('ai_parse_questions', { content });
+  const raw = await invokeTauriCommand('ai_parse_questions', { content });
+  return strictValidate(AiParseResultSchema, raw, 'AI 解析题目');
 };
 
-export const chatWithAI = async (messages: AiMessage[], promptId?: number | null): Promise<AiChatResult> => {
+export const chatWithAI = async (
+  messages: AiMessage[],
+  promptId?: number | null,
+): Promise<AiChatResult> => {
   return invokeTauriCommand('ai_chat', { messages, promptId });
 };
 
@@ -279,17 +302,22 @@ export const chatWithAI = async (messages: AiMessage[], promptId?: number | null
 
 export const getAllPrompts = async (): Promise<Prompt[]> => invokeTauriCommand('prompt_get_all');
 
-export const getPromptById = async (id: number): Promise<Prompt | null> => invokeTauriCommand('prompt_get_by_id', { id });
+export const getPromptById = async (id: number): Promise<Prompt | null> =>
+  invokeTauriCommand('prompt_get_by_id', { id });
 
 export const createPrompt = async (data: { name: string; content: string }): Promise<Prompt> => {
   return invokeTauriCommand('prompt_create', { data });
 };
 
-export const updatePrompt = async (id: number, data: { name: string; content: string }): Promise<Prompt | null> => {
+export const updatePrompt = async (
+  id: number,
+  data: { name: string; content: string },
+): Promise<Prompt | null> => {
   return invokeTauriCommand('prompt_update', { id, data });
 };
 
-export const deletePrompt = async (id: number): Promise<{ success: boolean }> => invokeTauriCommand('prompt_delete', { id });
+export const deletePrompt = async (id: number): Promise<{ success: boolean }> =>
+  invokeTauriCommand('prompt_delete', { id });
 
 // ==================== 聊天历史 API ====================
 
@@ -299,7 +327,10 @@ export const saveChatHistory = async (data: {
   promptId?: number | null;
 }): Promise<ChatHistory> => invokeTauriCommand('chat_history_save', { data });
 
-export const updateChatHistory = async (id: number, messages: unknown): Promise<ChatHistory | null> => {
+export const updateChatHistory = async (
+  id: number,
+  messages: unknown,
+): Promise<ChatHistory | null> => {
   return invokeTauriCommand('chat_history_update', { id, messages });
 };
 
@@ -317,7 +348,9 @@ export const deleteChatHistory = async (id: number): Promise<{ success: boolean 
 
 // ==================== 练习 API ====================
 
-export const savePracticeRecord = async (record: PracticeRecordInput): Promise<{ success: boolean }> => {
+export const savePracticeRecord = async (
+  record: PracticeRecordInput,
+): Promise<{ success: boolean }> => {
   return invokeTauriCommand('practice_save_record', { record });
 };
 
@@ -325,11 +358,14 @@ export const getPracticeRecords = async (bankId: number, limit = 20): Promise<Pr
   return invokeTauriCommand('practice_get_records', { bankId, limit });
 };
 
-export const getAllPracticeStats = async (): Promise<PracticeStats[]> => invokeTauriCommand('practice_get_all_stats');
+export const getAllPracticeStats = async (): Promise<PracticeStats[]> =>
+  invokeTauriCommand('practice_get_all_stats');
 
 // ==================== 错题本 API ====================
 
-export const getWrongBookCountsByBank = async (): Promise<Array<{ bankId: number; count: number }>> => {
+export const getWrongBookCountsByBank = async (): Promise<
+  Array<{ bankId: number; count: number }>
+> => {
   return invokeTauriCommand('wrong_book_get_counts_by_bank');
 };
 
@@ -344,7 +380,10 @@ export const getWrongBookItems = async (
   });
 };
 
-export const getRandomWrongBookQuestions = async (bankId?: number | null, limit = 20): Promise<Question[]> => {
+export const getRandomWrongBookQuestions = async (
+  bankId?: number | null,
+  limit = 20,
+): Promise<Question[]> => {
   return invokeTauriCommand('wrong_book_get_random_questions', { bankId, limit });
 };
 

@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState, type ChangeEvent, type MouseEvent } from 'react';
 import { exportQuestionBank } from '../../../api';
-import type { CreateQuestionBankInput, CreateQuestionInput, Question, QuestionBank, QuestionType } from '../../../api';
+import type {
+  CreateQuestionBankInput,
+  CreateQuestionInput,
+  Question,
+  QuestionBank,
+  QuestionType,
+} from '../../../api';
 import { useQuestionBanks } from '../../../contexts/QuestionBankContext';
 import { useQuestions } from '../../../contexts/QuestionContext';
 
@@ -11,14 +17,37 @@ const errorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
 
 export const useQuestionPreview = () => {
-  const { banks, loading: banksLoading, error: banksError, addBank, editBank, removeBank, fetchBanks } = useQuestionBanks();
   const {
-    questions, total, page, pageSize, totalPages,
-    loading: questionsLoading, error: questionsError,
-    searchKeyword, filterType, selectedIds,
-    fetchQuestions, search, setPage, setSearchKeyword, setFilterType,
-    setSelectedIds, clearSelection, selectAll, reset: resetQuestions,
-    removeQuestions, editQuestion,
+    banks,
+    loading: banksLoading,
+    error: banksError,
+    addBank,
+    editBank,
+    removeBank,
+    fetchBanks,
+  } = useQuestionBanks();
+  const {
+    questions,
+    total,
+    page,
+    pageSize,
+    totalPages,
+    loading: questionsLoading,
+    error: questionsError,
+    searchKeyword,
+    filterType,
+    selectedIds,
+    fetchQuestions,
+    search,
+    setPage,
+    setSearchKeyword,
+    setFilterType,
+    setSelectedIds,
+    clearSelection,
+    selectAll,
+    reset: resetQuestions,
+    removeQuestions,
+    editQuestion,
   } = useQuestions();
 
   const [selectedBank, setSelectedBank] = useState<QuestionBank | null>(null);
@@ -34,29 +63,38 @@ export const useQuestionPreview = () => {
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  const loadQuestions = useCallback(async (bankId: number, options: QuestionLoadOptions = {}) => {
-    await fetchQuestions(bankId, {
-      page: options.page || 1,
-      type: options.type !== undefined ? options.type : filterType,
-    });
-  }, [fetchQuestions, filterType]);
+  const loadQuestions = useCallback(
+    async (bankId: number, options: QuestionLoadOptions = {}) => {
+      await fetchQuestions(bankId, {
+        page: options.page || 1,
+        type: options.type !== undefined ? options.type : filterType,
+      });
+    },
+    [fetchQuestions, filterType],
+  );
 
   useEffect(() => {
     if (selectedBank) loadQuestions(selectedBank.id, { page: 1 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBank]);
 
   useEffect(() => {
     if (selectedBank) loadQuestions(selectedBank.id, { page: 1, type: filterType });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterType]);
 
   const handleSelectAll = (e: ChangeEvent<HTMLInputElement>) => {
-    e.target.checked ? selectAll() : clearSelection();
+    if (e.target.checked) {
+      selectAll();
+    } else {
+      clearSelection();
+    }
   };
 
   const handleSelectOne = (id: number) => {
-    setSelectedIds(selectedIds.includes(id)
-      ? selectedIds.filter((sid) => sid !== id)
-      : [...selectedIds, id]);
+    setSelectedIds(
+      selectedIds.includes(id) ? selectedIds.filter((sid) => sid !== id) : [...selectedIds, id],
+    );
   };
 
   const handleEnterBank = (bank: QuestionBank) => {
@@ -89,19 +127,25 @@ export const useQuestionPreview = () => {
     if (selectedBank) loadQuestions(selectedBank.id, { page: 1 });
   }, [selectedBank, setSearchKeyword, loadQuestions]);
 
-  const handleTypeFilter = useCallback((type: TypeFilterValue) => {
-    setFilterType(type === 'all' ? null : type);
-  }, [setFilterType]);
+  const handleTypeFilter = useCallback(
+    (type: TypeFilterValue) => {
+      setFilterType(type === 'all' ? null : type);
+    },
+    [setFilterType],
+  );
 
-  const handlePageChange = useCallback((newPage: number) => {
-    if (!selectedBank || newPage < 1 || newPage > totalPages) return;
-    setPage(newPage);
-    if (searchKeyword) {
-      search(selectedBank.id, searchKeyword, { page: newPage, type: filterType });
-    } else {
-      loadQuestions(selectedBank.id, { page: newPage });
-    }
-  }, [selectedBank, totalPages, setPage, searchKeyword, search, filterType, loadQuestions]);
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      if (!selectedBank || newPage < 1 || newPage > totalPages) return;
+      setPage(newPage);
+      if (searchKeyword) {
+        search(selectedBank.id, searchKeyword, { page: newPage, type: filterType });
+      } else {
+        loadQuestions(selectedBank.id, { page: newPage });
+      }
+    },
+    [selectedBank, totalPages, setPage, searchKeyword, search, filterType, loadQuestions],
+  );
 
   const handleDeleteQuestions = async () => {
     if (selectedIds.length === 0) return;
@@ -200,28 +244,57 @@ export const useQuestionPreview = () => {
   };
 
   return {
-    banks, banksLoading, banksError,
-    questions, total, page, pageSize, totalPages, questionsLoading, questionsError,
-    searchKeyword, filterType, selectedIds,
-    selectedBank, searchInput, setSearchInput,
-    createDialogOpen, setCreateDialogOpen,
-    editDialogOpen, setEditDialogOpen,
-    deleteDialogOpen, setDeleteDialogOpen,
-    editingBank, deletingBank,
+    banks,
+    banksLoading,
+    banksError,
+    questions,
+    total,
+    page,
+    pageSize,
+    totalPages,
+    questionsLoading,
+    questionsError,
+    searchKeyword,
+    filterType,
+    selectedIds,
+    selectedBank,
+    searchInput,
+    setSearchInput,
+    createDialogOpen,
+    setCreateDialogOpen,
+    editDialogOpen,
+    setEditDialogOpen,
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+    editingBank,
+    deletingBank,
     submitting,
-    deleteQuestionsDialogOpen, setDeleteQuestionsDialogOpen,
-    editQuestionDialogOpen, setEditQuestionDialogOpen,
+    deleteQuestionsDialogOpen,
+    setDeleteQuestionsDialogOpen,
+    editQuestionDialogOpen,
+    setEditQuestionDialogOpen,
     editingQuestion,
     exporting,
-    handleSelectAll, handleSelectOne,
-    handleEnterBank, handleBackToList,
-    handleSearch, handleClearSearch, handleTypeFilter, handlePageChange,
+    handleSelectAll,
+    handleSelectOne,
+    handleEnterBank,
+    handleBackToList,
+    handleSearch,
+    handleClearSearch,
+    handleTypeFilter,
+    handlePageChange,
     handleDeleteQuestions,
-    handleOpenEditQuestion, handleDeleteSingleQuestion,
-    handleCreateBank, handleOpenEditDialog, handleEditBank,
-    handleOpenDeleteDialog, handleDeleteBank,
-    handleExportBank, handleSaveEditQuestion,
-    clearSelection, loadQuestions,
+    handleOpenEditQuestion,
+    handleDeleteSingleQuestion,
+    handleCreateBank,
+    handleOpenEditDialog,
+    handleEditBank,
+    handleOpenDeleteDialog,
+    handleDeleteBank,
+    handleExportBank,
+    handleSaveEditQuestion,
+    clearSelection,
+    loadQuestions,
     formatDate,
   };
 };

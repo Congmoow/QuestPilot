@@ -10,9 +10,7 @@ const normalizeHistoryMessages = (value: unknown): AiMessage[] =>
   Array.isArray(value)
     ? value.filter(
         (item): item is AiMessage =>
-          Boolean(item) &&
-          typeof item.role === 'string' &&
-          typeof item.content === 'string'
+          Boolean(item) && typeof item.role === 'string' && typeof item.content === 'string',
       )
     : [];
 
@@ -96,10 +94,9 @@ export const useAiChat = () => {
   const saveChatToHistory = async (msgs: AiMessage[]) => {
     try {
       const firstUserMsg = msgs.find((m) => m.role === 'user');
-      const title =
-        firstUserMsg
-          ? firstUserMsg.content.slice(0, 30) + (firstUserMsg.content.length > 30 ? '...' : '')
-          : '新对话';
+      const title = firstUserMsg
+        ? firstUserMsg.content.slice(0, 30) + (firstUserMsg.content.length > 30 ? '...' : '')
+        : '新对话';
 
       if (currentChatId) {
         await api.chatHistory.update(currentChatId, msgs);

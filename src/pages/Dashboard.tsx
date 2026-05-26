@@ -33,15 +33,29 @@ import {
 } from '../components/ui';
 import { TYPE_LABELS } from '../lib/questionLabels';
 import { AccuracyTooltip, PieTooltip } from '../features/dashboard/components/ChartTooltips';
-import { TYPE_ORDER, TYPE_COLORS, formatOperationTime, formatNumber, useDashboard } from '../features/dashboard/hooks/useDashboard';
+import {
+  TYPE_ORDER,
+  TYPE_COLORS,
+  formatOperationTime,
+  formatNumber,
+  useDashboard,
+} from '../features/dashboard/hooks/useDashboard';
 
 const Dashboard = () => {
   const {
-    banks, loading, error,
-    dashboardStats, operationLogs,
-    selectedBankId, setSelectedBankId, isBankManuallySelected, setIsBankManuallySelected,
-    loadingRecords, trendBanks,
-    selectedTypeBankId, setSelectedTypeBankId,
+    banks,
+    loading,
+    error,
+    dashboardStats,
+    operationLogs,
+    selectedBankId,
+    setSelectedBankId,
+    isBankManuallySelected: _isBankManuallySelected,
+    setIsBankManuallySelected,
+    loadingRecords,
+    trendBanks,
+    selectedTypeBankId,
+    setSelectedTypeBankId,
     typeDistribution,
     totalPracticeCount,
     practiceChartData,
@@ -79,18 +93,25 @@ const Dashboard = () => {
   ];
 
   const chartData = TYPE_ORDER.map((type) => {
-    const found = typeDistribution.find(item => item.type === type);
-    return { name: TYPE_LABELS[type as keyof typeof TYPE_LABELS], value: found ? found.count : 0, type };
-  }).filter(item => item.value > 0);
+    const found = typeDistribution.find((item) => item.type === type);
+    return {
+      name: TYPE_LABELS[type as keyof typeof TYPE_LABELS],
+      value: found ? found.count : 0,
+      type,
+    };
+  }).filter((item) => item.value > 0);
 
-  const displayChartData = chartData.length > 0 ? chartData : [{ name: '暂无数据', value: 1, type: 'empty' }];
+  const displayChartData =
+    chartData.length > 0 ? chartData : [{ name: '暂无数据', value: 1, type: 'empty' }];
   const currentTotalQuestions = typeDistribution.reduce((sum, item) => sum + item.count, 0);
 
-  const todayText = new Date().toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).replace(/\//g, '-');
+  const todayText = new Date()
+    .toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+    .replace(/\//g, '-');
 
   if (loading) {
     return (
@@ -104,7 +125,9 @@ const Dashboard = () => {
   if (error) {
     return (
       <SurfaceCard className="space-y-5" padding="p-8">
-        <AlertBanner type="danger" title="数据加载失败">{error}</AlertBanner>
+        <AlertBanner type="danger" title="数据加载失败">
+          {error}
+        </AlertBanner>
         <ActionButton icon={RefreshCw} onClick={() => window.location.reload()}>
           重新加载
         </ActionButton>
@@ -117,7 +140,7 @@ const Dashboard = () => {
       <PageHeader
         title="数据看板"
         subtitle="欢迎回来，查看今日题库概览"
-        actions={(
+        actions={
           <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
             <button
               type="button"
@@ -127,7 +150,7 @@ const Dashboard = () => {
               {todayText}
             </button>
           </div>
-        )}
+        }
       />
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -148,7 +171,7 @@ const Dashboard = () => {
           <ChartCard
             title="练习正确率趋势"
             icon={TrendingUp}
-            action={(
+            action={
               <SelectInput
                 value={selectedBankId || ''}
                 onChange={(e) => {
@@ -158,11 +181,13 @@ const Dashboard = () => {
                 className="h-10 min-h-10 w-48"
               >
                 <option value="">选择题库</option>
-                {trendBanks.map(bank => (
-                  <option key={bank.id} value={bank.id}>{bank.name}</option>
+                {trendBanks.map((bank) => (
+                  <option key={bank.id} value={bank.id}>
+                    {bank.name}
+                  </option>
                 ))}
               </SelectInput>
-            )}
+            }
           >
             {loadingRecords ? (
               <div className="flex h-[300px] items-center justify-center">
@@ -178,7 +203,10 @@ const Dashboard = () => {
             ) : (
               <div className="h-[300px] min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={practiceChartData} margin={{ top: 10, right: 18, left: 2, bottom: 0 }}>
+                  <AreaChart
+                    data={practiceChartData}
+                    margin={{ top: 10, right: 18, left: 2, bottom: 0 }}
+                  >
                     <defs>
                       <linearGradient id="accuracyArea" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#2563EB" stopOpacity={0.28} />
@@ -201,7 +229,10 @@ const Dashboard = () => {
                       tickFormatter={(v) => `${v}%`}
                       width={44}
                     />
-                    <Tooltip cursor={{ stroke: '#BFDBFE', strokeWidth: 1 }} content={<AccuracyTooltip />} />
+                    <Tooltip
+                      cursor={{ stroke: '#BFDBFE', strokeWidth: 1 }}
+                      content={<AccuracyTooltip />}
+                    />
                     <Area
                       type="monotone"
                       dataKey="accuracy"
@@ -220,18 +251,22 @@ const Dashboard = () => {
           <ChartCard
             title="题型分布"
             icon={PieChartIcon}
-            action={(
+            action={
               <SelectInput
                 value={selectedTypeBankId || ''}
-                onChange={(e) => setSelectedTypeBankId(e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) =>
+                  setSelectedTypeBankId(e.target.value ? Number(e.target.value) : null)
+                }
                 className="h-10 min-h-10 w-48"
               >
                 <option value="">全部题库</option>
-                {banks.map(bank => (
-                  <option key={bank.id} value={bank.id}>{bank.name}</option>
+                {banks.map((bank) => (
+                  <option key={bank.id} value={bank.id}>
+                    {bank.name}
+                  </option>
                 ))}
               </SelectInput>
-            )}
+            }
           >
             <div className="grid items-center gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
               <div className="relative h-[260px] min-w-0">
@@ -251,7 +286,11 @@ const Dashboard = () => {
                       {displayChartData.map((entry, index) => (
                         <Cell
                           key={`cell-${entry.type}-${index}`}
-                          fill={chartData.length > 0 ? TYPE_COLORS[TYPE_ORDER.indexOf(entry.type) % TYPE_COLORS.length] : '#E2E8F0'}
+                          fill={
+                            chartData.length > 0
+                              ? TYPE_COLORS[TYPE_ORDER.indexOf(entry.type) % TYPE_COLORS.length]
+                              : '#E2E8F0'
+                          }
                         />
                       ))}
                     </Pie>
@@ -259,27 +298,43 @@ const Dashboard = () => {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-                  <p className="text-sm font-semibold text-gray-400">{selectedTypeBankId ? '题库题数' : '总题数'}</p>
+                  <p className="text-sm font-semibold text-gray-400">
+                    {selectedTypeBankId ? '题库题数' : '总题数'}
+                  </p>
                   <p className="mt-1 text-3xl font-extrabold text-gray-900 dark:text-white">
-                    {formatNumber(selectedTypeBankId ? currentTotalQuestions : dashboardStats.totalQuestions)}
+                    {formatNumber(
+                      selectedTypeBankId ? currentTotalQuestions : dashboardStats.totalQuestions,
+                    )}
                   </p>
                 </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
                 {TYPE_ORDER.map((type, index) => {
-                  const found = typeDistribution.find(item => item.type === type);
+                  const found = typeDistribution.find((item) => item.type === type);
                   const count = found ? found.count : 0;
-                  const total = selectedTypeBankId ? currentTotalQuestions : dashboardStats.totalQuestions;
+                  const total = selectedTypeBankId
+                    ? currentTotalQuestions
+                    : dashboardStats.totalQuestions;
                   const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
 
                   return (
-                    <div key={type} className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50/70 p-3 dark:border-gray-700 dark:bg-gray-800/80">
-                      <span className="size-3 rounded-full" style={{ backgroundColor: TYPE_COLORS[index] }} />
+                    <div
+                      key={type}
+                      className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50/70 p-3 dark:border-gray-700 dark:bg-gray-800/80"
+                    >
+                      <span
+                        className="size-3 rounded-full"
+                        style={{ backgroundColor: TYPE_COLORS[index] }}
+                      />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">{TYPE_LABELS[type as keyof typeof TYPE_LABELS]}</p>
+                        <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">
+                          {TYPE_LABELS[type as keyof typeof TYPE_LABELS]}
+                        </p>
                         <div className="mt-1 flex items-baseline gap-2">
-                          <span className="text-lg font-extrabold text-gray-900 dark:text-white">{count}</span>
+                          <span className="text-lg font-extrabold text-gray-900 dark:text-white">
+                            {count}
+                          </span>
                           <span className="text-xs text-gray-400">({percentage}%)</span>
                         </div>
                       </div>
@@ -300,7 +355,10 @@ const Dashboard = () => {
             <span className="text-sm font-semibold text-primary">查看全部</span>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-            <TimelineLog logs={operationLogs as Parameters<typeof TimelineLog>[0]['logs']} formatTime={formatOperationTime} />
+            <TimelineLog
+              logs={operationLogs as Parameters<typeof TimelineLog>[0]['logs']}
+              formatTime={formatOperationTime}
+            />
           </div>
           <div className="mt-4 rounded-2xl border border-gray-100 bg-blue-50/70 px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
             <div className="flex items-center gap-2 font-semibold text-primary">

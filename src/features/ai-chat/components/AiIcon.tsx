@@ -17,7 +17,10 @@ const AiIcon = ({ provider, modelId, size = 24, className = '' }: AiIconProps) =
   if (iconPath) {
     return (
       <span
-        className={cn('inline-flex items-center justify-center overflow-hidden rounded-xl bg-white', className)}
+        className={cn(
+          'inline-flex items-center justify-center overflow-hidden rounded-xl bg-white',
+          className,
+        )}
         style={{ width: size, height: size }}
       >
         <img
@@ -32,7 +35,10 @@ const AiIcon = ({ provider, modelId, size = 24, className = '' }: AiIconProps) =
 
   return (
     <span
-      className={cn('inline-flex items-center justify-center rounded-xl bg-primary-soft text-primary', className)}
+      className={cn(
+        'inline-flex items-center justify-center rounded-xl bg-primary-soft text-primary',
+        className,
+      )}
       style={{ width: size, height: size, color: info.color }}
     >
       <Bot size={Math.max(16, size * 0.62)} />

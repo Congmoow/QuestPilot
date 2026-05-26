@@ -1,7 +1,9 @@
 use rusqlite::{params, OptionalExtension};
 
 use super::{
-    queries::{add_operation_log, find_chat_history_by_id, find_prompt_by_id, map_chat_history, map_prompt},
+    queries::{
+        add_operation_log, find_chat_history_by_id, find_prompt_by_id, map_chat_history, map_prompt,
+    },
     schema::ensure_default_prompt,
     types::{ChatHistory, ChatHistoryInput, CreatePromptInput, Prompt},
     validation::{validate_messages, validate_non_blank},

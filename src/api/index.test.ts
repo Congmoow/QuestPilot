@@ -13,9 +13,17 @@ describe('Tauri-only API 门面', () => {
 
   it('创建题库时直接调用 Tauri command', async () => {
     const { createQuestionBank } = await import('./index');
-    invokeMock.mockResolvedValueOnce({ id: 1, name: '题库' });
+    const mockBank = {
+      id: 1,
+      name: '题库',
+      description: null,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+      questionCount: 0,
+    };
+    invokeMock.mockResolvedValueOnce(mockBank);
 
-    await expect(createQuestionBank({ name: '题库' })).resolves.toEqual({ id: 1, name: '题库' });
+    await expect(createQuestionBank({ name: '题库' })).resolves.toEqual(mockBank);
 
     expect(invokeMock).toHaveBeenCalledWith('question_bank_create', {
       data: { name: '题库' },
@@ -135,6 +143,26 @@ describe('Tauri-only API 门面', () => {
     await expect(getLegacyDatabaseStatus()).resolves.toEqual(status);
 
     expect(invokeMock).toHaveBeenCalledWith('migration_get_legacy_status', {});
+  });
+
+  it('AI 解析返回 questions 数组时 schema 校验通过', async () => {
+    const { parseQuestionsWithAI } = await import('./index');
+    const validResult = {
+      questions: [
+        { type: 'single', content: '题干', answer: 'A', options: [{ id: 'A', text: '选项' }] },
+      ],
+    };
+    invokeMock.mockResolvedValueOnce(validResult);
+
+    const result = await parseQuestionsWithAI('题目文本');
+    expect(result.questions).toHaveLength(1);
+  });
+
+  it('AI 解析返回无效数据时 strictValidate 抛出中文错误', async () => {
+    const { parseQuestionsWithAI } = await import('./index');
+    invokeMock.mockResolvedValueOnce({ questions: 'not-an-array' });
+
+    await expect(parseQuestionsWithAI('题目文本')).rejects.toThrow('AI 解析题目');
   });
 
   it('备份替换旧库时传递固定确认短语', async () => {

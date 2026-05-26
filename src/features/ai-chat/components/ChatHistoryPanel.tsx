@@ -35,7 +35,10 @@ const ChatHistoryPanel = ({
       <div className="absolute right-0 z-30 mt-2 w-80 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-popover dark:border-gray-700 dark:bg-gray-800">
         <div className="flex items-center justify-between border-b border-gray-100 p-4 dark:border-gray-700">
           <span className="text-sm font-bold text-gray-700 dark:text-gray-200">历史对话</span>
-          <button onClick={onNew} className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+          <button
+            onClick={onNew}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
+          >
             <Plus size={14} />
             新对话
           </button>
@@ -50,10 +53,17 @@ const ChatHistoryPanel = ({
                 onClick={() => onLoad(chat.id)}
                 className={cn(
                   'group flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2 transition-colors',
-                  currentChatId === chat.id ? 'bg-primary-soft' : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                  currentChatId === chat.id
+                    ? 'bg-primary-soft'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700',
                 )}
               >
-                <p className={cn('min-w-0 flex-1 truncate text-sm font-semibold', currentChatId === chat.id ? 'text-primary' : 'text-gray-600 dark:text-gray-300')}>
+                <p
+                  className={cn(
+                    'min-w-0 flex-1 truncate text-sm font-semibold',
+                    currentChatId === chat.id ? 'text-primary' : 'text-gray-600 dark:text-gray-300',
+                  )}
+                >
                   {chat.title}
                 </p>
                 <button

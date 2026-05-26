@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import api from '../../../api';
-import type { LegacyDatabaseCandidate, LegacyDatabaseReplaceResult, LegacyDatabaseStatus } from '../../../api';
+import type {
+  LegacyDatabaseCandidate,
+  LegacyDatabaseReplaceResult,
+  LegacyDatabaseStatus,
+} from '../../../api';
 
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
@@ -31,7 +35,7 @@ export const useMigration = () => {
 
   const handleBackupAndReplace = async (legacyPath: string) => {
     const confirmed = window.confirm(
-      '此操作会先备份当前 Tauri 数据库，然后使用选中的旧数据库替换当前数据库。替换后建议重启应用继续使用。是否继续？'
+      '此操作会先备份当前 Tauri 数据库，然后使用选中的旧数据库替换当前数据库。替换后建议重启应用继续使用。是否继续？',
     );
     if (!confirmed) return;
 
@@ -49,8 +53,9 @@ export const useMigration = () => {
     }
   };
 
-  const legacyCandidatesWithData: LegacyDatabaseCandidate[] =
-    (migrationStatus?.candidates || []).filter((c: LegacyDatabaseCandidate) => c.hasUserData);
+  const legacyCandidatesWithData: LegacyDatabaseCandidate[] = (
+    migrationStatus?.candidates || []
+  ).filter((c: LegacyDatabaseCandidate) => c.hasUserData);
   const needsExplicitReset = migrationStatus?.recommendedAction === 'requires_explicit_reset';
 
   return {

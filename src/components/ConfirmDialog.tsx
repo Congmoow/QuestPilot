@@ -30,7 +30,7 @@ export function ConfirmDialog({
     try {
       await onConfirm();
       onClose();
-    } catch (err) {
+    } catch (_err) {
       // 错误由调用方处理
     }
   };
@@ -60,9 +60,7 @@ export function ConfirmDialog({
             <AlertTriangle size={24} />
           </div>
           <div className="flex-1">
-            <p className="leading-7 text-gray-600 dark:text-gray-300">
-              {message}
-            </p>
+            <p className="leading-7 text-gray-600 dark:text-gray-300">{message}</p>
           </div>
         </div>
 
@@ -70,7 +68,13 @@ export function ConfirmDialog({
           <ActionButton type="button" variant="secondary" onClick={onClose} disabled={loading}>
             {cancelText}
           </ActionButton>
-          <ActionButton type="button" variant={styles.button} onClick={handleConfirm} disabled={loading} loading={loading}>
+          <ActionButton
+            type="button"
+            variant={styles.button}
+            onClick={handleConfirm}
+            disabled={loading}
+            loading={loading}
+          >
             {confirmText}
           </ActionButton>
         </div>

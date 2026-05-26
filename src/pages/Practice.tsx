@@ -20,7 +20,7 @@ const Practice = () => {
           { label: '正确', value: practiceResult.correct, className: 'bg-green-50 text-green-700' },
           { label: '错误', value: practiceResult.wrong, className: 'bg-red-50 text-red-700' },
         ]}
-        actions={(
+        actions={
           <>
             <ActionButton variant="secondary" icon={RotateCcw} onClick={state.restart}>
               重新选择
@@ -29,7 +29,7 @@ const Practice = () => {
               再练一次
             </ActionButton>
           </>
-        )}
+        }
       />
     );
   }
@@ -60,7 +60,10 @@ const Practice = () => {
       selectedBankId={state.selectedBankId}
       loading={state.loading}
       onSelect={state.setSelectedBankId}
-      onStart={(bankId) => { state.setSelectedBankId(bankId); state.startPractice(bankId); }}
+      onStart={(bankId) => {
+        state.setSelectedBankId(bankId);
+        state.startPractice(bankId);
+      }}
     />
   );
 };

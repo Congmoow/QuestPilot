@@ -207,7 +207,14 @@ impl DatabaseStore {
         question_type: Option<String>,
     ) -> Result<Vec<Question>, String> {
         let connection = self.connection.borrow();
-        query_questions(&connection, bank_id, "", question_type.as_deref(), offset, limit)
+        query_questions(
+            &connection,
+            bank_id,
+            "",
+            question_type.as_deref(),
+            offset,
+            limit,
+        )
     }
 
     pub fn get_question_by_id(&self, id: i64) -> Result<Option<Question>, String> {
@@ -319,6 +326,11 @@ impl DatabaseStore {
         question_type: Option<String>,
     ) -> Result<i64, String> {
         let connection = self.connection.borrow();
-        count_questions(&connection, bank_id, keyword.as_str(), question_type.as_deref())
+        count_questions(
+            &connection,
+            bank_id,
+            keyword.as_str(),
+            question_type.as_deref(),
+        )
     }
 }

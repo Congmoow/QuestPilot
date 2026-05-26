@@ -1,4 +1,9 @@
-import React, { type ButtonHTMLAttributes, type ElementType, type HTMLAttributes, type ReactNode } from 'react';
+import React, {
+  type ButtonHTMLAttributes,
+  type ElementType,
+  type HTMLAttributes,
+  type ReactNode,
+} from 'react';
 import { AlertCircle, CheckCircle2, Info, Loader2, XCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -7,9 +12,12 @@ type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
 type BadgeVariant = 'primary' | 'success' | 'warning' | 'danger' | 'muted' | 'purple' | 'orange';
 
 const buttonVariants = {
-  primary: 'bg-primary text-white shadow-soft hover:bg-primary-hover active:bg-primary-active disabled:bg-primary/45',
-  secondary: 'border border-gray-200 bg-white text-gray-700 hover:border-blue-200 hover:bg-blue-50 hover:text-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700',
-  ghost: 'text-gray-600 hover:bg-blue-50 hover:text-primary dark:text-gray-300 dark:hover:bg-gray-700',
+  primary:
+    'bg-primary text-white shadow-soft hover:bg-primary-hover active:bg-primary-active disabled:bg-primary/45',
+  secondary:
+    'border border-gray-200 bg-white text-gray-700 hover:border-blue-200 hover:bg-blue-50 hover:text-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700',
+  ghost:
+    'text-gray-600 hover:bg-blue-50 hover:text-primary dark:text-gray-300 dark:hover:bg-gray-700',
   danger: 'bg-danger text-white shadow-sm hover:bg-red-600 disabled:bg-danger/45',
   success: 'bg-success text-white shadow-sm hover:bg-green-700 disabled:bg-success/45',
 };
@@ -27,25 +35,41 @@ const badgeVariants = {
 const alertVariants = {
   info: {
     icon: Info,
-    className: 'border-blue-100 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300',
+    className:
+      'border-blue-100 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300',
   },
   success: {
     icon: CheckCircle2,
-    className: 'border-green-100 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300',
+    className:
+      'border-green-100 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300',
   },
   warning: {
     icon: AlertCircle,
-    className: 'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300',
+    className:
+      'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300',
   },
   danger: {
     icon: XCircle,
-    className: 'border-red-100 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300',
+    className:
+      'border-red-100 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300',
   },
 };
 
-export function PageHeader({ title, subtitle, actions, className }: { title?: ReactNode; subtitle?: ReactNode; actions?: ReactNode; className?: string }) {
+export function PageHeader({
+  title,
+  subtitle,
+  actions,
+  className,
+}: {
+  title?: ReactNode;
+  subtitle?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+}) {
   return (
-    <header className={cn('flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between', className)}>
+    <header
+      className={cn('flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between', className)}
+    >
       <div className="min-w-0">
         <h1 className="ui-title">{title}</h1>
         {subtitle && <p className="ui-subtitle mt-2">{subtitle}</p>}
@@ -55,18 +79,39 @@ export function PageHeader({ title, subtitle, actions, className }: { title?: Re
   );
 }
 
-export function PageHeaderNoTitle({ subtitle, actions, className }: { subtitle?: ReactNode; actions?: ReactNode; className?: string }) {
+export function PageHeaderNoTitle({
+  subtitle,
+  actions,
+  className,
+}: {
+  subtitle?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+}) {
   return (
-    <header className={cn('flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between', className)}>
-      <div className="min-w-0">
-        {subtitle && <p className="ui-subtitle">{subtitle}</p>}
-      </div>
+    <header
+      className={cn('flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between', className)}
+    >
+      <div className="min-w-0">{subtitle && <p className="ui-subtitle">{subtitle}</p>}</div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-3">{actions}</div>}
     </header>
   );
 }
 
-export function SurfaceCard({ children, className, hover = false, padding = 'p-6', as: Component = 'section', ...props }: HTMLAttributes<HTMLElement> & { children?: ReactNode; className?: string; hover?: boolean; padding?: string; as?: ElementType }) {
+export function SurfaceCard({
+  children,
+  className,
+  hover = false,
+  padding = 'p-6',
+  as: Component = 'section',
+  ...props
+}: HTMLAttributes<HTMLElement> & {
+  children?: ReactNode;
+  className?: string;
+  hover?: boolean;
+  padding?: string;
+  as?: ElementType;
+}) {
   return (
     <Component className={cn('ui-card', hover && 'ui-card-hover', padding, className)} {...props}>
       {children}
@@ -91,7 +136,14 @@ export function ActionButton({
   className,
   type = 'button',
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { children?: ReactNode; variant?: ButtonVariant; size?: 'sm' | 'md' | 'lg'; icon?: IconComponent; loading?: boolean; className?: string }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  children?: ReactNode;
+  variant?: ButtonVariant;
+  size?: 'sm' | 'md' | 'lg';
+  icon?: IconComponent;
+  loading?: boolean;
+  className?: string;
+}) {
   const sizes = {
     sm: 'h-9 px-3 text-xs',
     md: 'h-10 px-4 text-xs',
@@ -105,7 +157,7 @@ export function ActionButton({
         'inline-flex items-center justify-center gap-2 rounded-control font-semibold transition-all duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70',
         buttonVariants[variant] || buttonVariants.primary,
         sizes[size] || sizes.md,
-        className
+        className,
       )}
       {...props}
     >
@@ -115,7 +167,21 @@ export function ActionButton({
   );
 }
 
-export function IconButton({ label, icon: Icon, variant = 'ghost', className, type = 'button', tooltip = true, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; icon?: IconComponent; variant?: ButtonVariant; className?: string; tooltip?: boolean }) {
+export function IconButton({
+  label,
+  icon: Icon,
+  variant = 'ghost',
+  className,
+  type = 'button',
+  tooltip = true,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  label: string;
+  icon?: IconComponent;
+  variant?: ButtonVariant;
+  className?: string;
+  tooltip?: boolean;
+}) {
   return (
     <div className="group relative inline-flex">
       <button
@@ -124,7 +190,7 @@ export function IconButton({ label, icon: Icon, variant = 'ghost', className, ty
         className={cn(
           'inline-flex size-10 items-center justify-center rounded-control transition-all duration-150 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60',
           buttonVariants[variant] || buttonVariants.ghost,
-          className
+          className,
         )}
         {...props}
       >
@@ -140,20 +206,50 @@ export function IconButton({ label, icon: Icon, variant = 'ghost', className, ty
   );
 }
 
-export function StatusBadge({ children, variant = 'primary', className }: { children?: ReactNode; variant?: BadgeVariant; className?: string }) {
+export function StatusBadge({
+  children,
+  variant = 'primary',
+  className,
+}: {
+  children?: ReactNode;
+  variant?: BadgeVariant;
+  className?: string;
+}) {
   return (
-    <span className={cn('inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold', badgeVariants[variant] || badgeVariants.primary, className)}>
+    <span
+      className={cn(
+        'inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold',
+        badgeVariants[variant] || badgeVariants.primary,
+        className,
+      )}
+    >
       {children}
     </span>
   );
 }
 
-export function AlertBanner({ type = 'info', title, children, className }: { type?: 'info' | 'success' | 'warning' | 'danger'; title?: ReactNode; children?: ReactNode; className?: string }) {
+export function AlertBanner({
+  type = 'info',
+  title,
+  children,
+  className,
+}: {
+  type?: 'info' | 'success' | 'warning' | 'danger';
+  title?: ReactNode;
+  children?: ReactNode;
+  className?: string;
+}) {
   const config = alertVariants[type] || alertVariants.info;
   const Icon = config.icon;
 
   return (
-    <div className={cn('flex items-start gap-3 rounded-2xl border px-4 py-3 text-xs', config.className, className)}>
+    <div
+      className={cn(
+        'flex items-start gap-3 rounded-2xl border px-4 py-3 text-xs',
+        config.className,
+        className,
+      )}
+    >
       <Icon size={16} className="mt-0.5 shrink-0" />
       <div className="min-w-0">
         {title && <p className="font-semibold">{title}</p>}
@@ -163,9 +259,28 @@ export function AlertBanner({ type = 'info', title, children, className }: { typ
   );
 }
 
-export function EmptyState({ icon: Icon = Info, title, description, action, className, bareIcon }: { icon?: IconComponent; title?: ReactNode; description?: ReactNode; action?: ReactNode; className?: string; bareIcon?: boolean }) {
+export function EmptyState({
+  icon: Icon = Info,
+  title,
+  description,
+  action,
+  className,
+  bareIcon,
+}: {
+  icon?: IconComponent;
+  title?: ReactNode;
+  description?: ReactNode;
+  action?: ReactNode;
+  className?: string;
+  bareIcon?: boolean;
+}) {
   return (
-    <div className={cn('flex min-h-[260px] flex-col items-center justify-center rounded-card px-6 py-12 text-center', className)}>
+    <div
+      className={cn(
+        'flex min-h-[260px] flex-col items-center justify-center rounded-card px-6 py-12 text-center',
+        className,
+      )}
+    >
       {bareIcon ? (
         <div className="mb-5">
           <Icon size={200} />
@@ -180,15 +295,40 @@ export function EmptyState({ icon: Icon = Info, title, description, action, clas
         </div>
       )}
       <h3 className="text-sm font-bold text-gray-900 dark:text-white">{title}</h3>
-      {description && <p className="mt-2 max-w-md text-xs leading-5 text-gray-500 dark:text-gray-400">{description}</p>}
+      {description && (
+        <p className="mt-2 max-w-md text-xs leading-5 text-gray-500 dark:text-gray-400">
+          {description}
+        </p>
+      )}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
 
-export function SegmentedTabs<T extends string = string>({ tabs, value, onChange, className }: { tabs: Array<{ id: T; label: ReactNode; icon?: IconComponent; disabled?: boolean; title?: string }>; value: T; onChange: (id: T) => void; className?: string }) {
+export function SegmentedTabs<T extends string = string>({
+  tabs,
+  value,
+  onChange,
+  className,
+}: {
+  tabs: Array<{
+    id: T;
+    label: ReactNode;
+    icon?: IconComponent;
+    disabled?: boolean;
+    title?: string;
+  }>;
+  value: T;
+  onChange: (id: T) => void;
+  className?: string;
+}) {
   return (
-    <div className={cn('inline-flex rounded-2xl border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-800', className)}>
+    <div
+      className={cn(
+        'inline-flex rounded-2xl border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-800',
+        className,
+      )}
+    >
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const active = value === tab.id;
@@ -201,7 +341,9 @@ export function SegmentedTabs<T extends string = string>({ tabs, value, onChange
             title={tab.title}
             className={cn(
               'inline-flex h-9 items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50',
-              active ? 'bg-primary-soft text-primary shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+              active
+                ? 'bg-primary-soft text-primary shadow-sm'
+                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white',
             )}
           >
             {Icon && <Icon size={17} />}

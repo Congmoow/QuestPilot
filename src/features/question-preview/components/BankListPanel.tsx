@@ -23,39 +23,57 @@ const bankTones = [
 
 type BankListPanelProps = Pick<
   QuestionPreviewState,
-  | 'banks' | 'banksLoading' | 'banksError'
-  | 'createDialogOpen' | 'setCreateDialogOpen'
-  | 'editDialogOpen' | 'setEditDialogOpen'
-  | 'deleteDialogOpen' | 'setDeleteDialogOpen'
-  | 'editingBank' | 'deletingBank'
+  | 'banks'
+  | 'banksLoading'
+  | 'banksError'
+  | 'createDialogOpen'
+  | 'setCreateDialogOpen'
+  | 'editDialogOpen'
+  | 'setEditDialogOpen'
+  | 'deleteDialogOpen'
+  | 'setDeleteDialogOpen'
+  | 'editingBank'
+  | 'deletingBank'
   | 'submitting'
   | 'formatDate'
   | 'handleEnterBank'
-  | 'handleOpenEditDialog' | 'handleOpenDeleteDialog'
-  | 'handleCreateBank' | 'handleEditBank' | 'handleDeleteBank'
+  | 'handleOpenEditDialog'
+  | 'handleOpenDeleteDialog'
+  | 'handleCreateBank'
+  | 'handleEditBank'
+  | 'handleDeleteBank'
 >;
 
 const BankListPanel = ({
-  banks, banksLoading, banksError,
-  createDialogOpen, setCreateDialogOpen,
-  editDialogOpen, setEditDialogOpen,
-  deleteDialogOpen, setDeleteDialogOpen,
-  editingBank, deletingBank,
+  banks,
+  banksLoading,
+  banksError,
+  createDialogOpen,
+  setCreateDialogOpen,
+  editDialogOpen,
+  setEditDialogOpen,
+  deleteDialogOpen,
+  setDeleteDialogOpen,
+  editingBank,
+  deletingBank,
   submitting,
   formatDate,
   handleEnterBank,
-  handleOpenEditDialog, handleOpenDeleteDialog,
-  handleCreateBank, handleEditBank, handleDeleteBank,
+  handleOpenEditDialog,
+  handleOpenDeleteDialog,
+  handleCreateBank,
+  handleEditBank,
+  handleDeleteBank,
 }: BankListPanelProps) => (
   <div className="space-y-6">
     <PageHeader
       title="题库管理"
       subtitle="管理和查看所有题库"
-      actions={(
+      actions={
         <ActionButton icon={Plus} onClick={() => setCreateDialogOpen(true)}>
           新建题库
         </ActionButton>
-      )}
+      }
     />
 
     {banksLoading && banks.length === 0 && (
@@ -73,11 +91,11 @@ const BankListPanel = ({
           icon={FolderOpen}
           title="暂无题库"
           description="创建第一个题库后，就可以开始录入、管理和练习题目。"
-          action={(
+          action={
             <ActionButton icon={Plus} onClick={() => setCreateDialogOpen(true)}>
               新建题库
             </ActionButton>
-          )}
+          }
         />
       </SurfaceCard>
     )}
@@ -114,7 +132,9 @@ const BankListPanel = ({
 
     <QuestionBankDialog
       open={editDialogOpen}
-      onClose={() => { setEditDialogOpen(false); }}
+      onClose={() => {
+        setEditDialogOpen(false);
+      }}
       onSubmit={handleEditBank}
       initialData={editingBank}
       loading={submitting}
@@ -122,7 +142,9 @@ const BankListPanel = ({
 
     <ConfirmDialog
       open={deleteDialogOpen}
-      onClose={() => { setDeleteDialogOpen(false); }}
+      onClose={() => {
+        setDeleteDialogOpen(false);
+      }}
       onConfirm={handleDeleteBank}
       title="删除题库"
       message={`确定要删除题库"${deletingBank?.name}"吗？删除后该题库及其所有题目将无法恢复。`}

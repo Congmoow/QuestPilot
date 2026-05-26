@@ -26,7 +26,10 @@ const PromptSelector = ({
       className="inline-flex h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-[13px] font-medium text-gray-700 shadow-sm transition-colors hover:bg-blue-50 hover:text-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
     >
       {selectedPrompt?.name || '智能模型 Pro'}
-      <ChevronDown size={14} className={cn('text-gray-400 transition-transform', showDropdown && 'rotate-180')} />
+      <ChevronDown
+        size={14}
+        className={cn('text-gray-400 transition-transform', showDropdown && 'rotate-180')}
+      />
     </button>
     {showDropdown && (
       <div className="absolute right-0 z-30 mt-2 w-56 rounded-2xl border border-gray-100 bg-white p-2 shadow-popover dark:border-gray-700 dark:bg-gray-800">
@@ -38,7 +41,7 @@ const PromptSelector = ({
               'w-full rounded-xl px-3 py-2 text-left text-sm font-semibold transition-colors',
               selectedPrompt?.id === prompt.id
                 ? 'bg-primary-soft text-primary'
-                : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
+                : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700',
             )}
           >
             {prompt.name}

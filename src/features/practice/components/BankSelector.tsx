@@ -2,7 +2,13 @@ import type { MouseEvent } from 'react';
 import { AlertCircle, BrainCircuit, Code2, FileQuestion, Image } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ActionButton, EmptyState, PageHeader, PracticeCard, SurfaceCard } from '../../../components/ui';
+import {
+  ActionButton,
+  EmptyState,
+  PageHeader,
+  PracticeCard,
+  SurfaceCard,
+} from '../../../components/ui';
 import type { QuestionBank } from '../../../api';
 
 const bankIcons = [Image, Code2, FileQuestion, BrainCircuit];
@@ -15,7 +21,13 @@ type BankSelectorProps = {
   onStart: (bankId: number) => void;
 };
 
-const BankSelector = ({ banks, selectedBankId, loading, onSelect, onStart }: BankSelectorProps) => {
+const BankSelector = ({
+  banks,
+  selectedBankId,
+  loading: _loading,
+  onSelect,
+  onStart,
+}: BankSelectorProps) => {
   const navigate = useNavigate();
 
   return (
@@ -28,11 +40,11 @@ const BankSelector = ({ banks, selectedBankId, loading, onSelect, onStart }: Ban
             icon={AlertCircle}
             title="暂无题库"
             description="请先创建题库并添加题目，然后回来开始随机练习。"
-            action={(
+            action={
               <ActionButton onClick={() => navigate('/question-preview')}>
                 前往题库管理
               </ActionButton>
-            )}
+            }
           />
         </SurfaceCard>
       ) : (
