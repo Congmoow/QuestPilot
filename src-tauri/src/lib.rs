@@ -6,7 +6,7 @@ pub mod error;
 pub mod services;
 
 use commands::{
-    ai_cmd::{ai_chat, ai_parse_questions},
+    ai_cmd::{ai_chat, ai_import_questions_direct, ai_parse_questions},
     csv::{csv_download_template, csv_export, csv_import, csv_parse_file, csv_select_file},
     draft::{draft_clear, draft_load, draft_save},
     practice::{practice_get_all_stats, practice_get_records, practice_save_record},
@@ -77,6 +77,7 @@ pub fn run() {
             migration_backup_and_replace_from_legacy,
             ai_parse_questions,
             ai_chat,
+            ai_import_questions_direct,
             settings_get_wrong_book_threshold,
             settings_set_wrong_book_threshold,
             draft_save,
