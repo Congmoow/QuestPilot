@@ -22,6 +22,7 @@ import type {
   CreateQuestionBankInput,
   CreateQuestionInput,
   DashboardStats,
+  DedupResult,
   DraftData,
   FileSelectionResult,
   ImportResult,
@@ -53,6 +54,8 @@ export type {
   CreateQuestionBankInput,
   CreateQuestionInput,
   DashboardStats,
+  DedupResult,
+  DuplicateGroup,
   DraftData,
   FileSelectionResult,
   ImportResult,
@@ -290,6 +293,12 @@ export const backupAndReplaceFromLegacy = async (
     legacyPath,
     confirmation: 'BACKUP_AND_REPLACE',
   });
+};
+
+// ==================== 查重 API ====================
+
+export const findDuplicates = async (bankId: number): Promise<DedupResult> => {
+  return invokeTauriCommand('question_find_duplicates', { bankId });
 };
 
 // ==================== AI API ====================

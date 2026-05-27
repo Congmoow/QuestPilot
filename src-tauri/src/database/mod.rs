@@ -23,9 +23,9 @@ pub use repositories::{
 };
 pub use types::{
     ApiConfig, ChatHistory, ChatHistoryInput, CreatePromptInput, CreateQuestionBankInput,
-    CreateQuestionInput, DashboardStats, ImportError, ImportResult, OperationLog, PracticeRecord,
-    PracticeRecordInput, PracticeStats, Prompt, Question, QuestionBank, TypeDistribution,
-    WrongBookCount, WrongBookItem, WrongBookPracticeResult,
+    CreateQuestionInput, DashboardStats, DedupResult, DuplicateGroup, ImportError, ImportResult,
+    OperationLog, PracticeRecord, PracticeRecordInput, PracticeStats, Prompt, Question,
+    QuestionBank, TypeDistribution, WrongBookCount, WrongBookItem, WrongBookPracticeResult,
 };
 
 use legacy::migrate_legacy_database;

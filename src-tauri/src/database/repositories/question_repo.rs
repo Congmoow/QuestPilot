@@ -1,6 +1,11 @@
+use std::collections::HashMap;
+
 use rusqlite::params;
 
-use crate::database::{CreateQuestionInput, DatabaseStore, ImportError, ImportResult, Question};
+use crate::database::{
+    CreateQuestionInput, DatabaseStore, DedupResult, DuplicateGroup, ImportError, ImportResult,
+    Question,
+};
 
 use super::super::validation::{options_to_json, validate_question};
 use super::helpers::{
@@ -314,4 +319,81 @@ impl QuestionRepository {
             count_questions(conn, bank_id, keyword.as_str(), question_type.as_deref())
         })
     }
+
+    /// 查找题库中的重复题目，以 `(content + answer + options)` 归一化后分组。
+    ///
+    /// 每组按 `created_at ASC` 排序，首条为保留目标，其余为重复题目。
+    pub fn find_duplicates(&self, bank_id: i64) -> Result<DedupResult, String> {
+        self.store.with_connection(|conn| {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT id, content, answer, options \
+                     FROM questions \
+                     WHERE bank_id = ?1 \
+                     ORDER BY created_at ASC, id ASC",
+                )
+                .map_err(|e| format!("准备查重查询失败: {e}"))?;
+
+            let rows = stmt
+                .query_map(params![bank_id], |row| {
+                    Ok((
+                        row.get::<_, i64>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, String>(2)?,
+                        row.get::<_, Option<String>>(3)?,
+                    ))
+                })
+                .map_err(|e| format!("查重查询失败: {e}"))?;
+
+            let mut groups: HashMap<String, Vec<(i64, String)>> = HashMap::new();
+            for row in rows {
+                let (id, content, answer, options) =
+                    row.map_err(|e| format!("读取题目失败: {e}"))?;
+                let key = dedup_normalize_key(&content, &answer, options.as_deref());
+                groups.entry(key).or_default().push((id, content));
+            }
+
+            let mut dup_groups: Vec<DuplicateGroup> = groups
+                .into_values()
+                .filter(|items| items.len() > 1)
+                .map(|items| {
+                    let keep_id = items[0].0;
+                    let sample_content = items[0].1.clone();
+                    let duplicate_ids: Vec<i64> = items[1..].iter().map(|(id, _)| *id).collect();
+                    let count = items.len() as i64;
+                    DuplicateGroup {
+                        keep_id,
+                        duplicate_ids,
+                        sample_content,
+                        count,
+                    }
+                })
+                .collect();
+
+            dup_groups.sort_by(|a, b| b.count.cmp(&a.count));
+            let total_duplicate_count: i64 = dup_groups
+                .iter()
+                .map(|g| g.duplicate_ids.len() as i64)
+                .sum();
+
+            Ok(DedupResult {
+                groups: dup_groups,
+                total_duplicate_count,
+            })
+        })
+    }
+}
+
+/// 对 `content`、`answer`、`options` 归一化后拼接为唯一键。
+///
+/// 归一化规则：去首尾空白 → 折叠连续空白为单空格 → 转小写。
+fn dedup_normalize_key(content: &str, answer: &str, options: Option<&str>) -> String {
+    let nc = normalize_str(content);
+    let na = normalize_str(answer);
+    let no = options.map(normalize_str).unwrap_or_default();
+    format!("{nc}\x00{na}\x00{no}")
+}
+
+fn normalize_str(s: &str) -> String {
+    s.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase()
 }
