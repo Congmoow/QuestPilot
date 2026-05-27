@@ -34,7 +34,7 @@ pub async fn ai_chat(
     let custom_prompt = match prompt_id {
         Some(pid) => PromptService::new(open_store(&app)?)
             .get_by_id(pid)
-            .ok()        // prompt 读取失败时静默降级为 None，保持原有业务行为
+            .ok() // prompt 读取失败时静默降级为 None，保持原有业务行为
             .flatten()
             .map(|p| p.content),
         None => None,
@@ -66,7 +66,8 @@ pub async fn ai_import_questions_direct(
     bank_id: i64,
 ) -> Result<AiImportResult, AppError> {
     // Phase 1：SettingsService 临时值在语句末析构，await 前无 !Send 类型存活
-    let ai_config = ai_config_from_database(SettingsService::new(open_store(&app)?).get_api_config()?);
+    let ai_config =
+        ai_config_from_database(SettingsService::new(open_store(&app)?).get_api_config()?);
 
     // AI 解析（异步，不持有 DatabaseStore）
     let ai_result = ai::parse_questions_with_ai(&ai_config, &content)
@@ -77,6 +78,10 @@ pub async fn ai_import_questions_direct(
     let (questions, chunk_errors, parsed_count) = ImportService::extract_ai_response(ai_result);
 
     // Phase 2：await 后重新打开 store，同步写库
-    ImportService::new(open_store(&app)?)
-        .import_from_ai_result(bank_id, questions, chunk_errors, parsed_count)
+    ImportService::new(open_store(&app)?).import_from_ai_result(
+        bank_id,
+        questions,
+        chunk_errors,
+        parsed_count,
+    )
 }

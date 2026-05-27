@@ -55,7 +55,8 @@ impl StatsRepository {
         &self,
         bank_id: Option<i64>,
     ) -> Result<Vec<TypeDistribution>, String> {
-        self.store.with_connection(|conn| get_type_distribution_sql(conn, bank_id))
+        self.store
+            .with_connection(|conn| get_type_distribution_sql(conn, bank_id))
     }
 }
 
@@ -87,7 +88,10 @@ fn get_type_distribution_sql(
             .map_err(|e| format!("准备题型统计查询失败: {e}"))?;
         let rows = stmt
             .query_map(params![bid], |row| {
-                Ok(TypeDistribution { r#type: row.get(0)?, count: row.get(1)? })
+                Ok(TypeDistribution {
+                    r#type: row.get(0)?,
+                    count: row.get(1)?,
+                })
             })
             .map_err(|e| format!("查询题型统计失败: {e}"))?;
         for row in rows {
@@ -100,7 +104,10 @@ fn get_type_distribution_sql(
         .map_err(|e| format!("准备题型统计查询失败: {e}"))?;
     let rows = stmt
         .query_map([], |row| {
-            Ok(TypeDistribution { r#type: row.get(0)?, count: row.get(1)? })
+            Ok(TypeDistribution {
+                r#type: row.get(0)?,
+                count: row.get(1)?,
+            })
         })
         .map_err(|e| format!("查询题型统计失败: {e}"))?;
     for row in rows {

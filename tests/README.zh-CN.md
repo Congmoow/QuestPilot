@@ -14,6 +14,7 @@
 - `npm test`：运行 `tests/unit` 下的 Vitest 测试。
 - `npm run test:api-contract`：仅运行桌面 API 归一化契约测试。
 - `npm run test:e2e`：运行 Playwright 端到端测试。
+- `npm run test:smoke:tauri`：运行 Tauri 发布闸门 smoke harness。
 - `npm run test:rust`：运行 `src-tauri/tests` 与 Rust 单元测试。
 
 ## 维护边界

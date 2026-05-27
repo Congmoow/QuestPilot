@@ -1,6 +1,4 @@
-use crate::database::{
-    CreateQuestionInput, DatabaseStore, Question, QuestionRepository,
-};
+use crate::database::{CreateQuestionInput, DatabaseStore, Question, QuestionRepository};
 use crate::error::AppError;
 
 /// 题目业务服务。
@@ -35,7 +33,9 @@ impl QuestionService {
         limit: u32,
         question_type: Option<String>,
     ) -> Result<(Vec<Question>, i64), AppError> {
-        let data = self.repo.list_by_bank(bank_id, offset, limit, question_type.clone())?;
+        let data = self
+            .repo
+            .list_by_bank(bank_id, offset, limit, question_type.clone())?;
         let total = self.repo.count(bank_id, String::new(), question_type)?;
         Ok((data, total))
     }
@@ -79,9 +79,13 @@ impl QuestionService {
         limit: u32,
         question_type: Option<String>,
     ) -> Result<(Vec<Question>, i64), AppError> {
-        let data = self
-            .repo
-            .search(bank_id, keyword.clone(), question_type.clone(), offset, limit)?;
+        let data = self.repo.search(
+            bank_id,
+            keyword.clone(),
+            question_type.clone(),
+            offset,
+            limit,
+        )?;
         let total = self.repo.count(bank_id, keyword, question_type)?;
         Ok((data, total))
     }

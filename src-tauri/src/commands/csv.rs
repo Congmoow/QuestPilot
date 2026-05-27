@@ -74,8 +74,7 @@ pub fn csv_export(
     bank_id: i64,
 ) -> Result<serde_json::Value, AppError> {
     // Service 层：业务校验 + 数据查询（题库存在性、题目非空、10万上限）
-    let (bank_name, questions) =
-        ExportService::new(open_store(&app)?).prepare_export(bank_id)?;
+    let (bank_name, questions) = ExportService::new(open_store(&app)?).prepare_export(bank_id)?;
 
     // Command 层：文件对话框（需要 WebviewWindow，不适合放在 Service 中）
     let Some(file_path) = window

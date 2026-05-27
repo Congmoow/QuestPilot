@@ -1,4 +1,6 @@
-use crate::database::{DashboardStats, DatabaseStore, OperationLog, StatsRepository, TypeDistribution};
+use crate::database::{
+    DashboardStats, DatabaseStore, OperationLog, StatsRepository, TypeDistribution,
+};
 use crate::error::AppError;
 
 /// 统计业务服务。

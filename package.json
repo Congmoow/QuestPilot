@@ -1,7 +1,7 @@
 {
   "name": "questpilot",
   "private": true,
-  "version": "1.7.7",
+  "version": "1.8.7",
   "type": "module",
   "author": {
     "name": "WangZhongWu"
@@ -31,6 +31,7 @@
     "lint-staged": "lint-staged",
     "test:api-contract": "vitest run --config vitest.config.ts tests/unit/api/runtime-adapters.test.ts",
     "test:e2e": "playwright test",
+    "test:smoke:tauri": "playwright test tests/e2e/tauri-release-smoke.spec.ts",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
     "clean": "rimraf dist",
     "optimize:assets": "node scripts/optimize-assets.cjs"

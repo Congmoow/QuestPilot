@@ -1,7 +1,7 @@
 use rusqlite::{params, OptionalExtension};
 
-use crate::database::{CreateQuestionBankInput, DatabaseStore, QuestionBank};
 use super::super::validation::{normalize_description, validate_bank_name};
+use crate::database::{CreateQuestionBankInput, DatabaseStore, QuestionBank};
 
 /// 题库数据访问对象（Phase 2：通过 `DatabaseStore::with_connection` /
 /// `with_transaction` 直接访问 `rusqlite::Connection` / `Transaction`）。
@@ -63,12 +63,17 @@ impl QuestionBankRepository {
 
     /// 按 ID 查询题库；不存在则返回 `None`。
     pub fn find_by_id(&self, id: i64) -> Result<Option<QuestionBank>, String> {
-        self.store.with_connection(|conn| get_bank_by_id_sql(conn, id))
+        self.store
+            .with_connection(|conn| get_bank_by_id_sql(conn, id))
     }
 
     /// 更新题库名称/描述：名称校验 → UPDATE → 写操作日志 → 返回更新后记录。
     /// 若 ID 不存在则返回 `None`。
-    pub fn update(&self, id: i64, data: CreateQuestionBankInput) -> Result<Option<QuestionBank>, String> {
+    pub fn update(
+        &self,
+        id: i64,
+        data: CreateQuestionBankInput,
+    ) -> Result<Option<QuestionBank>, String> {
         let name = validate_bank_name(&data.name)?;
         let description = normalize_description(data.description);
 

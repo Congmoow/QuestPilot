@@ -60,6 +60,7 @@ Tauri 已作为后续开发主线推进，并已完成阶段 2-6 的架构治理
 | 命令 | 目的 | 当前阶段 7 状态 |
 | --- | --- | --- |
 | `npm run test:api-contract` | 验证前端桌面 API 归一化契约。 | 已作为阶段 6/7 自动化验证项。 |
+| `npm run test:smoke:tauri` | 复跑 Tauri 发布 smoke harness，覆盖文件选择取消/成功、设置页数据迁移基础流和窗口控制 IPC 可观测检查。 | 作为阶段 7.3 自动化 smoke 验证项；不能替代真实系统文件对话框、真实窗口拖拽和打包产物人工验收。 |
 | `cargo test` | 验证 Tauri Rust 单元、集成测试、迁移版本语义和 API Key 脱敏。 | 已作为阶段 6/7 自动化验证项。 |
 | `cargo fmt -- --check` | 验证 Tauri Rust 格式。 | 已作为阶段 6/7 自动化验证项。 |
 | `npm run build` | 验证前端生产构建。 | 已作为阶段 6/7 自动化验证项。 |
@@ -90,9 +91,21 @@ Tauri 已作为后续开发主线推进，并已完成阶段 2-6 的架构治理
 | 真实 API 接入 | 用户人工验收通过 | 用户反馈 Tauri 线 API 接入人工测试没有问题。 |
 | CSV 保存 | 用户人工验收通过 | 用户反馈 Tauri 线 CSV 保存人工测试没有问题。 |
 
+## 阶段 7.3 自动化 smoke harness
+
+记录日期：2026-05-27
+
+| 项目 | 覆盖方式 | 边界 |
+| --- | --- | --- |
+| CSV 文件选择 | `tests/e2e/tauri-release-smoke.spec.ts` 使用 Tauri IPC mock 覆盖取消与成功选择，并断言 `csv_select_file` / `csv_parse_file` 调用。 | 只验证页面流程和 IPC 契约；真实系统文件对话框仍需人工点击。 |
+| 数据迁移卡片 | 同一 smoke spec 覆盖设置页迁移卡片出现、危险确认弹窗、浏览器确认和 `migration_backup_and_replace_from_legacy` 参数。 | 只验证基础交互流；真实数据库文件备份、替换和重启后状态仍需人工验收。 |
+| 窗口控制 | 同一 smoke spec 覆盖标题栏最小化、最大化/还原、关闭按钮触发的 Tauri window command，并记录 `window_is_maximized` 查询。 | 只验证前端可观测 IPC；真实拖拽、OS 最小化、窗口尺寸和异常退出仍需人工验收。 |
+
 ## 人工验收清单
 
 发布前必须在真实 Tauri 窗口中记录以下结果：
+
+可直接勾选的清单见：[`docs/architecture/tauri-release-manual-checklist.md`](./tauri-release-manual-checklist.md)。
 
 - CSV 文件选择：成功选择、取消、非法路径。
 - CSV 模板下载：取消保存、实际写入、写入后文件内容可打开。
