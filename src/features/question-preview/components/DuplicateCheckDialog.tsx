@@ -5,13 +5,7 @@ import type { DedupResult, DuplicateGroup } from '../../../api';
 import Dialog from '../../../components/Dialog';
 import { ActionButton } from '../../../components/ui';
 
-type DialogMode =
-  | 'idle'
-  | 'exact-checking'
-  | 'ai-checking'
-  | 'results'
-  | 'no-duplicates'
-  | 'error';
+type DialogMode = 'idle' | 'exact-checking' | 'ai-checking' | 'results' | 'no-duplicates' | 'error';
 
 type DuplicateCheckDialogProps = {
   open: boolean;
