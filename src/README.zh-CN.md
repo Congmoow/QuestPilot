@@ -27,7 +27,7 @@ src/
 │
 ├── features/             # 按功能域拆分的业务逻辑
 │   ├── ai-chat/          # AI 问答
-│   ├── ai-import/        # AI / JSON 批量导入
+│   ├── ai-import/        # AI / JSON / TOML 批量导入
 │   ├── csv-import/       # CSV 批量导入
 │   ├── dashboard/        # 数据看板
 │   ├── practice/         # 随机练题

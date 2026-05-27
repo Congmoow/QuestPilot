@@ -9,6 +9,7 @@ Frontend (React/TypeScript)
 ┌─────────────────────────────────┐
 │        Command layer             │  src-tauri/src/commands/
 │  Parse invoke params, call Service│
+│  or pure file/parser utilities     │
 └────────────┬────────────────────┘
              │
              ▼
@@ -37,10 +38,11 @@ Frontend (React/TypeScript)
 
 ### Command layer
 - **Location**: `src/commands/`
-- **Responsibility**: receive Tauri invoke params → create Service → call service method → return result
+- **Responsibility**: receive Tauri invoke params → create Service or pure utility → return result
 - **Not responsible for**: SQL, business rules, input validation
 - **Constraint**: command names, params, and return shapes must remain stable; the frontend invoke interface must not change arbitrarily
 - **Entry pattern**: `open_store(&app)? → ServiceXxx::new(store) → service.method()`
+- **Pure parser exception**: file-format parsing commands such as `toml_parse_file` may call parser utilities directly when they do not touch SQLite or Service state.
 
 ### Service layer
 - **Location**: `src/services/`
@@ -181,7 +183,7 @@ All operations run inside a single `rusqlite::Transaction`; any failure auto-rol
 
 - **Command names are immutable**: all frontend `invoke('command_name', ...)` calls depend on exact Tauri command names
 - **Params and return shapes must not change**: `serde rename_all = "camelCase"` fixes the serialisation format
-- **Adding a command does not affect existing ones**: e.g. `ai_import_questions_direct` is additive and does not replace `ai_parse_questions`
+- **Adding a command does not affect existing ones**: e.g. `ai_import_questions_direct` is additive and does not replace `ai_parse_questions`; `toml_select_file` / `toml_parse_file` are additive to the existing CSV import commands
 - **Error format is stable**: `AppError` serialises to `{ "kind": "Database" | "Ai" | "Config", "message": "..." }`
 
 ## 8. Service Coverage (current)
@@ -200,5 +202,6 @@ All operations run inside a single `rusqlite::Transaction`; any failure auto-rol
 | draft | `DraftRepository` | `DraftService` | ✅ full |
 | export (csv) | _(direct store hold)_ | `ExportService` | ✅ full |
 | ai import | `QuestionRepository` | `ImportService` | ✅ full |
+| toml import file parsing | — | `toml_tools` pure parser | ✅ file select / parse commands |
 | window | — | — | no DB ops |
 | migration | — | — | legacy free functions |

@@ -5,7 +5,7 @@
 ## 目录结构
 
 - `unit/api/`：桌面 API 门面、运行时适配器和前端契约测试。
-- `unit/features/`：前端功能模块的单元测试。
+- `unit/features/`：前端功能模块的单元测试，包括 TOML 文本导入解析。
 - `e2e/`：Playwright 端到端测试。
 - `e2e/helpers/`：端到端测试夹具和 Tauri mock。
 

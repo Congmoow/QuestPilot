@@ -4,6 +4,7 @@ pub mod csv_tools;
 pub mod database;
 pub mod error;
 pub mod services;
+pub mod toml_tools;
 
 use commands::{
     ai_cmd::{ai_chat, ai_import_questions_direct, ai_parse_questions},
@@ -30,6 +31,7 @@ use commands::{
         settings_test_api_connection,
     },
     stats::{stats_get_dashboard, stats_get_operation_logs, stats_get_type_distribution},
+    toml::{toml_parse_file, toml_select_file},
     window::{window_close, window_is_maximized, window_maximize, window_minimize},
     wrong_book::{
         wrong_book_clear, wrong_book_get_counts_by_bank, wrong_book_get_items,
@@ -106,7 +108,9 @@ pub fn run() {
             csv_select_file,
             csv_parse_file,
             csv_import,
-            csv_export
+            csv_export,
+            toml_select_file,
+            toml_parse_file
         ])
         .run(tauri::generate_context!())
         .expect("启动 QuestPilot Tauri 应用失败");

@@ -19,7 +19,7 @@ English | [简体中文](README.zh-CN.md)
 |---|---|
 | **Question banks** | Create / edit / delete banks; per-bank question management with pagination, keyword search, and type filter |
 | **Question types** | Single-choice, multiple-choice, true/false, fill-in-the-blank (`__` markers), and short answer |
-| **Import** | CSV template import, JSON batch import (Chinese & English field names), AI parsing import |
+| **Import** | CSV template import, JSON / TOML batch import with drag-and-drop TOML files (Chinese & English field names), AI parsing import |
 | **Export** | CSV export with UTF-8 BOM for Excel compatibility |
 | **Practice** | Random question draws, immediate scoring with explanations, practice history & accuracy trends |
 | **Wrong-question notebook** | Auto-records wrong answers; configurable correct-answer threshold for auto-removal; random wrong-question practice |
@@ -223,7 +223,7 @@ Test layout:
 
 - Add more repository-level integration tests
 - Improve backup and restore workflows
-- Support additional import formats such as TOML and Markdown
+- Support additional import formats such as Markdown
 - Explore richer practice analytics and spaced repetition strategies
 
 ---

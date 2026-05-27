@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import api from '../../../api';
 import type { CreateQuestionInput, ImportResult, ParseError, QuestionType } from '../../../api';
 import { countFillBlanks } from '../../../lib/fillBlank';
 import { useQuestionBanks } from '../../../contexts/QuestionBankContext';
 import type { ParseChunkError } from '../utils/normalize';
 import { normalizeBooleanAnswer, normalizeChoiceAnswer } from '../utils/normalize';
+import { selectTomlDropPath } from '../utils/tomlFileDrop';
+import { parseTomlQuestions } from '../utils/tomlImport';
 
-type ImportMode = 'ai' | 'json';
+type ImportMode = 'ai' | 'json' | 'toml';
 
 type ParseWarnings = {
   questionCount: number;
@@ -52,6 +54,9 @@ export const useAiImport = () => {
   const [mode, setMode] = useState<ImportMode>('ai');
   const [inputText, setInputText] = useState('');
   const [jsonInput, setJsonInput] = useState('');
+  const [tomlInput, setTomlInput] = useState('');
+  const [tomlFile, setTomlFile] = useState<{ name: string; path: string } | null>(null);
+  const [draggingTomlFile, setDraggingTomlFile] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [parsedQuestions, setParsedQuestions] = useState<CreateQuestionInput[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -146,7 +151,12 @@ export const useAiImport = () => {
       if (successCount > 0) {
         if (failCount === 0) {
           setParsedQuestions([]);
-          setInputText('');
+          if (mode === 'ai') setInputText('');
+          if (mode === 'json') setJsonInput('');
+          if (mode === 'toml') {
+            setTomlInput('');
+            setTomlFile(null);
+          }
         } else {
           const failedIndices = errors.map((e: ParseError) => e.index);
           setParsedQuestions((prev) => prev.filter((_, i) => failedIndices.includes(i)));
@@ -163,6 +173,8 @@ export const useAiImport = () => {
   const handleClear = () => {
     setInputText('');
     setJsonInput('');
+    setTomlInput('');
+    setTomlFile(null);
     setParsedQuestions([]);
     setError(null);
     setImportResult(null);
@@ -253,6 +265,127 @@ export const useAiImport = () => {
     }
   };
 
+  const handleTomlParse = () => {
+    setError(null);
+    setParsedQuestions([]);
+    setImportResult(null);
+    setParseWarnings(null);
+    setShowParseWarnings(false);
+    try {
+      setParsedQuestions(parseTomlQuestions(tomlInput));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '解析失败');
+    }
+  };
+
+  const parseTomlFilePath = useCallback(async (filePath: string) => {
+    const fileName = filePath.split(/[/\\]/).pop() || filePath;
+    setTomlFile({ name: fileName, path: filePath });
+    setParsing(true);
+    setError(null);
+    setParsedQuestions([]);
+    setImportResult(null);
+    setParseWarnings(null);
+    setShowParseWarnings(false);
+    try {
+      const result = await api.toml.parseFile(filePath);
+      const errors = Array.isArray(result.errors) ? result.errors : [];
+      if (result.valid.length > 0) {
+        setParsedQuestions(result.valid);
+        if (errors.length > 0) {
+          setParseWarnings({
+            questionCount: result.valid.length,
+            chunkErrors: errors.map((item, index) => ({
+              chunkIndex: Math.max(Number(item.row ?? index + 1) - 1, 0),
+              message: item.field ? `${item.field}：${item.message}` : item.message,
+            })),
+          });
+        }
+      } else if (errors.length > 0) {
+        setError(
+          errors
+            .map(
+              (item, index) =>
+                `第 ${item.row ?? index + 1} 道${item.field ? `，${item.field}` : ''}：${item.message}`,
+            )
+            .join('\n'),
+        );
+      } else {
+        setError('未能解析出有效的题目');
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '解析 TOML 文件失败');
+    } finally {
+      setParsing(false);
+    }
+  }, []);
+
+  const handleSelectTomlFile = async () => {
+    setError(null);
+    try {
+      const result = await api.toml.selectFile();
+      if (result.success && result.filePath) {
+        await parseTomlFilePath(result.filePath);
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '选择 TOML 文件失败');
+    }
+  };
+
+  const handleTomlFileParse = async () => {
+    if (!tomlFile) {
+      setError('请先选择 TOML 文件');
+      return;
+    }
+    await parseTomlFilePath(tomlFile.path);
+  };
+
+  useEffect(() => {
+    if (mode !== 'toml') {
+      setDraggingTomlFile(false);
+      return;
+    }
+
+    let cancelled = false;
+    let unlisten: (() => void) | null = null;
+
+    void import('@tauri-apps/api/webview')
+      .then(({ getCurrentWebview }) =>
+        getCurrentWebview().onDragDropEvent((event) => {
+          const payload = event.payload;
+          if (payload.type === 'enter' || payload.type === 'over') {
+            setDraggingTomlFile(true);
+            return;
+          }
+          if (payload.type === 'leave') {
+            setDraggingTomlFile(false);
+            return;
+          }
+          const filePath = selectTomlDropPath(payload.paths);
+          setDraggingTomlFile(false);
+          if (!filePath) {
+            setError('请拖入 .toml 文件');
+            return;
+          }
+          void parseTomlFilePath(filePath);
+        }),
+      )
+      .then((cleanup) => {
+        if (cancelled) cleanup();
+        else unlisten = cleanup;
+      })
+      .catch((error) => {
+        setDraggingTomlFile(false);
+        setError(error instanceof Error ? error.message : '监听 TOML 拖拽失败');
+      });
+
+    return () => {
+      cancelled = true;
+      setDraggingTomlFile(false);
+      if (unlisten) unlisten();
+    };
+  }, [mode, parseTomlFilePath]);
+
   const handleModeChange = (newMode: ImportMode) => {
     setMode(newMode);
     setError(null);
@@ -271,6 +404,10 @@ export const useAiImport = () => {
     setInputText,
     jsonInput,
     setJsonInput,
+    tomlInput,
+    setTomlInput,
+    tomlFile,
+    draggingTomlFile,
     parsing,
     parsedQuestions,
     error,
@@ -285,6 +422,9 @@ export const useAiImport = () => {
     handleImport,
     handleClear,
     handleJsonParse,
+    handleTomlParse,
+    handleSelectTomlFile,
+    handleTomlFileParse,
     handleModeChange,
   };
 };

@@ -201,6 +201,14 @@ export const parseCsvFile = async (filePath: string): Promise<ParseResult> => {
   return invokeTauriCommand('csv_parse_file', { filePath });
 };
 
+export const selectTomlFile = async (): Promise<FileSelectionResult> => {
+  return normalizeFileSelectionResult(await invokeTauriCommand('toml_select_file'));
+};
+
+export const parseTomlFile = async (filePath: string): Promise<ParseResult> => {
+  return invokeTauriCommand('toml_parse_file', { filePath });
+};
+
 export const importQuestions = async (
   bankId: number,
   questions: CreateQuestionInput[],
@@ -428,6 +436,10 @@ export default {
     parseFile: parseCsvFile,
     import: importQuestions,
     export: exportQuestionBank,
+  },
+  toml: {
+    selectFile: selectTomlFile,
+    parseFile: parseTomlFile,
   },
   stats: {
     getDashboard: getDashboardStats,

@@ -14,6 +14,7 @@ src-tauri/src/
 ├── main.rs             # 二进制入口：调用 lib::run()
 ├── ai.rs               # AI HTTP 客户端（OpenAI 兼容接口、测试连接）
 ├── csv_tools.rs        # CSV 解析 / 生成 / 导出工具
+├── toml_tools.rs       # TOML 批量导入解析工具
 │
 ├── commands/           # Tauri 命令层 — 薄层包装，按域一文件一责
 │   ├── mod.rs          # 共享 helper：open_store / main_window / ai_config_from_database
@@ -27,7 +28,8 @@ src-tauri/src/
 │   ├── prompt_chat.rs  # prompt_* / chat_history_*
 │   ├── practice.rs     # practice_save_record / get_records / get_all_stats
 │   ├── wrong_book.rs   # wrong_book_* + PaginatedWrongBookItems
-│   └── csv.rs          # csv_select_file / download_template / parse / import / export
+│   ├── csv.rs          # csv_select_file / download_template / parse / import / export
+│   └── toml.rs         # toml_select_file / parse_file
 │
 ├── services/           # Service 层 — 业务逻辑，按域一文件一责
 │   ├── mod.rs
@@ -216,6 +218,13 @@ database::DatabaseStore       ← 单连接包装器（RefCell<Connection>）
 | `csv_parse_file` | `file_path: String` | `serde_json::Value` |
 | `csv_import` | `bank_id: i64`, `questions` | `ImportResult` |
 | `csv_export` | `bank_id: i64` | `{ success, filePath?, count?, cancelled? }` |
+
+### TOML（`commands/toml.rs`）
+
+| 命令 | 参数 | 返回值 |
+|------|------|--------|
+| `toml_select_file` | — | `Option<String>`（文件路径） |
+| `toml_parse_file` | `file_path: String` | `serde_json::Value` |
 
 ---
 

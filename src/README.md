@@ -27,7 +27,7 @@ src/
 │
 ├── features/             # Business logic split by domain
 │   ├── ai-chat/          # AI Q&A chat
-│   ├── ai-import/        # AI / JSON batch import
+│   ├── ai-import/        # AI / JSON / TOML batch import
 │   ├── csv-import/       # CSV batch import
 │   ├── dashboard/        # Stats dashboard
 │   ├── practice/         # Random practice
