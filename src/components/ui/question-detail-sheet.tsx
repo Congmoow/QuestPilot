@@ -2,7 +2,15 @@ import { Edit, Trash2 } from 'lucide-react';
 import type { Question, QuestionType } from '../../api';
 import CodeAwareText from '../CodeAwareText';
 import { cn } from '../../lib/utils';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetBody, SheetFooter } from './sheet';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetBody,
+  SheetFooter,
+} from './sheet';
 import { ScrollArea } from './scroll-area';
 import { StatusBadge } from './base';
 import { ActionButton } from './base';
@@ -15,7 +23,10 @@ const typeMap: Record<QuestionType, string> = {
   short: '简答题',
 };
 
-const typeVariants: Record<QuestionType, 'primary' | 'success' | 'warning' | 'danger' | 'muted' | 'purple' | 'orange'> = {
+const typeVariants: Record<
+  QuestionType,
+  'primary' | 'success' | 'warning' | 'danger' | 'muted' | 'purple' | 'orange'
+> = {
   single: 'primary',
   multiple: 'success',
   boolean: 'orange',
@@ -60,7 +71,9 @@ export function QuestionDetailSheet({
           <ScrollArea className="h-full">
             <div className="space-y-5 px-6 py-5">
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">题干</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  题干
+                </p>
                 <div className="text-sm font-semibold leading-8 text-gray-900 dark:text-gray-100">
                   <CodeAwareText text={question.content} />
                 </div>
@@ -68,7 +81,9 @@ export function QuestionDetailSheet({
 
               {question.options && question.options.length > 0 && (
                 <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">选项</p>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    选项
+                  </p>
                   <div className="grid gap-2.5">
                     {question.options.map((opt) => (
                       <div
@@ -94,7 +109,9 @@ export function QuestionDetailSheet({
               )}
 
               <div className="rounded-2xl bg-green-50 px-4 py-3 dark:bg-green-900/20">
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">答案</p>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  答案
+                </p>
                 <p className="text-sm font-bold text-green-700 dark:text-green-300">
                   {question.answer}
                 </p>
@@ -102,7 +119,9 @@ export function QuestionDetailSheet({
 
               {question.analysis && (
                 <div className="rounded-2xl bg-blue-50 px-4 py-3 dark:bg-blue-900/20">
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">解析</p>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    解析
+                  </p>
                   <div className="text-sm text-gray-700 dark:text-gray-200">
                     <CodeAwareText text={question.analysis} className="bg-transparent p-0" />
                   </div>

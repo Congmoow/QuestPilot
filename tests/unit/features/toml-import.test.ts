@@ -95,9 +95,9 @@ text = "Node.js"
   });
 
   it('从拖拽路径中选择第一个 TOML 文件路径', () => {
-    expect(
-      selectTomlDropPath(['D:\\Desktop\\notes.txt', 'D:\\Desktop\\questions.TOML']),
-    ).toBe('D:\\Desktop\\questions.TOML');
+    expect(selectTomlDropPath(['D:\\Desktop\\notes.txt', 'D:\\Desktop\\questions.TOML'])).toBe(
+      'D:\\Desktop\\questions.TOML',
+    );
     expect(selectTomlDropPath(['D:\\Desktop\\notes.txt'])).toBeNull();
   });
 });

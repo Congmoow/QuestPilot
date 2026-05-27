@@ -121,12 +121,16 @@ const QuestionListPanel = ({
 
   const handleSheetEdit = (question: Question) => {
     setViewingQuestion(null);
-    handleOpenEditQuestion(question, { stopPropagation: () => {} } as Parameters<typeof handleOpenEditQuestion>[1]);
+    handleOpenEditQuestion(question, { stopPropagation: () => {} } as Parameters<
+      typeof handleOpenEditQuestion
+    >[1]);
   };
 
   const handleSheetDelete = (id: number) => {
     setViewingQuestion(null);
-    handleDeleteSingleQuestion(id, { stopPropagation: () => {} } as Parameters<typeof handleDeleteSingleQuestion>[1]);
+    handleDeleteSingleQuestion(id, { stopPropagation: () => {} } as Parameters<
+      typeof handleDeleteSingleQuestion
+    >[1]);
   };
 
   return (
@@ -228,163 +232,163 @@ const QuestionListPanel = ({
 
         {questionsLoading && <TableSkeleton />}
 
-      {!questionsLoading && questions.length === 0 && (
-        <SurfaceCard padding="p-8">
-          <EmptyState
-            icon={BookOpen}
-            title={searchKeyword ? '未找到匹配的题目' : '暂无题目'}
-            description={
-              searchKeyword
-                ? '尝试使用其他关键词搜索。'
-                : '点击上方按钮添加题目，题目会显示在这里。'
-            }
-          />
-        </SurfaceCard>
-      )}
-
-      {!questionsLoading && questions.length > 0 && (
-        <div className="space-y-4">
-          <SurfaceCard padding="px-5 py-4">
-            <label className="inline-flex items-center gap-3 text-sm font-semibold text-gray-500">
-              <input
-                type="checkbox"
-                className="size-4 rounded border-gray-300 text-primary"
-                onChange={handleSelectAll}
-                checked={selectedIds.length === questions.length && questions.length > 0}
-              />
-              全选本页
-            </label>
+        {!questionsLoading && questions.length === 0 && (
+          <SurfaceCard padding="p-8">
+            <EmptyState
+              icon={BookOpen}
+              title={searchKeyword ? '未找到匹配的题目' : '暂无题目'}
+              description={
+                searchKeyword
+                  ? '尝试使用其他关键词搜索。'
+                  : '点击上方按钮添加题目，题目会显示在这里。'
+              }
+            />
           </SurfaceCard>
+        )}
 
-          <div className="grid gap-4">
-            <AnimatePresence>
-              {questions.map((q, index) => (
-                <motion.article
-                  key={q.id}
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.03 }}
-                  onClick={() => setViewingQuestion(q)}
-                  className={cn(
-                    'ui-card group cursor-pointer p-6 transition-all duration-200',
-                    selectedIds.includes(q.id)
-                      ? 'border-primary ring-2 ring-primary/20'
-                      : 'hover:border-blue-200',
-                  )}
-                >
-                  <div className="flex items-start gap-4">
-                    <input
-                      type="checkbox"
-                      className="mt-2 size-4 rounded border-gray-300 text-primary"
-                      checked={selectedIds.includes(q.id)}
-                      onChange={() => handleSelectOne(q.id)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <div className="min-w-0 flex-1 space-y-4">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <TypeBadge type={q.type} label={typeMap[q.type]?.label || q.type} />
-                        <span className="ml-auto text-xs text-gray-400">
-                          {q.createdAt ? new Date(q.createdAt).toLocaleString('zh-CN') : ''}
-                        </span>
-                      </div>
-                      <div className="text-base font-semibold leading-8 text-gray-900 dark:text-gray-100">
-                        <CodeAwareText text={q.content} />
-                      </div>
-                      {q.options && q.options.length > 0 && (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          {q.options.map((opt) => (
-                            <div
-                              key={opt.id}
-                              className={cn(
-                                'rounded-2xl border px-4 py-3 text-sm',
-                                q.answer?.includes(opt.id)
-                                  ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300'
-                                  : 'border-gray-100 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300',
-                              )}
-                            >
-                              <div className="flex gap-2">
-                                <span className="shrink-0 font-bold">{opt.id}.</span>
-                                <CodeAwareText
-                                  text={opt.text}
-                                  className="min-w-0 flex-1 bg-transparent p-0"
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <div className="rounded-2xl bg-green-50 px-4 py-3 text-sm text-gray-600 dark:bg-green-900/20 dark:text-gray-300">
-                        <span className="font-semibold text-gray-700 dark:text-gray-200">
-                          答案：
-                        </span>
-                        <span className="font-bold text-green-700 dark:text-green-300">
-                          {q.answer}
-                        </span>
-                      </div>
-                      {q.analysis && (
-                        <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm text-gray-600 dark:bg-blue-900/20 dark:text-gray-300">
-                          <span className="font-semibold text-gray-700 dark:text-gray-200">
-                            解析：
+        {!questionsLoading && questions.length > 0 && (
+          <div className="space-y-4">
+            <SurfaceCard padding="px-5 py-4">
+              <label className="inline-flex items-center gap-3 text-sm font-semibold text-gray-500">
+                <input
+                  type="checkbox"
+                  className="size-4 rounded border-gray-300 text-primary"
+                  onChange={handleSelectAll}
+                  checked={selectedIds.length === questions.length && questions.length > 0}
+                />
+                全选本页
+              </label>
+            </SurfaceCard>
+
+            <div className="grid gap-4">
+              <AnimatePresence>
+                {questions.map((q, index) => (
+                  <motion.article
+                    key={q.id}
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                    onClick={() => setViewingQuestion(q)}
+                    className={cn(
+                      'ui-card group cursor-pointer p-6 transition-all duration-200',
+                      selectedIds.includes(q.id)
+                        ? 'border-primary ring-2 ring-primary/20'
+                        : 'hover:border-blue-200',
+                    )}
+                  >
+                    <div className="flex items-start gap-4">
+                      <input
+                        type="checkbox"
+                        className="mt-2 size-4 rounded border-gray-300 text-primary"
+                        checked={selectedIds.includes(q.id)}
+                        onChange={() => handleSelectOne(q.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div className="min-w-0 flex-1 space-y-4">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <TypeBadge type={q.type} label={typeMap[q.type]?.label || q.type} />
+                          <span className="ml-auto text-xs text-gray-400">
+                            {q.createdAt ? new Date(q.createdAt).toLocaleString('zh-CN') : ''}
                           </span>
-                          <div className="mt-1">
-                            <CodeAwareText text={q.analysis} className="bg-transparent p-0" />
-                          </div>
                         </div>
-                      )}
+                        <div className="text-base font-semibold leading-8 text-gray-900 dark:text-gray-100">
+                          <CodeAwareText text={q.content} />
+                        </div>
+                        {q.options && q.options.length > 0 && (
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            {q.options.map((opt) => (
+                              <div
+                                key={opt.id}
+                                className={cn(
+                                  'rounded-2xl border px-4 py-3 text-sm',
+                                  q.answer?.includes(opt.id)
+                                    ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300'
+                                    : 'border-gray-100 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300',
+                                )}
+                              >
+                                <div className="flex gap-2">
+                                  <span className="shrink-0 font-bold">{opt.id}.</span>
+                                  <CodeAwareText
+                                    text={opt.text}
+                                    className="min-w-0 flex-1 bg-transparent p-0"
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="rounded-2xl bg-green-50 px-4 py-3 text-sm text-gray-600 dark:bg-green-900/20 dark:text-gray-300">
+                          <span className="font-semibold text-gray-700 dark:text-gray-200">
+                            答案：
+                          </span>
+                          <span className="font-bold text-green-700 dark:text-green-300">
+                            {q.answer}
+                          </span>
+                        </div>
+                        {q.analysis && (
+                          <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm text-gray-600 dark:bg-blue-900/20 dark:text-gray-300">
+                            <span className="font-semibold text-gray-700 dark:text-gray-200">
+                              解析：
+                            </span>
+                            <div className="mt-1">
+                              <CodeAwareText text={q.analysis} className="bg-transparent p-0" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+                        <IconButton
+                          label="编辑题目"
+                          icon={Edit}
+                          onClick={(e) => handleOpenEditQuestion(q, e)}
+                        />
+                        <IconButton
+                          label="删除题目"
+                          icon={Trash2}
+                          onClick={(e) => handleDeleteSingleQuestion(q.id, e)}
+                          className="hover:bg-red-50 hover:text-danger dark:hover:bg-red-900/20"
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
-                      <IconButton
-                        label="编辑题目"
-                        icon={Edit}
-                        onClick={(e) => handleOpenEditQuestion(q, e)}
-                      />
-                      <IconButton
-                        label="删除题目"
-                        icon={Trash2}
-                        onClick={(e) => handleDeleteSingleQuestion(q.id, e)}
-                        className="hover:bg-red-50 hover:text-danger dark:hover:bg-red-900/20"
-                      />
-                    </div>
-                  </div>
-                </motion.article>
-              ))}
-            </AnimatePresence>
+                  </motion.article>
+                ))}
+              </AnimatePresence>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {!questionsLoading && totalPages > 0 && (
-        <SurfaceCard
-          className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-          padding="px-5 py-4"
-        >
-          <span className="text-sm text-gray-500">
-            显示 {(page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, total)} 条，共 {total} 条
-          </span>
-          <div className="flex flex-wrap items-center gap-2">
-            <ActionButton
-              variant="secondary"
-              size="sm"
-              disabled={page === 1}
-              onClick={() => handlePageChange(page - 1)}
-            >
-              上一页
-            </ActionButton>
-            <span className="px-3 text-sm font-bold text-gray-500">
-              {page} / {totalPages}
+        {!questionsLoading && totalPages > 0 && (
+          <SurfaceCard
+            className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+            padding="px-5 py-4"
+          >
+            <span className="text-sm text-gray-500">
+              显示 {(page - 1) * pageSize + 1} 到 {Math.min(page * pageSize, total)} 条，共 {total}{' '}
+              条
             </span>
-            <ActionButton
-              variant="secondary"
-              size="sm"
-              disabled={page === totalPages}
-              onClick={() => handlePageChange(page + 1)}
-            >
-              下一页
-            </ActionButton>
-          </div>
-        </SurfaceCard>
-      )}
-
+            <div className="flex flex-wrap items-center gap-2">
+              <ActionButton
+                variant="secondary"
+                size="sm"
+                disabled={page === 1}
+                onClick={() => handlePageChange(page - 1)}
+              >
+                上一页
+              </ActionButton>
+              <span className="px-3 text-sm font-bold text-gray-500">
+                {page} / {totalPages}
+              </span>
+              <ActionButton
+                variant="secondary"
+                size="sm"
+                disabled={page === totalPages}
+                onClick={() => handlePageChange(page + 1)}
+              >
+                下一页
+              </ActionButton>
+            </div>
+          </SurfaceCard>
+        )}
       </DataTableShell>
 
       <QuestionDetailSheet

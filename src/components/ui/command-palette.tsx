@@ -129,7 +129,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-gray-900 dark:text-white">{item.label}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{item.description}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {item.description}
+                        </p>
                       </div>
                     </Command.Item>
                   );
@@ -139,15 +141,21 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
             <div className="flex items-center gap-4 border-t border-gray-100 px-4 py-2.5 dark:border-gray-700">
               <span className="flex items-center gap-1.5 text-xs text-gray-400">
-                <kbd className="rounded border border-gray-200 bg-gray-100 px-1.5 py-0.5 text-[11px] dark:border-gray-700 dark:bg-gray-700">↑↓</kbd>
+                <kbd className="rounded border border-gray-200 bg-gray-100 px-1.5 py-0.5 text-[11px] dark:border-gray-700 dark:bg-gray-700">
+                  ↑↓
+                </kbd>
                 导航
               </span>
               <span className="flex items-center gap-1.5 text-xs text-gray-400">
-                <kbd className="rounded border border-gray-200 bg-gray-100 px-1.5 py-0.5 text-[11px] dark:border-gray-700 dark:bg-gray-700">↵</kbd>
+                <kbd className="rounded border border-gray-200 bg-gray-100 px-1.5 py-0.5 text-[11px] dark:border-gray-700 dark:bg-gray-700">
+                  ↵
+                </kbd>
                 打开
               </span>
               <span className="flex items-center gap-1.5 text-xs text-gray-400">
-                <kbd className="rounded border border-gray-200 bg-gray-100 px-1.5 py-0.5 text-[11px] dark:border-gray-700 dark:bg-gray-700">ESC</kbd>
+                <kbd className="rounded border border-gray-200 bg-gray-100 px-1.5 py-0.5 text-[11px] dark:border-gray-700 dark:bg-gray-700">
+                  ESC
+                </kbd>
                 关闭
               </span>
             </div>

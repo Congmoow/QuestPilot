@@ -88,7 +88,9 @@ const normalizeTomlQuestion = (item: RawTomlQuestion, index: number): CreateQues
   if (normalizedType === 'boolean') normalizedAnswer = normalizeBooleanAnswer(answer);
 
   const normalizedOptions =
-    normalizedType === 'single' || normalizedType === 'multiple' ? normalizeOptions(rawOptions) : null;
+    normalizedType === 'single' || normalizedType === 'multiple'
+      ? normalizeOptions(rawOptions)
+      : null;
 
   return {
     type: normalizedType,
