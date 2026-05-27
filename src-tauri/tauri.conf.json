@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "QuestPilot",
-  "version": "1.8.7",
+  "version": "1.8.8",
   "identifier": "com.questpilot.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -37,7 +37,9 @@
     ],
     "windows": {
       "nsis": {
-        "displayLanguageSelector": true
+        "displayLanguageSelector": true,
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico"
       }
     }
   }

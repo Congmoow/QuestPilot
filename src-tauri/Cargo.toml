@@ -1,6 +1,6 @@
 [package]
 name = "questpilot-tauri"
-version = "1.8.7"
+version = "1.8.8"
 description = "QuestPilot Tauri desktop app"
 authors = ["WangZhongWu"]
 edition = "2021"
