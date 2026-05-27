@@ -1,4 +1,6 @@
-use crate::database::{CreateQuestionInput, DatabaseStore, Question, QuestionRepository};
+use crate::database::{
+    CreateQuestionInput, DatabaseStore, DedupResult, Question, QuestionRepository,
+};
 use crate::error::AppError;
 
 /// 题目业务服务。
@@ -68,6 +70,11 @@ impl QuestionService {
             return Err(AppError::Database("请选择要删除的题目".into()));
         }
         Ok(self.repo.delete_batch(ids)?)
+    }
+
+    /// 查找题库中的重复题目，返回分组结果供 Command 层直接序列化返回前端。
+    pub fn find_duplicates(&self, bank_id: i64) -> Result<DedupResult, AppError> {
+        Ok(self.repo.find_duplicates(bank_id)?)
     }
 
     /// 搜索题目（分页），返回 `(data, total)`，由 Command 层组装分页结构。

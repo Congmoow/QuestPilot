@@ -66,6 +66,9 @@ const QuestionPreview = () => {
       handleExportBank={state.handleExportBank}
       handleSaveEditQuestion={state.handleSaveEditQuestion}
       clearSelection={state.clearSelection}
+      duplicateDialogOpen={state.duplicateDialogOpen}
+      setDuplicateDialogOpen={state.setDuplicateDialogOpen}
+      handleConfirmDedup={state.handleConfirmDedup}
     />
   );
 };

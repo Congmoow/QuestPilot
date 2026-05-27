@@ -178,6 +178,22 @@ pub struct ChatHistoryInput {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DuplicateGroup {
+    pub keep_id: i64,
+    pub duplicate_ids: Vec<i64>,
+    pub sample_content: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DedupResult {
+    pub groups: Vec<DuplicateGroup>,
+    pub total_duplicate_count: i64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChatHistory {
     pub id: i64,
     pub title: String,

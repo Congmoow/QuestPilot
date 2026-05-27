@@ -4,6 +4,7 @@ use crate::database;
 use crate::error::AppError;
 use crate::services::import_service::ImportService;
 use crate::services::question_service::QuestionService;
+use crate::database::DedupResult;
 
 use super::open_store;
 
@@ -135,4 +136,10 @@ pub fn question_search(
         question_type,
     )?;
     Ok(paginated_questions(data, total, page, page_size))
+}
+
+#[tauri::command(rename_all = "camelCase")]
+#[tracing::instrument(skip(app), err)]
+pub fn question_find_duplicates(app: AppHandle, bank_id: i64) -> Result<DedupResult, AppError> {
+    QuestionService::new(open_store(&app)?).find_duplicates(bank_id)
 }

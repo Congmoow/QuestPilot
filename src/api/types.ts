@@ -184,6 +184,18 @@ export interface WrongBookPracticeResult {
   isCorrect: boolean;
 }
 
+export interface DuplicateGroup {
+  keepId: number;
+  duplicateIds: number[];
+  sampleContent: string;
+  count: number;
+}
+
+export interface DedupResult {
+  groups: DuplicateGroup[];
+  totalDuplicateCount: number;
+}
+
 export interface WrongBookItem {
   questionId: number;
   bankId: number;

@@ -62,6 +62,7 @@ export const useQuestionPreview = () => {
   const [editQuestionDialogOpen, setEditQuestionDialogOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
 
   const loadQuestions = useCallback(
     async (bankId: number, options: QuestionLoadOptions = {}) => {
@@ -217,6 +218,17 @@ export const useQuestionPreview = () => {
     }
   };
 
+  const handleConfirmDedup = async (idsToDelete: number[]) => {
+    if (idsToDelete.length === 0) return;
+    setSubmitting(true);
+    try {
+      await removeQuestions(idsToDelete);
+      fetchBanks();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleExportBank = async () => {
     if (!selectedBank) return;
     setExporting(true);
@@ -296,6 +308,9 @@ export const useQuestionPreview = () => {
     clearSelection,
     loadQuestions,
     formatDate,
+    duplicateDialogOpen,
+    setDuplicateDialogOpen,
+    handleConfirmDedup,
   };
 };
 

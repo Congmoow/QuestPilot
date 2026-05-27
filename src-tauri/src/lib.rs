@@ -17,8 +17,9 @@ use commands::{
         prompt_update,
     },
     question::{
-        question_create, question_create_batch, question_delete, question_get_by_bank_id,
-        question_get_by_id, question_get_random, question_search, question_update,
+        question_create, question_create_batch, question_delete, question_find_duplicates,
+        question_get_by_bank_id, question_get_by_id, question_get_random, question_search,
+        question_update,
     },
     question_bank::{
         question_bank_create, question_bank_delete, question_bank_get_all, question_bank_get_by_id,
@@ -67,6 +68,7 @@ pub fn run() {
             question_update,
             question_delete,
             question_search,
+            question_find_duplicates,
             stats_get_dashboard,
             stats_get_operation_logs,
             stats_get_type_distribution,

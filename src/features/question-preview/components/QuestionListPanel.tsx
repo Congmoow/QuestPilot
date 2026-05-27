@@ -6,6 +6,7 @@ import {
   Edit,
   Filter,
   Plus,
+  ScanSearch,
   Search,
   Trash2,
   Upload,
@@ -14,6 +15,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
 import { cn } from '../../../lib/utils';
 import ConfirmDialog from '../../../components/ConfirmDialog';
+import DuplicateCheckDialog from './DuplicateCheckDialog';
 import QuestionEditDialog from '../../../components/QuestionEditDialog';
 import CodeAwareText from '../../../components/CodeAwareText';
 import {
@@ -78,6 +80,9 @@ type QuestionListPanelProps = Pick<
   | 'handleExportBank'
   | 'handleSaveEditQuestion'
   | 'clearSelection'
+  | 'duplicateDialogOpen'
+  | 'setDuplicateDialogOpen'
+  | 'handleConfirmDedup'
 >;
 
 const QuestionListPanel = ({
@@ -114,6 +119,9 @@ const QuestionListPanel = ({
   handleExportBank,
   handleSaveEditQuestion,
   clearSelection,
+  duplicateDialogOpen,
+  setDuplicateDialogOpen,
+  handleConfirmDedup,
 }: QuestionListPanelProps) => {
   const [viewingQuestion, setViewingQuestion] = useState<Question | null>(null);
 
@@ -148,6 +156,14 @@ const QuestionListPanel = ({
                 CSV导入
               </ActionButton>
             </NavLink>
+            <ActionButton
+              variant="secondary"
+              icon={ScanSearch}
+              onClick={() => setDuplicateDialogOpen(true)}
+              disabled={total === 0}
+            >
+              查重去重
+            </ActionButton>
             <ActionButton
               variant="secondary"
               icon={Download}
@@ -390,6 +406,14 @@ const QuestionListPanel = ({
           </SurfaceCard>
         )}
       </DataTableShell>
+
+      <DuplicateCheckDialog
+        open={duplicateDialogOpen}
+        onClose={() => setDuplicateDialogOpen(false)}
+        onConfirmDedup={handleConfirmDedup}
+        bankId={selectedBank.id}
+        submitting={submitting}
+      />
 
       <QuestionDetailSheet
         question={viewingQuestion}
