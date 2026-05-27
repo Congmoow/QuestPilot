@@ -3,6 +3,7 @@ import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QuestionBankProvider, QuestionProvider } from './contexts';
 import Layout from './components/Layout';
 import TitleBar from './components/TitleBar';
+import { Toaster } from './components/ui';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const ManualEntry = lazy(() => import('./pages/ManualEntry'));
@@ -29,6 +30,7 @@ const lazyRoute = (Component: React.ComponentType) => (
 function App() {
   return (
     <div className="h-dvh overflow-hidden rounded-xl bg-canvas dark:bg-gray-900 flex flex-col">
+      <Toaster />
       <TitleBar />
       <div className="flex-1 overflow-hidden">
         <QuestionBankProvider>

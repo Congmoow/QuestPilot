@@ -1,3 +1,5 @@
+import animate from 'tailwindcss-animate';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
@@ -7,6 +9,35 @@ export default {
   ],
   theme: {
     extend: {
+      keyframes: {
+        'slide-in-from-right': {
+          '0%': { transform: 'translateX(100%)' },
+          '100%': { transform: 'translateX(0)' },
+        },
+        'slide-out-to-right': {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        'fade-out': {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0' },
+        },
+        'slide-in-from-bottom': {
+          '0%': { transform: 'translateY(8px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+      },
+      animation: {
+        'slide-in-right': 'slide-in-from-right 0.25s ease-out',
+        'slide-out-right': 'slide-out-to-right 0.2s ease-in',
+        'fade-in': 'fade-in 0.15s ease-out',
+        'fade-out': 'fade-out 0.15s ease-in',
+        'slide-in-bottom': 'slide-in-from-bottom 0.2s ease-out',
+      },
       colors: {
         primary: {
           DEFAULT: '#2563EB',
@@ -48,5 +79,5 @@ export default {
       }
     },
   },
-  plugins: [],
+  plugins: [animate],
 }

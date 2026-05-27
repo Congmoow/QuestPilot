@@ -6,7 +6,7 @@ tests continue to follow Cargo conventions and live in `src-tauri/tests`.
 ## Directory Structure
 
 - `unit/api/`: desktop API facade, runtime adapters, and frontend contract tests.
-- `unit/features/`: unit tests for frontend feature modules.
+- `unit/features/`: unit tests for frontend feature modules, including TOML text import parsing.
 - `e2e/`: Playwright end-to-end tests.
 - `e2e/helpers/`: end-to-end fixtures and Tauri mocks.
 

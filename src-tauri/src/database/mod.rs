@@ -16,16 +16,16 @@ pub use legacy::{
     legacy_database_candidates, legacy_database_status, replace_target_with_legacy_candidate,
     LegacyDatabaseCandidate, LegacyDatabaseReplaceResult, LegacyDatabaseStatus,
 };
+pub use repositories::{
+    ChatHistoryRepository, DraftRepository, PracticeRepository, PromptRepository,
+    QuestionBankRepository, QuestionRepository, SettingsRepository, StatsRepository,
+    WrongBookRepository,
+};
 pub use types::{
     ApiConfig, ChatHistory, ChatHistoryInput, CreatePromptInput, CreateQuestionBankInput,
     CreateQuestionInput, DashboardStats, ImportError, ImportResult, OperationLog, PracticeRecord,
     PracticeRecordInput, PracticeStats, Prompt, Question, QuestionBank, TypeDistribution,
     WrongBookCount, WrongBookItem, WrongBookPracticeResult,
-};
-pub use repositories::{
-    ChatHistoryRepository, DraftRepository, PracticeRepository, PromptRepository,
-    QuestionBankRepository, QuestionRepository, SettingsRepository, StatsRepository,
-    WrongBookRepository,
 };
 
 use legacy::migrate_legacy_database;

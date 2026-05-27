@@ -19,7 +19,7 @@ src/
 │
 ├── features/           # Feature modules (self-contained per domain)
 │   ├── ai-chat/        # AI Q&A chat interface
-│   ├── ai-import/      # AI parsing + JSON batch import
+│   ├── ai-import/      # AI parsing + JSON / TOML batch import
 │   ├── csv-import/     # CSV template import / export
 │   ├── dashboard/      # Stats, charts, operation log
 │   ├── practice/       # Random practice session
@@ -147,6 +147,7 @@ No frontend state crosses a Tauri IPC boundary while an async operation is in-fl
 | What | Tool | Location |
 |---|---|---|
 | API contract (invoke shape normalisation) | Vitest | `tests/unit/api/` |
+| Feature parsers (for example TOML text import) | Vitest | `tests/unit/features/` |
 | End-to-end user flows | Playwright | `tests/e2e/` |
 
-Unit tests for individual components are not currently in scope; the primary coverage strategy is API-contract tests at the `src/api` boundary and Playwright E2E for critical user flows.
+Unit tests for individual components are not currently in scope; the primary coverage strategy is API-contract tests at the `src/api` boundary, focused feature parser tests, and Playwright E2E for critical user flows.

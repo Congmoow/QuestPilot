@@ -72,8 +72,12 @@ pub fn question_get_by_bank_id(
     let page = page.unwrap_or(1).max(1);
     let page_size = page_size.unwrap_or(20).clamp(1, 1000);
     let offset = (page - 1) * page_size;
-    let (data, total) = QuestionService::new(open_store(&app)?)
-        .get_by_bank_paginated(bank_id, offset, page_size, question_type)?;
+    let (data, total) = QuestionService::new(open_store(&app)?).get_by_bank_paginated(
+        bank_id,
+        offset,
+        page_size,
+        question_type,
+    )?;
     Ok(paginated_questions(data, total, page, page_size))
 }
 
@@ -123,7 +127,12 @@ pub fn question_search(
     let page = page.unwrap_or(1).max(1);
     let page_size = page_size.unwrap_or(20).clamp(1, 1000);
     let offset = (page - 1) * page_size;
-    let (data, total) = QuestionService::new(open_store(&app)?)
-        .search_paginated(bank_id, keyword, offset, page_size, question_type)?;
+    let (data, total) = QuestionService::new(open_store(&app)?).search_paginated(
+        bank_id,
+        keyword,
+        offset,
+        page_size,
+        question_type,
+    )?;
     Ok(paginated_questions(data, total, page, page_size))
 }

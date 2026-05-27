@@ -1,7 +1,7 @@
 {
   "name": "questpilot",
   "private": true,
-  "version": "1.7.7",
+  "version": "1.8.7",
   "type": "module",
   "author": {
     "name": "WangZhongWu"
@@ -31,14 +31,21 @@
     "lint-staged": "lint-staged",
     "test:api-contract": "vitest run --config vitest.config.ts tests/unit/api/runtime-adapters.test.ts",
     "test:e2e": "playwright test",
+    "test:smoke:tauri": "playwright test tests/e2e/tauri-release-smoke.spec.ts",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
     "clean": "rimraf dist",
     "optimize:assets": "node scripts/optimize-assets.cjs"
   },
   "dependencies": {
+    "@radix-ui/react-alert-dialog": "^1.1.15",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-tooltip": "^1.2.8",
     "@tanstack/react-query": "^5.100.14",
     "@tauri-apps/api": "^2.11.0",
     "clsx": "^2.1.0",
+    "cmdk": "^1.1.1",
     "framer-motion": "^11.0.8",
     "katex": "^0.16.27",
     "lucide-react": "^0.344.0",
@@ -51,6 +58,8 @@
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
+    "smol-toml": "^1.6.1",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^2.2.1",
     "zod": "^4.4.3"
   },
@@ -72,6 +81,7 @@
     "sharp": "^0.34.5",
     "svgo": "^4.0.1",
     "tailwindcss": "^3.4.1",
+    "tailwindcss-animate": "^1.0.7",
     "terser": "^5.27.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.4",

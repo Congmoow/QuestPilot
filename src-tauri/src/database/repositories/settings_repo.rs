@@ -1,7 +1,7 @@
 use rusqlite::{params, OptionalExtension};
 
-use crate::database::{ApiConfig, DatabaseStore};
 use super::super::validation::default_if_blank;
+use crate::database::{ApiConfig, DatabaseStore};
 
 const KEYCHAIN_SERVICE: &str = "questpilot";
 const KEYCHAIN_ACCOUNT: &str = "ai_api_key";
@@ -18,6 +18,20 @@ const KEYCHAIN_ACCOUNT: &str = "ai_api_key";
 /// ```
 pub struct SettingsRepository {
     store: DatabaseStore,
+}
+
+#[cfg(test)]
+mod tests {
+    use keyring::credential::CredentialPersistence;
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn keyring_uses_persistent_windows_backend() {
+        assert!(matches!(
+            keyring::default::default_credential_builder().persistence(),
+            CredentialPersistence::UntilDelete
+        ));
+    }
 }
 
 impl SettingsRepository {
@@ -75,11 +89,7 @@ impl SettingsRepository {
         let safe = if threshold > 0 { threshold } else { 3 };
         self.store.with_connection(|conn| {
             set_setting_sql(conn, "wrong_book_threshold", &safe.to_string())?;
-            add_operation_log_sql(
-                conn,
-                "更改设置",
-                format!("错题移除阈值设置为 {safe}"),
-            )
+            add_operation_log_sql(conn, "更改设置", format!("错题移除阈值设置为 {safe}"))
         })
     }
 
@@ -208,4 +218,3 @@ fn add_operation_log_sql(
     .map_err(|e| format!("写入操作日志失败: {e}"))?;
     Ok(())
 }
-

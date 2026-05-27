@@ -1,8 +1,24 @@
+import { useState } from 'react';
 import { DatabaseBackup, RefreshCw } from 'lucide-react';
-import { ActionButton, AlertBanner, SurfaceCard } from '../../../components/ui';
+import {
+  ActionButton,
+  AlertBanner,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  SurfaceCard,
+} from '../../../components/ui';
 import { useMigration } from '../hooks/useMigration';
 
 const MigrationSection = () => {
+  const [pendingReplacePath, setPendingReplacePath] = useState<string | null>(null);
+
   const {
     migrationStatus,
     loadingMigrationStatus,
@@ -101,14 +117,49 @@ const MigrationSection = () => {
                             <p className="mt-2 text-xs text-danger">{candidate.inspectError}</p>
                           )}
                         </div>
-                        <ActionButton
-                          variant="danger"
-                          onClick={() => handleBackupAndReplace(candidate.path)}
-                          disabled={!needsExplicitReset || isReplacing}
-                          loading={isReplacing}
+                        <AlertDialog
+                          open={pendingReplacePath === candidate.path}
+                          onOpenChange={(open) => !open && setPendingReplacePath(null)}
                         >
-                          备份并使用旧库替换
-                        </ActionButton>
+                          <AlertDialogTrigger asChild>
+                            <ActionButton
+                              variant="danger"
+                              onClick={() => setPendingReplacePath(candidate.path)}
+                              disabled={!needsExplicitReset || isReplacing}
+                              loading={isReplacing}
+                            >
+                              备份并使用旧库替换
+                            </ActionButton>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>危险操作确认</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                将备份当前 Tauri 数据库并替换为旧库：
+                                <br />
+                                <code className="mt-2 block rounded-lg bg-gray-100 px-2 py-1 text-xs dark:bg-gray-700">
+                                  {candidate.path}
+                                </code>
+                                <br />
+                                此操作不可撤销，请确认后再继续。
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel onClick={() => setPendingReplacePath(null)}>
+                                取消
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                variant="danger"
+                                onClick={() => {
+                                  setPendingReplacePath(null);
+                                  handleBackupAndReplace(candidate.path);
+                                }}
+                              >
+                                确认替换
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   );

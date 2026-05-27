@@ -14,6 +14,7 @@ src-tauri/src/
 ├── main.rs             # Binary entry: calls lib::run()
 ├── ai.rs               # AI HTTP client (OpenAI-compatible API, test connection)
 ├── csv_tools.rs        # CSV parse / generate / export utilities
+├── toml_tools.rs       # TOML parse utilities for batch import
 │
 ├── commands/           # Tauri command layer — thin wrappers, one file per domain
 │   ├── mod.rs          # Shared helpers: open_store / main_window / ai_config_from_database
@@ -27,7 +28,8 @@ src-tauri/src/
 │   ├── prompt_chat.rs  # prompt_* / chat_history_*
 │   ├── practice.rs     # practice_save_record / get_records / get_all_stats
 │   ├── wrong_book.rs   # wrong_book_* + PaginatedWrongBookItems
-│   └── csv.rs          # csv_select_file / download_template / parse / import / export
+│   ├── csv.rs          # csv_select_file / download_template / parse / import / export
+│   └── toml.rs         # toml_select_file / parse_file
 │
 ├── services/           # Service layer — business logic, one file per domain
 │   ├── mod.rs
@@ -216,6 +218,13 @@ All three commands are `async`. They follow a two-phase pattern to satisfy Rust'
 | `csv_parse_file` | `file_path: String` | `serde_json::Value` |
 | `csv_import` | `bank_id: i64`, `questions` | `ImportResult` |
 | `csv_export` | `bank_id: i64` | `{ success, filePath?, count?, cancelled? }` |
+
+### TOML (`commands/toml.rs`)
+
+| Command | Parameters | Returns |
+|---------|-----------|---------|
+| `toml_select_file` | — | `Option<String>` (file path) |
+| `toml_parse_file` | `file_path: String` | `serde_json::Value` |
 
 ---
 

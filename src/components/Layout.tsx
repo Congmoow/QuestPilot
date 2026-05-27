@@ -12,6 +12,7 @@ import {
   SidebarSettingsIcon,
   SidebarWrongBookIcon,
 } from './SidebarIcons';
+import { CommandPalette } from './ui';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -28,6 +29,7 @@ export const ThemeContext = React.createContext<ThemeContextValue>({
 const Layout: FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [theme, setThemeState] = useState<Theme>('system');
+  const [commandOpen, setCommandOpen] = useState(false);
 
   // 处理侧边栏响应式展开状态
   useEffect(() => {
@@ -121,6 +123,17 @@ const Layout: FC = () => {
     { path: '/settings', label: '系统设置', icon: SidebarSettingsIcon },
   ];
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommandOpen((prev) => !prev);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const lightModeActive = theme !== 'dark';
 
   const handleToggleTheme = () => {
@@ -129,6 +142,7 @@ const Layout: FC = () => {
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
+      <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} />
       <div className="app-canvas flex h-full overflow-hidden">
         <aside
           style={{ width: isSidebarOpen ? 264 : 76 }}

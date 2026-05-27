@@ -41,10 +41,7 @@ pub fn bank_exists(connection: &Connection, bank_id: i64) -> Result<bool, String
 
 // ── 题目 ──────────────────────────────────────────────────────────────────────
 
-pub fn find_question_by_id(
-    connection: &Connection,
-    id: i64,
-) -> Result<Option<Question>, String> {
+pub fn find_question_by_id(connection: &Connection, id: i64) -> Result<Option<Question>, String> {
     let sql = [
         question_select_prefix(),
         format!(" WHERE {}", by_id_clause_sql()),

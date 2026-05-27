@@ -27,9 +27,7 @@ impl WrongBookRepository {
         self.store.with_connection(|conn| {
             cleanup_orphans_sql(conn)?;
             let mut stmt = conn
-                .prepare(
-                    "SELECT bank_id, COUNT(*) AS count FROM wrong_book GROUP BY bank_id",
-                )
+                .prepare("SELECT bank_id, COUNT(*) AS count FROM wrong_book GROUP BY bank_id")
                 .map_err(|e| format!("准备错题统计查询失败: {e}"))?;
             let rows = stmt
                 .query_map([], |row| {
@@ -177,11 +175,8 @@ impl WrongBookRepository {
     pub fn clear(&self, bank_id: Option<i64>) -> Result<(), String> {
         self.store.with_connection(|conn| {
             if let Some(bid) = bank_id.filter(|v| *v > 0) {
-                conn.execute(
-                    "DELETE FROM wrong_book WHERE bank_id = ?1",
-                    params![bid],
-                )
-                .map_err(|e| format!("清空题库错题失败: {e}"))?;
+                conn.execute("DELETE FROM wrong_book WHERE bank_id = ?1", params![bid])
+                    .map_err(|e| format!("清空题库错题失败: {e}"))?;
                 conn.execute(
                     "INSERT INTO operation_logs (action, detail, created_at) \
                      VALUES (?1, ?2, datetime('now'))",
@@ -206,8 +201,7 @@ impl WrongBookRepository {
 
     /// 清理孤儿错题记录（题目已删除但 wrong_book 仍保留的行）。
     pub fn cleanup_orphans(&self) -> Result<(), String> {
-        self.store
-            .with_connection(|conn| cleanup_orphans_sql(conn))
+        self.store.with_connection(|conn| cleanup_orphans_sql(conn))
     }
 
     /// 写入或累加一条答错记录。
@@ -354,9 +348,7 @@ fn wrong_book_select_sql(bank_id: Option<i64>) -> String {
          FROM wrong_book wb JOIN questions q ON wb.question_id = q.id",
     );
     if matches!(bank_id, Some(v) if v > 0) {
-        sql.push_str(
-            " WHERE wb.bank_id = ?1 ORDER BY wb.last_wrong_at DESC LIMIT ?2 OFFSET ?3",
-        );
+        sql.push_str(" WHERE wb.bank_id = ?1 ORDER BY wb.last_wrong_at DESC LIMIT ?2 OFFSET ?3");
     } else {
         sql.push_str(" ORDER BY wb.last_wrong_at DESC LIMIT ?1 OFFSET ?2");
     }

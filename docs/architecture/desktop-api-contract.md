@@ -55,6 +55,15 @@
 | `importQuestions(bankId, questions)` | `csv_import`            | `{ success, failed, errors }`              |
 | `exportQuestionBank(bankId)`         | `csv_export`            | `{ success, canceled, filePath?, count? }` |
 
+## TOML 契约
+
+| 前端 API                  | Tauri command      | 页面层返回                        |
+| ------------------------- | ------------------ | --------------------------------- |
+| `selectTomlFile()`        | `toml_select_file` | `{ success, canceled, filePath }` |
+| `parseTomlFile(filePath)` | `toml_parse_file`  | `{ valid, errors, totalRows }`    |
+
+TOML 文件解析结果与 CSV 解析结果共用 `{ valid, errors, totalRows }` 形状。TOML 文本粘贴解析在前端 `src/features/ai-import/utils/tomlImport.ts` 中完成；TOML 文件拖拽到导入页后由 Tauri `onDragDropEvent` 获取路径并调用 `parseTomlFile(filePath)` 自动解析，解析后进入同一 `CreateQuestionInput[]` 预览与 `question_create_batch` 批量入库路径。
+
 ## 题库与题目契约
 
 | 前端 API                                    | Tauri command             | 页面层返回                                    |
@@ -93,6 +102,7 @@
 - `csv_select_file` 的 Tauri 返回值从原始 `string | null` 在前端出口归一化为 `{ success, canceled, filePath }`。
 - Tauri 保存对话框原始 `cancelled` 字段在前端出口归一化为 `canceled`。
 - `downloadCsvTemplate()`、`selectCsvFile()`、`exportQuestionBank()` 现在都会经过 `src/api/runtimeAdapters.ts`。
+- `selectTomlFile()` 复用 `normalizeFileSelectionResult()`，保持文件选择取消语义与 CSV 一致。
 
 ## 历史加固记录
 

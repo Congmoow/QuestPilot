@@ -25,7 +25,11 @@ impl ChatHistoryService {
     }
 
     /// 更新聊天记录消息内容。
-    pub fn update(&self, id: i64, messages: serde_json::Value) -> Result<Option<ChatHistory>, AppError> {
+    pub fn update(
+        &self,
+        id: i64,
+        messages: serde_json::Value,
+    ) -> Result<Option<ChatHistory>, AppError> {
         Ok(self.repo.update(id, messages)?)
     }
 

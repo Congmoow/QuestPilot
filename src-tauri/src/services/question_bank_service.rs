@@ -37,7 +37,11 @@ impl QuestionBankService {
     }
 
     /// 更新题库名称/描述。
-    pub fn update(&self, id: i64, data: CreateQuestionBankInput) -> Result<Option<QuestionBank>, AppError> {
+    pub fn update(
+        &self,
+        id: i64,
+        data: CreateQuestionBankInput,
+    ) -> Result<Option<QuestionBank>, AppError> {
         Ok(self.repo.update(id, data)?)
     }
 

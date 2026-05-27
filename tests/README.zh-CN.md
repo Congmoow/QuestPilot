@@ -5,7 +5,7 @@
 ## 目录结构
 
 - `unit/api/`：桌面 API 门面、运行时适配器和前端契约测试。
-- `unit/features/`：前端功能模块的单元测试。
+- `unit/features/`：前端功能模块的单元测试，包括 TOML 文本导入解析。
 - `e2e/`：Playwright 端到端测试。
 - `e2e/helpers/`：端到端测试夹具和 Tauri mock。
 
@@ -14,6 +14,7 @@
 - `npm test`：运行 `tests/unit` 下的 Vitest 测试。
 - `npm run test:api-contract`：仅运行桌面 API 归一化契约测试。
 - `npm run test:e2e`：运行 Playwright 端到端测试。
+- `npm run test:smoke:tauri`：运行 Tauri 发布闸门 smoke harness。
 - `npm run test:rust`：运行 `src-tauri/tests` 与 Rust 单元测试。
 
 ## 维护边界

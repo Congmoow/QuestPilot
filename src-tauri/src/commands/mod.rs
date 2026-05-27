@@ -7,6 +7,7 @@ pub mod question;
 pub mod question_bank;
 pub mod settings;
 pub mod stats;
+pub mod toml;
 pub mod window;
 pub mod wrong_book;
 
