@@ -12,10 +12,9 @@ test.describe('Tauri 发布闸门 smoke harness', () => {
     });
 
     await page.goto('/#/csv-import');
-    await page.getByRole('button', { name: /上传文件/ }).click();
-    await page.getByRole('button', { name: /点击选择文件/ }).click();
+    await page.getByRole('button', { name: /点击选择/ }).click();
 
-    await expect(page.getByRole('button', { name: /点击选择文件/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /点击选择/ })).toBeVisible();
     await expect(page.locator('body')).not.toContainText('questions.csv');
     await expect(await readTauriInvocations(page, 'csv_select_file')).toHaveLength(1);
   });
@@ -31,8 +30,7 @@ test.describe('Tauri 发布闸门 smoke harness', () => {
     });
 
     await page.goto('/#/csv-import');
-    await page.getByRole('button', { name: /上传文件/ }).click();
-    await page.getByRole('button', { name: /点击选择文件/ }).click();
+    await page.getByRole('button', { name: /点击选择/ }).click();
     await page.getByRole('button', { name: '解析文件' }).click();
 
     await expect(page.getByText('questions.csv')).toBeVisible();
