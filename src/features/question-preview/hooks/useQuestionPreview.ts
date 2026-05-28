@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ChangeEvent, type MouseEvent } from 'react';
-import { exportQuestionBank } from '../../../api';
+import { useSearchParams } from 'react-router-dom';
+import { exportQuestionBank, importQuestions, parseCsvFile, selectCsvFile } from '../../../api';
 import type {
   CreateQuestionBankInput,
   CreateQuestionInput,
@@ -50,6 +51,9 @@ export const useQuestionPreview = () => {
     editQuestion,
   } = useQuestions();
 
+  const [searchParams] = useSearchParams();
+  const bankIdFromUrl = searchParams.get('bankId');
+
   const [selectedBank, setSelectedBank] = useState<QuestionBank | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -62,6 +66,7 @@ export const useQuestionPreview = () => {
   const [editQuestionDialogOpen, setEditQuestionDialogOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [csvImporting, setCsvImporting] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
 
   const loadQuestions = useCallback(
@@ -78,6 +83,13 @@ export const useQuestionPreview = () => {
     if (selectedBank) loadQuestions(selectedBank.id, { page: 1 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBank]);
+
+  useEffect(() => {
+    if (!bankIdFromUrl || !banks.length) return;
+    const id = parseInt(bankIdFromUrl, 10);
+    const bank = banks.find((b) => b.id === id);
+    if (bank) setSelectedBank(bank);
+  }, [bankIdFromUrl, banks]);
 
   useEffect(() => {
     if (selectedBank) loadQuestions(selectedBank.id, { page: 1, type: filterType });
@@ -229,6 +241,29 @@ export const useQuestionPreview = () => {
     }
   };
 
+  const handleCsvImport = async () => {
+    if (!selectedBank) return;
+    setCsvImporting(true);
+    try {
+      const fileResult = await selectCsvFile();
+      if (!fileResult.success || !fileResult.filePath) return;
+      const parseResult = await parseCsvFile(fileResult.filePath);
+      if (!parseResult.valid || parseResult.valid.length === 0) {
+        alert('未解析出有效题目，请检查 CSV 格式');
+        return;
+      }
+      const importResult = await importQuestions(selectedBank.id, parseResult.valid);
+      alert(
+        `导入完成：成功 ${importResult.success} 道${importResult.failed > 0 ? `，失败 ${importResult.failed} 道` : ''}`,
+      );
+      loadQuestions(selectedBank.id, { page: 1 });
+    } catch (error) {
+      alert(errorMessage(error, '导入失败'));
+    } finally {
+      setCsvImporting(false);
+    }
+  };
+
   const handleExportBank = async () => {
     if (!selectedBank) return;
     setExporting(true);
@@ -287,6 +322,7 @@ export const useQuestionPreview = () => {
     setEditQuestionDialogOpen,
     editingQuestion,
     exporting,
+    csvImporting,
     handleSelectAll,
     handleSelectOne,
     handleEnterBank,
@@ -304,6 +340,7 @@ export const useQuestionPreview = () => {
     handleOpenDeleteDialog,
     handleDeleteBank,
     handleExportBank,
+    handleCsvImport,
     handleSaveEditQuestion,
     clearSelection,
     loadQuestions,

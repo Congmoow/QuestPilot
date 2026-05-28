@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { RefObject } from 'react';
 import api from '../../../api';
 import type { CreateQuestionInput, ImportResult, ParseError, QuestionType } from '../../../api';
 import { countFillBlanks } from '../../../lib/fillBlank';
 import { useQuestionBanks } from '../../../contexts/QuestionBankContext';
 import type { ParseChunkError } from '../utils/normalize';
 import { normalizeBooleanAnswer, normalizeChoiceAnswer } from '../utils/normalize';
-import { selectTomlDropPath } from '../utils/tomlFileDrop';
+import { selectAiDropPath, selectJsonDropPath, selectTomlDropPath } from '../utils/tomlFileDrop';
 import { parseTomlQuestions } from '../utils/tomlImport';
 
 type ImportMode = 'ai' | 'json' | 'toml';
@@ -48,7 +49,7 @@ const JSON_TYPE_MAP: Record<string, QuestionType> = {
   short: 'short',
 };
 
-export const useAiImport = () => {
+export const useAiImport = (dropZoneRef?: RefObject<HTMLElement>) => {
   const { banks, fetchBanks } = useQuestionBanks();
   const [selectedBankId, setSelectedBankId] = useState<number | null>(null);
   const [mode, setMode] = useState<ImportMode>('ai');
@@ -57,6 +58,10 @@ export const useAiImport = () => {
   const [tomlInput, setTomlInput] = useState('');
   const [tomlFile, setTomlFile] = useState<{ name: string; path: string } | null>(null);
   const [draggingTomlFile, setDraggingTomlFile] = useState(false);
+  const [draggingOverEditor, setDraggingOverEditor] = useState(false);
+  const [draggingFilePaths, setDraggingFilePaths] = useState<string[]>([]);
+  const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
+  const [fileIconUrl, setFileIconUrl] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
   const [parsedQuestions, setParsedQuestions] = useState<CreateQuestionInput[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -82,8 +87,8 @@ export const useAiImport = () => {
     fetchBanks();
   }, [fetchBanks]);
 
-  const handleParse = async () => {
-    if (!inputText.trim()) {
+  const parseAiText = useCallback(async (text: string) => {
+    if (!text.trim()) {
       setError('请输入要解析的题目内容');
       return;
     }
@@ -94,7 +99,7 @@ export const useAiImport = () => {
     setParseWarnings(null);
     setShowParseWarnings(false);
     try {
-      const result = await api.ai.parseQuestions(inputText);
+      const result = await api.ai.parseQuestions(text);
       const chunkErrors: ParseChunkError[] = Array.isArray(result.chunkErrors)
         ? (result.chunkErrors as ParseChunkError[])
         : [];
@@ -124,7 +129,26 @@ export const useAiImport = () => {
     } finally {
       setParsing(false);
     }
-  };
+  }, []);
+
+  const handleParse = () => parseAiText(inputText);
+
+  const loadAiFilePath = useCallback(
+    async (filePath: string) => {
+      setError(null);
+      setInputText('');
+      setParsedQuestions([]);
+      setImportResult(null);
+      try {
+        const content = await api.file.readText(filePath);
+        setInputText(content);
+        void parseAiText(content);
+      } catch (error) {
+        setError(error instanceof Error ? error.message : '读取文件失败');
+      }
+    },
+    [parseAiText],
+  );
 
   const handleRemoveQuestion = (index: number) => {
     setParsedQuestions((prev) => prev.filter((_, i) => i !== index));
@@ -182,8 +206,8 @@ export const useAiImport = () => {
     setShowParseWarnings(false);
   };
 
-  const handleJsonParse = () => {
-    if (!jsonInput.trim()) {
+  const parseJsonText = useCallback((text: string) => {
+    if (!text.trim()) {
       setError('请输入 JSON 格式的题目数据');
       return;
     }
@@ -193,7 +217,7 @@ export const useAiImport = () => {
     setParseWarnings(null);
     setShowParseWarnings(false);
     try {
-      let data = JSON.parse(jsonInput.trim());
+      let data = JSON.parse(text.trim());
       if (!Array.isArray(data)) data = [data];
 
       const questions: CreateQuestionInput[] = (data as RawJsonQuestion[]).map((item, index) => {
@@ -263,7 +287,9 @@ export const useAiImport = () => {
             : '解析失败',
       );
     }
-  };
+  }, []);
+
+  const handleJsonParse = () => parseJsonText(jsonInput);
 
   const handleTomlParse = () => {
     setError(null);
@@ -288,7 +314,11 @@ export const useAiImport = () => {
     setParseWarnings(null);
     setShowParseWarnings(false);
     try {
-      const result = await api.toml.parseFile(filePath);
+      const [result, rawText] = await Promise.all([
+        api.toml.parseFile(filePath),
+        api.file.readText(filePath).catch(() => ''),
+      ]);
+      if (rawText) setTomlInput(rawText);
       const errors = Array.isArray(result.errors) ? result.errors : [];
       if (result.valid.length > 0) {
         setParsedQuestions(result.valid);
@@ -332,6 +362,23 @@ export const useAiImport = () => {
     }
   };
 
+  const loadJsonFilePath = useCallback(
+    async (filePath: string) => {
+      setError(null);
+      setJsonInput('');
+      setParsedQuestions([]);
+      setImportResult(null);
+      try {
+        const content = await api.file.readText(filePath);
+        setJsonInput(content);
+        parseJsonText(content);
+      } catch (error) {
+        setError(error instanceof Error ? error.message : '读取 JSON 文件失败');
+      }
+    },
+    [setJsonInput, parseJsonText],
+  );
+
   const handleTomlFileParse = async () => {
     if (!tomlFile) {
       setError('请先选择 TOML 文件');
@@ -341,7 +388,30 @@ export const useAiImport = () => {
   };
 
   useEffect(() => {
-    if (mode !== 'toml') {
+    const html = document.documentElement;
+    if (draggingTomlFile) {
+      html.classList.add('file-dragging');
+    } else {
+      html.classList.remove('file-dragging');
+    }
+    return () => {
+      html.classList.remove('file-dragging');
+    };
+  }, [draggingTomlFile]);
+
+  useEffect(() => {
+    if (draggingFilePaths.length === 0) {
+      setFileIconUrl(null);
+      return;
+    }
+    void api.icon
+      .getFileIcon(draggingFilePaths[0])
+      .then((b64) => setFileIconUrl(`data:image/png;base64,${b64}`))
+      .catch(() => setFileIconUrl(null));
+  }, [draggingFilePaths]);
+
+  useEffect(() => {
+    if (mode !== 'toml' && mode !== 'json' && mode !== 'ai') {
       setDraggingTomlFile(false);
       return;
     }
@@ -353,21 +423,64 @@ export const useAiImport = () => {
       .then(({ getCurrentWebview }) =>
         getCurrentWebview().onDragDropEvent((event) => {
           const payload = event.payload;
-          if (payload.type === 'enter' || payload.type === 'over') {
+          const dpr = window.devicePixelRatio || 1;
+          const checkOver = (rawX: number, rawY: number) => {
+            if (!dropZoneRef?.current) return true;
+            const r = dropZoneRef.current.getBoundingClientRect();
+            const x = rawX / dpr;
+            const y = rawY / dpr;
+            return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+          };
+          if (payload.type === 'enter') {
+            setDraggingFilePaths(payload.paths ?? []);
             setDraggingTomlFile(true);
+            setDragPosition({ x: payload.position.x / dpr, y: payload.position.y / dpr });
+            setDraggingOverEditor(checkOver(payload.position.x, payload.position.y));
+            return;
+          }
+          if (payload.type === 'over') {
+            setDraggingTomlFile(true);
+            setDragPosition({ x: payload.position.x / dpr, y: payload.position.y / dpr });
+            setDraggingOverEditor(checkOver(payload.position.x, payload.position.y));
             return;
           }
           if (payload.type === 'leave') {
             setDraggingTomlFile(false);
+            setDraggingFilePaths([]);
+            setDragPosition(null);
+            setDraggingOverEditor(false);
             return;
           }
-          const filePath = selectTomlDropPath(payload.paths);
+          const filePath =
+            mode === 'json'
+              ? selectJsonDropPath(payload.paths)
+              : mode === 'ai'
+                ? selectAiDropPath(payload.paths)
+                : selectTomlDropPath(payload.paths);
           setDraggingTomlFile(false);
+          setDraggingFilePaths([]);
+          setDragPosition(null);
+          setDraggingOverEditor(false);
           if (!filePath) {
-            setError('请拖入 .toml 文件');
+            setError(
+              mode === 'json'
+                ? '请拖入 .json 文件'
+                : mode === 'ai'
+                  ? '请拖入 .md 或 .txt 文件'
+                  : '请拖入 .toml 文件',
+            );
             return;
           }
-          void parseTomlFilePath(filePath);
+          if (!checkOver(payload.position.x, payload.position.y)) {
+            return;
+          }
+          if (mode === 'json') {
+            void loadJsonFilePath(filePath);
+          } else if (mode === 'ai') {
+            void loadAiFilePath(filePath);
+          } else {
+            void parseTomlFilePath(filePath);
+          }
         }),
       )
       .then((cleanup) => {
@@ -382,9 +495,13 @@ export const useAiImport = () => {
     return () => {
       cancelled = true;
       setDraggingTomlFile(false);
+      setDraggingFilePaths([]);
+      setDragPosition(null);
+      setDraggingOverEditor(false);
+      setFileIconUrl(null);
       if (unlisten) unlisten();
     };
-  }, [mode, parseTomlFilePath]);
+  }, [mode, dropZoneRef, parseTomlFilePath, loadJsonFilePath, loadAiFilePath]);
 
   const handleModeChange = (newMode: ImportMode) => {
     setMode(newMode);
@@ -408,6 +525,10 @@ export const useAiImport = () => {
     setTomlInput,
     tomlFile,
     draggingTomlFile,
+    draggingOverEditor,
+    draggingFilePaths,
+    dragPosition,
+    fileIconUrl,
     parsing,
     parsedQuestions,
     error,

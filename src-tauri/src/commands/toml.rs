@@ -27,3 +27,10 @@ pub fn toml_parse_file(file_path: String) -> Result<serde_json::Value, AppError>
     serde_json::to_value(toml_tools::parse_toml_content(content.as_str())?)
         .map_err(|e| AppError::Config(format!("序列化 TOML 解析结果失败: {e}")))
 }
+
+#[tauri::command(rename_all = "camelCase")]
+#[tracing::instrument(err)]
+pub fn read_text_file(file_path: String) -> Result<String, AppError> {
+    fs::read_to_string(Path::new(&file_path))
+        .map_err(|e| AppError::Config(format!("读取文件失败: {e}")))
+}

@@ -32,7 +32,8 @@ use commands::{
         settings_test_api_connection,
     },
     stats::{stats_get_dashboard, stats_get_operation_logs, stats_get_type_distribution},
-    toml::{toml_parse_file, toml_select_file},
+    toml::{read_text_file, toml_parse_file, toml_select_file},
+    icon::get_file_icon,
     window::{window_close, window_is_maximized, window_maximize, window_minimize},
     wrong_book::{
         wrong_book_clear, wrong_book_get_counts_by_bank, wrong_book_get_items,
@@ -112,7 +113,9 @@ pub fn run() {
             csv_import,
             csv_export,
             toml_select_file,
-            toml_parse_file
+            toml_parse_file,
+            read_text_file,
+            get_file_icon
         ])
         .run(tauri::generate_context!())
         .expect("启动 QuestPilot Tauri 应用失败");

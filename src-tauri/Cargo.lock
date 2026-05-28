@@ -2595,8 +2595,10 @@ dependencies = [
 name = "questpilot-tauri"
 version = "1.8.9"
 dependencies = [
+ "base64 0.22.1",
  "csv",
  "keyring",
+ "png 0.17.16",
  "reqwest",
  "rusqlite",
  "serde",
@@ -2610,6 +2612,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
+ "winapi",
 ]
 
 [[package]]

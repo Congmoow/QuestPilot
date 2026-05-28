@@ -27,5 +27,10 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 url = "2"
 
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["shellapi", "winuser", "wingdi", "windef"] }
+png = "0.17"
+base64 = "0.22"
+
 [dev-dependencies]
 tempfile = "3"

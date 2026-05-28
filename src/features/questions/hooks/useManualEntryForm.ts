@@ -273,7 +273,8 @@ export const useManualEntryForm = () => {
     }
   };
 
-  const handleBack = () => navigate('/question-preview');
+  const handleBack = () =>
+    navigate(selectedBankId ? `/question-preview?bankId=${selectedBankId}` : '/question-preview');
 
   const selectedBank = banks.find((bank) => bank.id === selectedBankId);
   const currentQuestionType = questionTypes.find((type) => type.id === activeTab);

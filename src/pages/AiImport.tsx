@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Code, FileText, Save, Trash2, Wand2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { Code, File, FileText, Save, Trash2, Wand2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -102,6 +102,8 @@ content = "请简述 MVC。"
 answer = "..."`;
 
 const AiImport = () => {
+  const editorRef = useRef<HTMLDivElement>(null);
+
   const {
     banks,
     selectedBankId,
@@ -115,6 +117,10 @@ const AiImport = () => {
     setTomlInput,
     tomlFile,
     draggingTomlFile,
+    draggingOverEditor,
+    draggingFilePaths,
+    dragPosition,
+    fileIconUrl,
     parsing,
     parsedQuestions,
     error,
@@ -131,7 +137,7 @@ const AiImport = () => {
     handleJsonParse,
     handleTomlParse,
     handleModeChange,
-  } = useAiImport();
+  } = useAiImport(editorRef);
 
   const currentInput = mode === 'ai' ? inputText : mode === 'json' ? jsonInput : tomlInput;
   const currentPlaceholder =
@@ -141,7 +147,11 @@ const AiImport = () => {
   const currentSupportText =
     mode === 'toml'
       ? '拖拽 .toml 文件到窗口自动解析；也可粘贴文本'
-      : '支持单选、多选、判断、填空、简答题';
+      : mode === 'json'
+        ? '拖拽 .json 文件到窗口自动解析；也可粘贴文本'
+        : mode === 'ai'
+          ? '拖拽 .md / .txt 文件到窗口自动解析；也可粘贴文本'
+          : '支持单选、多选、判断、填空、简答题';
   const handleEditorChange = (value: string) => {
     if (mode === 'ai') setInputText(value);
     if (mode === 'json') setJsonInput(value);
@@ -159,207 +169,271 @@ const AiImport = () => {
     }
   }, [importResult]);
 
+  const draggedFileName =
+    draggingFilePaths.length > 0
+      ? (draggingFilePaths[0].split(/[/\\]/).pop() ?? draggingFilePaths[0])
+      : null;
+
   return (
-    <div className="space-y-6">
-      <PageHeader title="AI 智能录入" subtitle="支持 AI 解析、JSON 与 TOML 批量导入" />
+    <div className="relative">
+      <div className="space-y-6">
+        <PageHeader title="AI 智能录入" subtitle="支持 AI 解析、JSON 与 TOML 批量导入" />
 
-      <SegmentedTabs
-        tabs={MODE_TABS.map((tab) => ({
-          ...tab,
-          disabled: tab.id === 'ai' && !hasApiKey,
-          title: tab.id === 'ai' && !hasApiKey ? '请先在设置中配置 API Key' : '',
-        }))}
-        value={mode}
-        onChange={handleModeChange}
-      />
+        <SegmentedTabs
+          tabs={MODE_TABS.map((tab) => ({
+            ...tab,
+            disabled: tab.id === 'ai' && !hasApiKey,
+            title: tab.id === 'ai' && !hasApiKey ? '请先在设置中配置 API Key' : '',
+          }))}
+          value={mode}
+          onChange={handleModeChange}
+        />
 
-      {!hasApiKey && (
-        <AlertBanner type="warning" title="AI 智能解析暂不可用">
-          请先在系统设置中配置 API Key；当前可使用 JSON 或 TOML 批量导入。
-        </AlertBanner>
-      )}
+        {!hasApiKey && (
+          <AlertBanner type="warning" title="AI 智能解析暂不可用">
+            请先在系统设置中配置 API Key；当前可使用 JSON 或 TOML 批量导入。
+          </AlertBanner>
+        )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-        <div className="flex h-full flex-col gap-4">
-          <JsonEditorPanel
-            title={currentTitle}
-            supportText={currentSupportText}
-            value={currentInput}
-            onChange={(e) => handleEditorChange(e.target.value)}
-            placeholder={currentPlaceholder}
-            className={
-              draggingTomlFile
-                ? 'ring-2 ring-primary/60 ring-offset-2 ring-offset-white dark:ring-offset-gray-900'
-                : undefined
-            }
-          />
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+          <div ref={editorRef} className="flex h-full flex-col gap-4">
+            <JsonEditorPanel
+              title={currentTitle}
+              supportText={currentSupportText}
+              value={currentInput}
+              onChange={(e) => handleEditorChange(e.target.value)}
+              placeholder={currentPlaceholder}
+              className={
+                draggingOverEditor
+                  ? 'ring-2 ring-primary/60 ring-offset-2 ring-offset-white dark:ring-offset-gray-900'
+                  : undefined
+              }
+            />
 
-          <div className="flex flex-wrap gap-3">
-            {mode === 'ai' ? (
-              <ActionButton
-                icon={Wand2}
-                onClick={handleParse}
-                disabled={parsing || !inputText.trim()}
-                loading={parsing}
-                className="min-w-52 flex-1"
-              >
-                {parsing ? 'AI 解析中...' : 'AI 智能解析'}
-              </ActionButton>
-            ) : mode === 'json' ? (
-              <ActionButton
-                icon={Code}
-                onClick={handleJsonParse}
-                disabled={!jsonInput.trim()}
-                className="min-w-52 flex-1"
-              >
-                解析 JSON
-              </ActionButton>
-            ) : (
-              <>
+            <div className="flex flex-wrap gap-3">
+              {mode === 'ai' ? (
                 <ActionButton
-                  icon={Code}
-                  onClick={handleTomlParse}
-                  disabled={parsing || !tomlInput.trim()}
+                  icon={Wand2}
+                  onClick={handleParse}
+                  disabled={parsing || !inputText.trim()}
+                  loading={parsing}
                   className="min-w-52 flex-1"
                 >
-                  解析 TOML
+                  {parsing ? 'AI 解析中...' : 'AI 智能解析'}
                 </ActionButton>
-              </>
+              ) : mode === 'json' ? (
+                <ActionButton
+                  icon={Code}
+                  onClick={handleJsonParse}
+                  disabled={!jsonInput.trim()}
+                  className="min-w-52 flex-1"
+                >
+                  解析 JSON
+                </ActionButton>
+              ) : (
+                <>
+                  <ActionButton
+                    icon={Code}
+                    onClick={handleTomlParse}
+                    disabled={parsing || !tomlInput.trim()}
+                    className="min-w-52 flex-1"
+                  >
+                    解析 TOML
+                  </ActionButton>
+                </>
+              )}
+              <ActionButton
+                variant="secondary"
+                icon={Trash2}
+                onClick={handleClear}
+                disabled={parsing}
+              >
+                清空
+              </ActionButton>
+            </div>
+
+            {mode === 'toml' && (
+              <AlertBanner
+                type="info"
+                title={draggingOverEditor ? '松开即可自动解析 TOML 文件' : '拖拽 TOML 文件自动解析'}
+              >
+                {tomlFile ? (
+                  <span className="break-all">已解析：{tomlFile.name}</span>
+                ) : (
+                  <span>将 .toml 文件拖入当前窗口，系统会自动解析并生成右侧预览。</span>
+                )}
+              </AlertBanner>
             )}
-            <ActionButton
-              variant="secondary"
-              icon={Trash2}
-              onClick={handleClear}
-              disabled={parsing}
-            >
-              清空
-            </ActionButton>
+
+            {mode === 'ai' && (
+              <AlertBanner
+                type="info"
+                title={
+                  draggingOverEditor
+                    ? '松开即可 AI 解析文件内容'
+                    : '拖拽 .md / .txt 文件 AI 自动解析'
+                }
+              >
+                <span>
+                  将 Markdown 或纯文本题目文件拖入左侧编辑区，系统将自动调用 AI 进行解析。
+                </span>
+              </AlertBanner>
+            )}
+
+            {mode === 'json' && (
+              <AlertBanner
+                type="info"
+                title={draggingOverEditor ? '松开即可自动解析 JSON 文件' : '拖拽 JSON 文件自动解析'}
+              >
+                <span>将 .json 文件拖入左侧编辑区，系统会自动解析并生成右侧预览。</span>
+              </AlertBanner>
+            )}
+
+            {error && (
+              <AlertBanner type="danger" title="解析失败">
+                <span className="whitespace-pre-line">{error}</span>
+              </AlertBanner>
+            )}
           </div>
 
-          {mode === 'toml' && (
-            <AlertBanner
-              type="info"
-              title={draggingTomlFile ? '松开即可自动解析 TOML 文件' : '拖拽 TOML 文件自动解析'}
-            >
-              {tomlFile ? (
-                <span className="break-all">已解析：{tomlFile.name}</span>
-              ) : (
-                <span>将 .toml 文件拖入当前窗口，系统会自动解析并生成右侧预览。</span>
-              )}
-            </AlertBanner>
-          )}
-
-          {error && (
-            <AlertBanner type="danger" title="解析失败">
-              <span className="whitespace-pre-line">{error}</span>
-            </AlertBanner>
-          )}
-        </div>
-
-        <div className="flex h-full flex-col gap-4">
-          <SurfaceCard className="flex flex-1 flex-col min-h-0" padding="p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-base font-bold text-gray-900 dark:text-white">
-                解析结果 {parsedQuestions.length > 0 && `(${parsedQuestions.length} 道题目)`}
-              </h2>
-              {parsedQuestions.length > 0 && (
+          <div className="flex h-full flex-col gap-4">
+            <SurfaceCard className="flex h-[520px] flex-col" padding="p-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">
+                  解析结果 {parsedQuestions.length > 0 && `(${parsedQuestions.length} 道题目)`}
+                </h2>
                 <SelectInput
                   value={selectedBankId || ''}
                   onChange={(e) => setSelectedBankId(Number(e.target.value) || null)}
-                  className="h-10 min-h-10 w-full sm:w-52"
+                  className="h-9 min-h-9 w-44"
                 >
-                  <option value="">选择题库</option>
+                  <option value="">目标题库...</option>
                   {banks.map((bank) => (
                     <option key={bank.id} value={bank.id}>
                       {bank.name}
                     </option>
                   ))}
                 </SelectInput>
-              )}
-            </div>
+              </div>
 
-            {parseWarnings && (
-              <AlertBanner type="warning" className="mb-4">
-                <button
-                  type="button"
-                  onClick={() => setShowParseWarnings((prev) => !prev)}
-                  className="flex w-full items-center justify-between gap-3 text-left"
-                >
-                  <span>
-                    已解析 {parseWarnings.questionCount} 道题目，有{' '}
-                    {parseWarnings.chunkErrors.length} 个片段未能识别
-                  </span>
-                  <span className="text-xs">{showParseWarnings ? '收起' : '展开'}</span>
-                </button>
-                {showParseWarnings && (
-                  <div className="mt-3 space-y-2">
-                    {parseWarnings.chunkErrors.map((item, index) => {
-                      const chunkIndex = getChunkIndex(item, index);
-                      return (
-                        <div
-                          key={`${chunkIndex}-${index}`}
-                          className="rounded-xl bg-white/70 px-3 py-2 text-sm dark:bg-gray-900/30"
-                        >
-                          <span className="font-semibold">第 {chunkIndex + 1} 个片段：</span>
-                          {item.message || '解析失败'}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+              {parseWarnings && (
+                <AlertBanner type="warning" className="mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowParseWarnings((prev) => !prev)}
+                    className="flex w-full items-center justify-between gap-3 text-left"
+                  >
+                    <span>
+                      已解析 {parseWarnings.questionCount} 道题目，有{' '}
+                      {parseWarnings.chunkErrors.length} 个片段未能识别
+                    </span>
+                    <span className="text-xs">{showParseWarnings ? '收起' : '展开'}</span>
+                  </button>
+                  {showParseWarnings && (
+                    <div className="mt-3 space-y-2">
+                      {parseWarnings.chunkErrors.map((item, index) => {
+                        const chunkIndex = getChunkIndex(item, index);
+                        return (
+                          <div
+                            key={`${chunkIndex}-${index}`}
+                            className="rounded-xl bg-white/70 px-3 py-2 text-sm dark:bg-gray-900/30"
+                          >
+                            <span className="font-semibold">第 {chunkIndex + 1} 个片段：</span>
+                            {item.message || '解析失败'}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </AlertBanner>
+              )}
+
+              {parsing ? (
+                <ParseResultSkeleton />
+              ) : parsedQuestions.length === 0 ? (
+                <ParseEmptyState />
+              ) : (
+                <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+                  {parsedQuestions.map((question, index) => (
+                    <ParsedQuestionItem
+                      key={index}
+                      question={question}
+                      index={index}
+                      typeLabel={TYPE_LABELS[question.type] || question.type}
+                      onRemove={() => handleRemoveQuestion(index)}
+                      removeIcon={Trash2}
+                    />
+                  ))}
+                </div>
+              )}
+            </SurfaceCard>
+
+            {parsedQuestions.length > 0 && (
+              <ActionButton
+                variant="success"
+                icon={Save}
+                onClick={handleImport}
+                disabled={importing || !selectedBankId}
+                loading={importing}
+                className="w-full"
+              >
+                {importing ? '导入中...' : `导入到题库 (${parsedQuestions.length} 道)`}
+              </ActionButton>
+            )}
+
+            {importResult && importResult.failed > 0 && importResult.errors?.length > 0 && (
+              <AlertBanner type="warning" title="失败详情">
+                <div className="mt-2 space-y-2">
+                  {importResult.errors.map((item, index) => (
+                    <div
+                      key={`${item.index ?? index}-${index}`}
+                      className="rounded-xl bg-white/60 px-3 py-2 text-sm dark:bg-gray-900/30"
+                    >
+                      <span className="font-semibold">第 {(item.index ?? index) + 1} 道：</span>
+                      {item.message || '导入失败'}
+                    </div>
+                  ))}
+                </div>
               </AlertBanner>
             )}
-
-            {parsing ? (
-              <ParseResultSkeleton />
-            ) : parsedQuestions.length === 0 ? (
-              <ParseEmptyState />
-            ) : (
-              <div className="max-h-[442px] space-y-3 overflow-y-auto pr-1">
-                {parsedQuestions.map((question, index) => (
-                  <ParsedQuestionItem
-                    key={index}
-                    question={question}
-                    index={index}
-                    typeLabel={TYPE_LABELS[question.type] || question.type}
-                    onRemove={() => handleRemoveQuestion(index)}
-                    removeIcon={Trash2}
-                  />
-                ))}
-              </div>
-            )}
-          </SurfaceCard>
-
-          {parsedQuestions.length > 0 && (
-            <ActionButton
-              variant="success"
-              icon={Save}
-              onClick={handleImport}
-              disabled={importing || !selectedBankId}
-              loading={importing}
-              className="w-full"
-            >
-              {importing ? '导入中...' : `导入到题库 (${parsedQuestions.length} 道)`}
-            </ActionButton>
-          )}
-
-          {importResult && importResult.failed > 0 && importResult.errors?.length > 0 && (
-            <AlertBanner type="warning" title="失败详情">
-              <div className="mt-2 space-y-2">
-                {importResult.errors.map((item, index) => (
-                  <div
-                    key={`${item.index ?? index}-${index}`}
-                    className="rounded-xl bg-white/60 px-3 py-2 text-sm dark:bg-gray-900/30"
-                  >
-                    <span className="font-semibold">第 {(item.index ?? index) + 1} 道：</span>
-                    {item.message || '导入失败'}
-                  </div>
-                ))}
-              </div>
-            </AlertBanner>
-          )}
+          </div>
         </div>
       </div>
+
+      {draggingTomlFile && dragPosition && (
+        <div
+          className="pointer-events-none fixed z-50"
+          style={{ left: dragPosition.x, top: dragPosition.y, transform: 'translate(-50%, -75%)' }}
+        >
+          <div
+            className="flex items-center gap-2.5 rounded-xl border border-primary/30 bg-white/75 px-3.5 py-2.5 shadow-xl backdrop-blur-sm dark:bg-gray-900/75"
+            style={{ opacity: 0.82 }}
+          >
+            {fileIconUrl ? (
+              <img src={fileIconUrl} alt="" className="h-7 w-7 flex-shrink-0" draggable={false} />
+            ) : (
+              <File className="h-7 w-7 flex-shrink-0 text-primary/80" />
+            )}
+            <div className="flex flex-col">
+              {draggedFileName ? (
+                <span className="max-w-[180px] truncate text-sm font-medium leading-tight text-gray-800 dark:text-gray-100">
+                  {draggedFileName}
+                </span>
+              ) : null}
+              {draggingFilePaths.length > 1 && (
+                <span className="text-xs text-gray-400">
+                  +{draggingFilePaths.length - 1} 个文件
+                </span>
+              )}
+              <span
+                className={`text-xs mt-0.5 ${draggingOverEditor ? 'text-primary font-medium' : 'text-gray-400'}`}
+              >
+                {draggingOverEditor ? '松开即可解析' : '拖至左侧输入区域'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

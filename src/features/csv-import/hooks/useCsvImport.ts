@@ -110,7 +110,8 @@ export const useCsvImport = () => {
     setErrorMessage('');
   };
 
-  const handleBackToBank = () => navigate('/question-preview');
+  const handleBackToBank = () =>
+    navigate(bankId ? `/question-preview?bankId=${bankId}` : '/question-preview');
 
   return {
     bankId,

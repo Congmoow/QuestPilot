@@ -62,6 +62,7 @@ type QuestionListPanelProps = Pick<
   | 'setSearchInput'
   | 'submitting'
   | 'exporting'
+  | 'csvImporting'
   | 'deleteQuestionsDialogOpen'
   | 'setDeleteQuestionsDialogOpen'
   | 'editQuestionDialogOpen'
@@ -78,6 +79,7 @@ type QuestionListPanelProps = Pick<
   | 'handleOpenEditQuestion'
   | 'handleDeleteSingleQuestion'
   | 'handleExportBank'
+  | 'handleCsvImport'
   | 'handleSaveEditQuestion'
   | 'clearSelection'
   | 'duplicateDialogOpen'
@@ -101,6 +103,7 @@ const QuestionListPanel = ({
   setSearchInput,
   submitting,
   exporting,
+  csvImporting,
   deleteQuestionsDialogOpen,
   setDeleteQuestionsDialogOpen,
   editQuestionDialogOpen,
@@ -117,6 +120,7 @@ const QuestionListPanel = ({
   handleOpenEditQuestion,
   handleDeleteSingleQuestion,
   handleExportBank,
+  handleCsvImport,
   handleSaveEditQuestion,
   clearSelection,
   duplicateDialogOpen,
@@ -151,11 +155,15 @@ const QuestionListPanel = ({
             <NavLink to={`/manual-entry?bankId=${selectedBank.id}`}>
               <ActionButton icon={Plus}>手动录入</ActionButton>
             </NavLink>
-            <NavLink to={`/csv-import?bankId=${selectedBank.id}`}>
-              <ActionButton variant="secondary" icon={Upload}>
-                CSV导入
-              </ActionButton>
-            </NavLink>
+            <ActionButton
+              variant="secondary"
+              icon={Upload}
+              onClick={handleCsvImport}
+              disabled={csvImporting}
+              loading={csvImporting}
+            >
+              {csvImporting ? '导入中...' : 'CSV导入'}
+            </ActionButton>
             <ActionButton
               variant="secondary"
               icon={ScanSearch}
@@ -173,15 +181,6 @@ const QuestionListPanel = ({
             >
               {exporting ? '导出中' : '导出'}
             </ActionButton>
-            {selectedIds.length > 0 && (
-              <ActionButton
-                variant="danger"
-                icon={Trash2}
-                onClick={() => setDeleteQuestionsDialogOpen(true)}
-              >
-                删除 ({selectedIds.length})
-              </ActionButton>
-            )}
           </>
         }
       />
@@ -191,6 +190,7 @@ const QuestionListPanel = ({
           label="返回题库列表"
           icon={ArrowLeft}
           variant="secondary"
+          tooltip={false}
           onClick={handleBackToList}
         />
         <span className="rounded-xl bg-primary-soft px-3 py-1.5 text-sm font-bold text-primary">
@@ -212,22 +212,21 @@ const QuestionListPanel = ({
             <ActionButton icon={Search} onClick={handleSearch}>
               搜索
             </ActionButton>
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-500">
-              <Filter size={18} />
-              题型筛选
+            <div className="flex items-center gap-2 lg:ml-auto">
+              <Filter size={16} className="shrink-0 text-gray-400" />
+              <SelectInput
+                value={filterType || 'all'}
+                onChange={(e) => handleTypeFilter(e.target.value as TypeFilterValue)}
+                className="w-full lg:w-44"
+              >
+                <option value="all">所有题型</option>
+                <option value="single">单选题</option>
+                <option value="multiple">多选题</option>
+                <option value="boolean">判断题</option>
+                <option value="fill">填空题</option>
+                <option value="short">简答题</option>
+              </SelectInput>
             </div>
-            <SelectInput
-              value={filterType || 'all'}
-              onChange={(e) => handleTypeFilter(e.target.value as TypeFilterValue)}
-              className="w-full lg:w-44"
-            >
-              <option value="all">所有题型</option>
-              <option value="single">单选题</option>
-              <option value="multiple">多选题</option>
-              <option value="boolean">判断题</option>
-              <option value="fill">填空题</option>
-              <option value="short">简答题</option>
-            </SelectInput>
           </div>
         }
       >
@@ -265,15 +264,25 @@ const QuestionListPanel = ({
         {!questionsLoading && questions.length > 0 && (
           <div className="space-y-4">
             <SurfaceCard padding="px-5 py-4">
-              <label className="inline-flex items-center gap-3 text-sm font-semibold text-gray-500">
-                <input
-                  type="checkbox"
-                  className="size-4 rounded border-gray-300 text-primary"
-                  onChange={handleSelectAll}
-                  checked={selectedIds.length === questions.length && questions.length > 0}
-                />
-                全选本页
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="inline-flex items-center gap-3 text-sm font-semibold text-gray-500">
+                  <input
+                    type="checkbox"
+                    className="size-4 rounded border-gray-300 text-primary"
+                    onChange={handleSelectAll}
+                    checked={selectedIds.length === questions.length && questions.length > 0}
+                  />
+                  全选本页
+                </label>
+                <ActionButton
+                  variant="danger"
+                  icon={Trash2}
+                  onClick={() => setDeleteQuestionsDialogOpen(true)}
+                  className={selectedIds.length === 0 ? 'invisible' : ''}
+                >
+                  删除 ({selectedIds.length})
+                </ActionButton>
+              </div>
             </SurfaceCard>
 
             <div className="grid gap-4">
@@ -352,15 +361,17 @@ const QuestionListPanel = ({
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+                      <div className="flex items-center gap-2">
                         <IconButton
                           label="编辑题目"
                           icon={Edit}
+                          tooltip={false}
                           onClick={(e) => handleOpenEditQuestion(q, e)}
                         />
                         <IconButton
                           label="删除题目"
                           icon={Trash2}
+                          tooltip={false}
                           onClick={(e) => handleDeleteSingleQuestion(q.id, e)}
                           className="hover:bg-red-50 hover:text-danger dark:hover:bg-red-900/20"
                         />

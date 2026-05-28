@@ -242,3 +242,8 @@
 .app-no-drag {
   -webkit-app-region: no-drag;
 }
+
+html.file-dragging,
+html.file-dragging * {
+  cursor: none !important;
+}

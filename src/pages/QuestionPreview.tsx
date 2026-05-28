@@ -48,6 +48,7 @@ const QuestionPreview = () => {
       setSearchInput={state.setSearchInput}
       submitting={state.submitting}
       exporting={state.exporting}
+      csvImporting={state.csvImporting}
       deleteQuestionsDialogOpen={state.deleteQuestionsDialogOpen}
       setDeleteQuestionsDialogOpen={state.setDeleteQuestionsDialogOpen}
       editQuestionDialogOpen={state.editQuestionDialogOpen}
@@ -64,6 +65,7 @@ const QuestionPreview = () => {
       handleOpenEditQuestion={state.handleOpenEditQuestion}
       handleDeleteSingleQuestion={state.handleDeleteSingleQuestion}
       handleExportBank={state.handleExportBank}
+      handleCsvImport={state.handleCsvImport}
       handleSaveEditQuestion={state.handleSaveEditQuestion}
       clearSelection={state.clearSelection}
       duplicateDialogOpen={state.duplicateDialogOpen}

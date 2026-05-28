@@ -212,6 +212,14 @@ export const parseTomlFile = async (filePath: string): Promise<ParseResult> => {
   return invokeTauriCommand('toml_parse_file', { filePath });
 };
 
+export const getFileIcon = async (filePath: string): Promise<string> => {
+  return invokeTauriCommand('get_file_icon', { filePath });
+};
+
+export const readTextFile = async (filePath: string): Promise<string> => {
+  return invokeTauriCommand('read_text_file', { filePath });
+};
+
 export const importQuestions = async (
   bankId: number,
   questions: CreateQuestionInput[],
@@ -449,6 +457,12 @@ export default {
   toml: {
     selectFile: selectTomlFile,
     parseFile: parseTomlFile,
+  },
+  icon: {
+    getFileIcon,
+  },
+  file: {
+    readText: readTextFile,
   },
   stats: {
     getDashboard: getDashboardStats,

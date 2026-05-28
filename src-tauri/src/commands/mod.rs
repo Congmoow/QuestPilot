@@ -1,4 +1,5 @@
 pub mod ai_cmd;
+pub mod icon;
 pub mod csv;
 pub mod draft;
 pub mod practice;

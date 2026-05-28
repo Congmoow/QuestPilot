@@ -43,7 +43,7 @@ export function JsonEditorPanel({
         <h2 className="text-base font-bold text-gray-900 dark:text-white">{title}</h2>
         {supportText && <span className="text-xs text-gray-400">{supportText}</span>}
       </div>
-      <div className="grid h-[434px] grid-cols-[54px_1fr] overflow-hidden bg-white font-mono text-sm dark:bg-gray-800">
+      <div className="grid h-[400px] grid-cols-[54px_1fr] overflow-hidden bg-white font-mono text-sm dark:bg-gray-800">
         <div
           ref={lineNumbersRef}
           className="overflow-y-hidden select-none border-r border-gray-100 bg-slate-50 px-3 py-4 text-right leading-7 text-gray-400 dark:border-gray-700 dark:bg-gray-900/30"
